@@ -1,0 +1,14 @@
+/*DESCRIPTION: captures the name of all user selected objects, 
+then runs the pk_testAndSetAttr procedure to zero out all KEYABLE, ULOCKED attributes. Scale will be set to a value of 1
+USAGE: source pk_setZero();
+*/
+global proc pk_setZero()
+{	
+// get the names of every user selected object
+string $ctlList[] = `ls -sl`;
+select -cl;
+int $s =`size $ctlList`;
+//calls and runs the pk_testAndSetAttr procedure on each object
+for ($c=0; $c<$s; $c++)
+	{pk_testAndSetAttr ($ctlList[$c]);}
+}

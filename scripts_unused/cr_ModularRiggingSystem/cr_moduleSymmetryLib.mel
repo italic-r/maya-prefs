@@ -1,0 +1,493 @@
+//---------------------------------------------------------------------------
+// cr_moduleSymmetryLib.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:
+//      rig module symmetry - library
+//
+// REQUIRES:
+//      cr_charUtilsLib.mel
+//      libString.mel
+//      snaps.mel
+//
+// AUTHOR:
+//      Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+source "snaps.mel";
+cr_charUtilsLib;
+libString;
+
+global proc cr_moduleSymmetryLib() {
+	return;
+	}
+
+//muduleSymmetryConnect l_footPlacer_loc r_footPlacer_loc
+global proc cr_moduleSymmetryConnector(string $master, string $slave)
+{
+string $masterList;
+string $masterJointsList[];
+string $slaveList;
+string $slaveJointsList[];
+
+if(`attributeExists "jointPosList" $master`)
+	{
+	cr_lockAndHide $slave unLock "trans rot";
+
+	$masterList = `getAttr ($master + ".jointPosList")`;
+	$masterJointsList = stringToStringArray($masterList," ");
+	
+	$slaveList = `getAttr ($slave + ".jointPosList")`;
+	$slaveJointsList = stringToStringArray($slaveList," ");
+	
+	cr_connectMirrorTrans ($master) ($slave) 0;
+	cr_connectMirrorRot ($master) ($slave) 1;
+	cr_connectMirrorRot ($master) ($slave) 2;
+	connectAttr ($master+".ty") ($slave+".ty");
+	connectAttr ($master+".tz") ($slave+".tz");
+	connectAttr ($master+".rx") ($slave+".rx");
+	connectAttr ($master+".s") ($slave+".s");
+
+	if(`size $masterJointsList` == `size $slaveJointsList`)
+	{
+	for($i=0;$i<size($masterJointsList);$i++)
+		{
+		cr_lockAndHide $slaveJointsList[$i] unLock "trans rot";
+		cr_connectMirrorTrans ($masterJointsList[$i]) ($slaveJointsList[$i]) 0;
+		catchQuiet(`connectAttr -f ($masterJointsList[$i]+".ty") ($slaveJointsList[$i]+".ty")`);
+		catchQuiet(`connectAttr -f ($masterJointsList[$i]+".tz") ($slaveJointsList[$i]+".tz")`);
+		catchQuiet(`connectAttr -f ($masterJointsList[$i]+".s") ($slaveJointsList[$i]+".s")`);		
+		}
+	}
+	}
+}
+
+//string $master = "l_wristPlacer_loc";
+//string $slave = "r_wristPlacer_loc";
+
+//cr_buildFingerModuleSymmetry $master $slave
+
+global proc cr_buildFingerModuleSymmetry(string $master, string $slave)
+{
+cr_moduleSymmetryConnector($master, $slave);
+cr_createChildAttrModuleSymmetry ($master, $slave);
+		string $masterChildList = `getAttr ($master + ".child")`;
+		string $masterJointsLists[] = stringToStringArray($masterChildList," ");
+		string $slaveChildList = `getAttr ($slave + ".child")`;
+		string $slaveJointsLists[] = stringToStringArray($slaveChildList," ");
+	
+		for($i=0;$i<size($masterJointsLists);$i++)
+			cr_createChildAttrModuleSymmetry $masterJointsLists[$i] $slaveJointsLists[$i];
+
+string $thumbMaster = `getAttr ($master + ".thumb")`;
+string $thumbSlave = `getAttr ($slave + ".thumb")`;
+cr_moduleSymmetryConnector $thumbMaster $thumbSlave;
+}
+
+global proc cr_createChildAttrModuleSymmetry(string $master, string $slave)
+{
+if(`attributeExists "child" $master`)
+	{
+		string $masterChildList = `getAttr ($master + ".child")`;
+		string $masterJointsLists[] = stringToStringArray($masterChildList," ");
+		string $slaveChildList = `getAttr ($slave + ".child")`;
+		string $slaveJointsLists[] = stringToStringArray($slaveChildList," ");
+	
+		for($i=0;$i<size($masterJointsLists);$i++)
+			cr_moduleSymmetryConnector $masterJointsLists[$i] $slaveJointsLists[$i];
+	}
+else
+	error "Given object is not installed for current operation";
+}
+
+global proc cr_buildArmModuleSymmetry(string $master, string $slave)
+{
+cr_moduleSymmetryConnector($master, $slave);
+
+if(`attributeExists "child" $master`)
+	cr_createChildAttrModuleSymmetry $master $slave;
+
+string $masterWristlist = `getAttr ($master + ".wristPlacer")`;
+string $slaveWristlist = `getAttr ($slave + ".wristPlacer")`;
+
+cr_moduleSymmetryConnector $masterWristlist $slaveWristlist;
+
+//add house keeping attributes 
+addAttr -ln "symmetry" -dt "string" $slave;
+setAttr -type "string" ($slave+".symmetry") $master; 
+addAttr -ln "doSymmetry" -dt "string" $master;
+setAttr -type "string" ($master+".doSymmetry") $slave;
+}
+
+global proc cr_buildLegModuleSymmetry(string $master, string $slave)
+{
+cr_moduleSymmetryConnector($master, $slave);
+
+if(`attributeExists "child" $master`)
+	cr_createChildAttrModuleSymmetry $master $slave;
+
+string $masterFootlist = `getAttr ($master + ".footPlacer")`;
+string $slaveFootlist = `getAttr ($slave + ".footPlacer")`;
+
+cr_moduleSymmetryConnector $masterFootlist $slaveFootlist;
+//add house keeping attributes 
+addAttr -ln "symmetry" -dt "string" $slave;
+setAttr -type "string" ($slave+".symmetry") $master; 
+addAttr -ln "doSymmetry" -dt "string" $master;
+setAttr -type "string" ($master+".doSymmetry") $slave;
+}
+
+global proc cr_buildBodyModuleSymmetry(string $master, string $slave)
+{
+cr_moduleSymmetryConnector($master, $slave);
+
+if(`attributeExists "child" $master`)
+	cr_createChildAttrModuleSymmetry $master $slave;
+
+//add house keeping attributes 
+addAttr -ln "symmetry" -dt "string" $slave;
+setAttr -type "string" ($slave+".symmetry") $master; 
+addAttr -ln "doSymmetry" -dt "string" $master;
+setAttr -type "string" ($master+".doSymmetry") $slave;
+}
+
+//componants connect...
+//idea here is add parent attr to the seconnd selection dat way 
+//in skeleton creation respetive module will know its parent...
+//and create dummyBone for visual representation...
+
+global proc cr_connectModuleComponants(string $master, string $slave)
+{
+string $sel[];
+string $dummyBoneGrp;
+
+// get selection
+string $sel[]=`ls -sl`;
+if ($master == "" || $slave == "")
+	{
+	$master = $sel[1] ;
+	$slave = $sel[0] ;
+	}
+	
+if(`attributeExists "jointPosList" $slave`)
+	{
+	addAttr -ln "parent" -dt "string" $slave;
+	setAttr -type "string" ($slave+ ".parent") $master;
+	string $jointPosList = `getAttr ($slave + ".jointPosList")`;
+	string $jointPosLists[] = stringToStringArray($jointPosList," ");
+	$dummyBoneGrp = cr_createDummyBone($slave,"",$master,$jointPosLists[0]);
+	setAttr ($dummyBoneGrp+".inheritsTransform") 0;
+	parent -r $dummyBoneGrp $slave;
+	print("Operation successful: "+$master+" rig module is now connected to "+$slave+".\n");
+	}
+else
+	error "Given object is not installed for current operation";
+}
+
+global proc cr_addToModuleComponantsHierarchy(string $master, string $slave)
+{
+string $sel[];
+
+// get selection
+string $sel[]=`ls -sl`;
+if ($master == "" || $slave == "")
+	{
+	$master = $sel[1] ;
+	$slave = $sel[0] ;
+	}
+
+if(`attributeExists "moduleTag" $master`)
+	{
+	if(!`attributeExists "child" $master`)
+		addAttr -ln "child"  -dt "string" $master; 
+
+	string $moduleParts = `getAttr ($master + ".child")`;
+	setAttr -type "string" ($master + ".child") ($moduleParts+" "+$slave);
+	print("Operation successful: "+$master+" rig module is now added to "+$slave+" skeleton creation hierarchy.\n");
+	}
+else
+	error ($sel[1]+" is not installed for current operation");	
+}
+
+//this proc will search for attr and disconnect objects from that list
+global proc cr_breakDummyBoneSymConnection(string $object)
+{
+if(`attributeExists "jointPosList" $object`)
+	{
+	string $jointPosList = `getAttr ($object + ".jointPosList")`;
+	string $jointPosLists[] = stringToStringArray($jointPosList," ");
+	for($i=0;$i<(size($jointPosLists));$i++)
+		{
+		string $distanationX[] = `listConnections -s 1 -p 1 ($jointPosLists[$i]+".tx")`;
+		string $distanationY[] = `listConnections -s 1 -p 1 ($jointPosLists[$i]+".ty")`;
+		string $distanationZ[] = `listConnections -s 1 -p 1 ($jointPosLists[$i]+".tz")`;
+		string $distanationS[] = `listConnections -s 1 -p 1 ($jointPosLists[$i]+".s")`;
+		string $node[] = `listConnections -s 1 ($jointPosLists[$i]+".tx")`;
+		catchQuiet(`disconnectAttr $distanationX[0] ($jointPosLists[$i]+".tx")`);
+		catchQuiet(`disconnectAttr $distanationY[0] ($jointPosLists[$i]+".ty")`);
+		catchQuiet(`disconnectAttr $distanationZ[0] ($jointPosLists[$i]+".tz")`);
+		catchQuiet(`disconnectAttr $distanationS[0] ($jointPosLists[$i]+".s")`);
+		//CBdeleteConnection($jointPosLists[$i]+".ty");
+		//CBdeleteConnection($jointPosLists[$i]+".tz");
+		//CBdeleteConnection($jointPosLists[$i]+".s");		
+		delete $node[0];
+		}
+	}
+}
+
+//this proc will disconnect symmetry for mainplacer control
+global proc cr_breakMainConSymConnection(string $control)
+{
+string $distTx[] = `listConnections -s 1 -p 1 ($control+".tx")`;
+string $distRy[] = `listConnections -s 1 -p 1 ($control+".ry")`;
+string $distRz[] = `listConnections -s 1 -p 1 ($control+".rz")`;
+
+string $nodeTx[] = `listConnections -s 1 ($control+".tx")`;
+string $nodeRy[] = `listConnections -s 1 ($control+".ry")`;
+string $nodeRz[] = `listConnections -s 1 ($control+".rz")`;
+
+disconnectAttr $distTx[0] ($control+".tx");
+disconnectAttr $distRy[0] ($control+".ry");
+disconnectAttr $distRz[0] ($control+".rz");
+
+string $distTy[] = `listConnections -s 1 -p 1 ($control+".ty")`;
+string $distTz[] = `listConnections -s 1 -p 1 ($control+".tz")`;
+string $distRx[] = `listConnections -s 1 -p 1 ($control+".rx")`;
+string $distS[] = `listConnections -s 1 -p 1 ($control+".s")`;
+
+catchQuiet(`disconnectAttr $distTy[0] ($control+".ty")`);
+catchQuiet(`disconnectAttr $distTz[0] ($control+".tz")`);
+catchQuiet(`disconnectAttr $distRx[0] ($control+".rx")`);
+catchQuiet(`disconnectAttr $distS[0] ($control+".s")`);
+/*
+CBdeleteConnection($control+".ty");
+CBdeleteConnection($control+".tz");
+CBdeleteConnection($control+".rx");
+CBdeleteConnection($control+".s");
+*/
+delete $nodeTx[0];
+delete $nodeRy[0];
+delete $nodeRz[0];
+
+if(`attributeExists "symmetry" $control`)
+	{
+	string $symm = `getAttr ($control+".symmetry")`;
+	catch (`deleteAttr -attribute "symmetry" $control`);
+	catch (`deleteAttr -attribute "doSymmetry" $symm`);
+	}
+}
+
+//now this one is tricky this will break symmetry for main object as well all chid objects also
+global proc cr_breakModuleComponantsSymConnection(string $con)
+{
+cr_breakMainConSymConnection($con);
+if(`attributeExists "jointPosList" $con`)
+	cr_breakDummyBoneSymConnection($con);
+
+if(`attributeExists "child" $con`)
+	{
+	string $objectChildList = `getAttr ($con+ ".child")`;
+	string $objectJointsLists[] = stringToStringArray($objectChildList," ");
+	
+	for($i=0;$i<size($objectJointsLists);$i++)
+		{
+		cr_breakMainConSymConnection($objectJointsLists[$i]);
+		cr_breakDummyBoneSymConnection ($objectJointsLists[$i]);
+		}
+	}
+}
+
+//this main proc for breaking symmetry for any modules
+global proc cr_breakModuleSymConnection(string $obj)
+{
+string $sel[];
+// check for selection
+    if ($obj=="")
+    $sel =`ls -sl`;
+    else
+    $sel[0] = $obj;
+
+cr_breakModuleComponantsSymConnection($sel[0]);
+
+if(`attributeExists "wristPlacer" $sel[0]`)
+	{
+	string $masterWrist = `getAttr ($sel[0]+ ".wristPlacer")`;
+	cr_breakMainConSymConnection($masterWrist);
+	}
+
+if(`attributeExists "footPlacer" $sel[0]`)
+	{
+	string $masterFoot = `getAttr ($sel[0]+ ".footPlacer")`;
+	cr_breakMainConSymConnection($masterFoot);
+	}
+print("Operation successful: "+$obj+" is now non-symmetrical.\n");
+}
+
+global proc cr_deleteModules()
+{
+string $sel[] = `ls -sl`;
+for($i=0;$i<size($sel);$i++)
+	{
+	string $getModuleTag = getAttr($sel[$i]+".moduleTag");
+	string $getBuildTag = getAttr($sel[$i]+".buildTag");
+	print ("Deleting dummy rig module: "+$sel[$i]+".\n");
+
+	if($getModuleTag == "arm")
+		{
+		string $moduleList = getAttr($getBuildTag+"."+$getModuleTag);
+		string $newModuleList = strSearchReplace($moduleList , (" "+$sel[$i]),"");
+		setAttr -type "string" ($getBuildTag+"."+$getModuleTag) $newModuleList;
+		
+		string $armJointList = `getAttr ($sel[$i] + ".jointPosList")`;
+		string $armJointListArray[] = stringToStringArray($armJointList," ");
+		
+		delete $armJointListArray[0];
+		delete $sel[$i];
+		}
+	else if($getModuleTag == "bipedLeg")
+		{
+		string $moduleList = getAttr($getBuildTag+".leg");
+		string $newModuleList = strSearchReplace($moduleList , (" "+$sel[$i]),"");
+		setAttr -type "string" ($getBuildTag+".leg") $newModuleList;
+		delete $sel[$i];
+		}
+	else if($getModuleTag == "quadLeg")
+		{
+		string $moduleList = getAttr($getBuildTag+".leg");
+		string $newModuleList = strSearchReplace($moduleList , (" "+$sel[$i]),"");
+		setAttr -type "string" ($getBuildTag+".leg") $newModuleList;
+		delete $sel[$i];
+		}
+	else if($getModuleTag == "finger")
+		{
+        if ($getBuildTag != "")
+            {
+    		string $moduleList = getAttr($getBuildTag+".child");
+    		string $newModuleList = strSearchReplace($moduleList , $sel[$i],"");
+    		setAttr -type "string" ($getBuildTag+".child") $newModuleList;
+    		delete $sel[$i];
+    		}
+		}
+	else
+		{
+		string $moduleList = getAttr($getBuildTag+"."+$getModuleTag);
+		string $newModuleList = strSearchReplace($moduleList , (" "+$sel[$i]),"");
+		setAttr -type "string" ($getBuildTag+"."+$getModuleTag) $newModuleList;
+		delete $sel[$i];
+		}
+	print("Operation successful: dummy rig module is deleted for "+$sel[$i]+".\n");
+	}
+}
+
+global proc cr_connectModuleSymmetry()
+{
+string $sel[] = `ls -sl`;
+
+if(size($sel)>0)
+{
+string $master = $sel[0];
+string $slave = $sel[1];
+
+string $getMasterTag = getAttr($sel[0]+".moduleTag");
+string $getSlaveTag = getAttr($sel[1]+".moduleTag");
+
+if($getMasterTag==$getSlaveTag)
+	{
+	if($getMasterTag == "arm")
+		cr_buildArmModuleSymmetry($master, $slave);
+	else if($getMasterTag == "bipedLeg")
+		cr_buildLegModuleSymmetry( $master, $slave);
+	else if($getMasterTag == "Quadleg")
+		cr_buildLegModuleSymmetry( $master, $slave);		
+	else
+		cr_buildBodyModuleSymmetry( $master, $slave);
+
+	print("Operation successful: "+$sel[1]+" is now symmetrical to "+$sel[0]+".\n");
+	}
+}
+else
+	error "select master module then slave module for connecting symmetry";
+}
+
+//this proc mirror's given attr of transform
+global proc cr_mirrorModuleTransformAttr(string $obj, string $attr)
+{
+float $val = getAttr ($obj+"."+$attr);
+float $neg = $val*-1;
+catchQuiet(`setAttr ($obj+"."+$attr) $neg`);
+}
+
+global proc cr_mirrorPosAttrComponants(string $obj)
+{
+string $masterList;
+string $masterJointsList[];
+
+catchQuiet(cr_mirrorModuleTransformAttr ($obj, "tx"));
+catchQuiet(cr_mirrorModuleTransformAttr ($obj, "ry"));
+catchQuiet(cr_mirrorModuleTransformAttr ($obj, "rz"));
+
+if(`attributeExists "jointPosList" $obj`)
+	{
+	$masterList = `getAttr ($obj + ".jointPosList")`;
+	$masterJointsList = stringToStringArray($masterList," ");
+
+	for($i=0;$i<size($masterJointsList);$i++)
+		cr_mirrorModuleTransformAttr ($masterJointsList[$i], "tx");
+	}
+}
+
+global proc cr_mirrorChildAttrComponants(string $obj)
+{
+if(`attributeExists "child" $obj`)
+	{
+		string $masterChildList = `getAttr ($obj + ".child")`;
+		string $masterJointsLists[] = stringToStringArray($masterChildList," ");
+	
+		for($i=0;$i<size($masterJointsLists);$i++)
+			cr_mirrorModuleTemplates ($masterJointsLists[$i]);
+	}
+}
+
+global proc cr_mirrorModuleTemplates(string $obj)
+{
+string $sel[];
+// check for selection
+    if ($obj=="")
+    $sel =`ls -sl`;
+    else
+    $sel[0] = $obj;
+cr_mirrorPosAttrComponants ($sel[0]);
+if(`attributeExists "child" $sel[0]`)
+	cr_mirrorChildAttrComponants $sel[0];
+
+if(`attributeExists "wristPlacer" $sel[0]`)
+	{
+	string $masterWrist = `getAttr ($sel[0]+ ".wristPlacer")`;
+	cr_mirrorPosAttrComponants($masterWrist);
+	}
+
+if(`attributeExists "footPlacer" $sel[0]`)
+	{
+	string $masterFoot = `getAttr ($sel[0]+ ".footPlacer")`;
+	cr_mirrorPosAttrComponants($masterFoot);
+	}
+print("Operation successful: "+$sel[0]+" is now mirrored.\n");
+}

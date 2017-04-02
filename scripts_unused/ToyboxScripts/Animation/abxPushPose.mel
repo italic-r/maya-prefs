@@ -1,0 +1,167 @@
+// Push Pose Maya Script
+// abxPushPose.mel
+//
+// Version 1.0
+// Created by J. Adam Burke adam@adamburke.net
+// Modified : 18 March 2005
+
+
+// DESCRIPTION:
+// push key will determine the forward motion of an animation curve based on the change in value
+// and increase that change in value based on a percentage.
+// It's very good for giving extremes that extra push, you can also use it to pull
+// a value back down.
+
+// USAGE:
+// Source script and call "abxPushPose;"
+// assign to shelf or hotkey as preferred
+
+// FEATURES TO ADD
+// 2. will only effect highlighted channels
+// 3. will only effect selected keys in the graph editor
+// 5. affect next nearest key (within range)
+// 6. affect prev nearest key (within range)
+
+// ©2005 J. Adam Burke 
+// http://www.adamburke.net
+
+
+global proc abxPushPose() {
+
+	if (`window -ex abxPushPoseWindow` != true)
+	{
+		window -w 210 -h 110 -ret -t "PushPose" -in "pushPose" -menuBar true -s true -tb true abxPushPoseWindow;
+			
+			menu -label "Options";
+			menuItem -cb true -label "Extreme Keys Only" chkPushPoseExtremes;
+			
+			menu -hm true -label "Help";
+			menuItem -label "How To Use..." -c "abxPushPoseHelp";
+			menuItem -label "About" -c "abxPushPoseAbout";
+			menuItem -d true;
+			menuItem -label "Close" -c "window -e -vis 0 abxPushPoseWindow";
+		
+		formLayout mainPushPoseForm;
+		
+		//separator -style "in" -h 3 sep0 ;
+		
+			floatSliderButtonGrp -field true -label "%" -min -0 -max 100 -value 10 -step 1
+				-cw 1 30
+				-cw 2 40
+				-cat 4 "both" 0
+				-cal 4 "center"
+				-adj 3
+				-buttonLabel "Push"
+				-bc "jabPush((.01*`floatSliderButtonGrp -q -value sldrPushPercent`),`menuItem -q -cb chkPushPoseExtremes`)"
+				sldrPushPercent;
+			floatSliderButtonGrp -field true -label "%" -min -0 -max 100 -value 10 -step 1
+				-cw 1 30
+				-cw 2 40
+				-cat 4 "both" 0
+				-cal 4 "center"
+				-adj 3
+				-buttonLabel "Pull"
+				-bc "jabPush((-.01*`floatSliderButtonGrp -q -value sldrPullPercent`),`menuItem -q -cb chkPushPoseExtremes`)"
+				sldrPullPercent;
+
+		formLayout -e
+		
+			//-attachForm sep0 "left" 0 
+	   	 	//-attachForm sep0 "right" 0
+	    		//-attachForm sep0 "top" 0
+	    		//-attachNone sep0 "bottom"
+		
+	    		-attachForm sldrPushPercent "left" 0 
+	    		-attachForm sldrPushPercent "right" 5
+	   		-attachForm sldrPushPercent "top" 5 
+	    		-attachNone sldrPushPercent "bottom"
+
+	    		-attachForm sldrPullPercent "left" 0 
+	    		-attachForm sldrPullPercent "right" 5
+	   		-attachControl sldrPullPercent "top" 10 sldrPushPercent
+	    		-attachNone sldrPullPercent "bottom"
+			
+		mainPushPoseForm;
+
+		window -e -w 210 -h 110 abxPushPoseWindow;
+		showWindow abxPushPoseWindow;
+	}
+	else	// else just pop it up from being minimized again
+    	{
+		window -e -w 210 -h 110 abxPushPoseWindow;
+		showWindow abxPushPoseWindow;
+    	}
+
+}
+
+global proc jabPush ( float $pushAmount, int $extremesOnly) {
+
+    string $selectedItem[];
+    string $selectedAttr[];
+    string $selectedString;
+    float $prevKeyFrame = 0;
+    float $nextKeyFrame = 0;
+    float $newVal;
+    float $curVal;
+    float $nextVal;
+
+    float $theCurrentFrame = `currentTime -q`;
+    $selectedItem = `selectedNodes -do`;
+
+    // for each selected item
+    for ($i=0;$i<size($selectedItem);$i++){ 
+       $selectedAttr = `listAnimatable $selectedItem[$i]`;
+
+	// for each animatable attribute	
+	for ($a=0;$a<size($selectedAttr);$a++){
+            $selectedString = $selectedAttr[$a];
+            $currentKey = `findKeyframe -t ($theCurrentFrame + 1 ) -w previous $selectedString`;
+
+            // if there is a key on the current frame
+            if ($currentKey == $theCurrentFrame){
+
+                $prevKeyFrame = `findKeyframe -w previous $selectedString`;
+		    $nextKeyFrame = `findKeyframe -w next $selectedString`;
+                $prevVal = `getAttr -t $prevKeyFrame $selectedString`;
+                $curVal = `getAttr -t $theCurrentFrame $selectedString`;
+		    $nextVal = `getAttr -t $nextKeyFrame $selectedString`;
+
+		    $newVal = (($curVal - $prevVal)*(1+$pushAmount)) + $prevVal;
+		    
+		    if ($extremesOnly == 1) {
+			  if ($nextVal < $curVal && $prevVal < $curVal) {
+	                setKeyframe -v $newVal $selectedString; 
+			  }
+			  if ($nextVal > $curVal && $prevVal > $curVal) {
+			    setKeyframe -v $newVal $selectedString;
+			  }
+		    }
+		    else {
+                	setKeyframe -v $newVal $selectedString; 
+		    }
+		    
+            }
+        }
+    }
+	currentTime $theCurrentFrame;
+}
+
+global proc abxPushPoseHelp () {
+	confirmDialog -t "How To Use Push Pose" -message (
+			"Push Pose is designed to help character animators\n"
+			+"nudge their poses into more extreme ones.\n\n"
+			+"1. Select all Objects you want to Push or Pull.\n"
+			+"2. Set your current frame to the keyframe you want to push.\n"
+			+"    (Only keyframes at the current time will be affected)\n"
+			+"3. Set the % amount you want to Push or Pull the Keyframe.\n"
+			+"4. Press Push or Pull depending on the desired action.\n\n"
+			+"OPTIONS:\n\n"
+			+"Extreme Keys Only - enables Push Pose to only affect keys\n"
+			+"   that define a change direction. You will want this on in\n"
+			+"   most cases." 
+			) -button "OK";
+}
+
+global proc abxPushPoseAbout() {
+	confirmDialog -t "About Push Pose" -message "Push Pose Script v1.0\n© 2005 J. Adam Burke\nhttp://www.adamburke.net/" -button "OK" -defaultButton "OK";
+}

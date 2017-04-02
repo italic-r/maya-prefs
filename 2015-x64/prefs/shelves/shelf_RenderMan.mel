@@ -1,0 +1,949 @@
+global proc shelf_RenderMan () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "RenderMan Controls" 
+        -enableBackground 0
+        -align "center" 
+        -label "RenderMan Controls" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_AdvancedRenderGlobals.png" 
+        -image1 "rman_AdvancedRenderGlobals.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "python(\"import rfm.rmanPassEditor; rfm.rmanPassEditor.createPassEditor()\")" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Preview Render Current Frame" 
+        -enableBackground 0
+        -align "center" 
+        -label "Preview Render Current Frame" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_renderpreview.png" 
+        -image1 "rman_renderpreview.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanChangeToRenderMan; if(`currentRenderer` == \"renderMan\") {rmanRenderPass(\"Preview\", \"\");} else {rmanRenderPass(\"Final\", \"\");}" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Render Current Frame" 
+        -enableBackground 0
+        -align "center" 
+        -label "Render Current Frame" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_render.png" 
+        -image1 "rman_render.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanChangeToRenderMan; rmanRenderPass(\"Final\", \"\");" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Start IPR" 
+        -enableBackground 0
+        -align "center" 
+        -label "Start IPR" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_rerender_controls.png" 
+        -image1 "rman_rerender_controls.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanRerenderStart(1);" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Pause IPR" 
+        -enableBackground 0
+        -align "center" 
+        -label "Pause IPR" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_rerender_pause.png" 
+        -image1 "rman_rerender_pause.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanRerenderPause(1);" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Stop IPR" 
+        -enableBackground 0
+        -align "center" 
+        -label "Stop IPR" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_rerender_stop.png" 
+        -image1 "rman_rerender_stop.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanRerenderStop;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Batch Render" 
+        -enableBackground 0
+        -align "center" 
+        -label "Batch Render" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_batch.png" 
+        -image1 "rman_batch.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanChangeToRenderMan; BatchRender;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Cancel Render" 
+        -enableBackground 0
+        -align "center" 
+        -label "Cancel Render" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_batch_cancel.png" 
+        -image1 "rman_batch_cancel.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "if(`rmanRerenderIsRunning`) {rmanRerenderStop;} else {CancelBatchRender;}" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Start Slim" 
+        -enableBackground 0
+        -align "center" 
+        -label "Start Slim" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_slim.png" 
+        -image1 "rman_slim.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanStartSlim" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Start It" 
+        -enableBackground 0
+        -align "center" 
+        -label "Start It" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_it.png" 
+        -image1 "rman_it.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanStartIt" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open Dynamic Binding Editor" 
+        -enableBackground 0
+        -align "center" 
+        -label "Open Dynamic Binding Editor" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_DynamicRulesEditor.png" 
+        -image1 "rman_DynamicRulesEditor.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rman rlfgui raise;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create PxrLM Material (right-click for a list of base materials)" 
+        -enableBackground 0
+        -align "center" 
+        -label "Create PxrLM Material (right-click for a list of base materials)" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "render_PxrLMMixer.png" 
+        -image1 "render_PxrLMMixer.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanChangeToRenderMan; rmanCreateAndAssignShader \"PxrLMDiffuse\";" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "PxrLMDiffuse" ( "rmanLoadPlugin; rmanChangeToRenderMan; rmanCreateAndAssignShader \"PxrLMDiffuse\";" )
+        -mi "PxrLMGlass" ( "rmanLoadPlugin; rmanChangeToRenderMan; rmanCreateAndAssignShader \"PxrLMGlass\";" )
+        -mi "PxrLMMetal" ( "rmanLoadPlugin; rmanChangeToRenderMan; rmanCreateAndAssignShader \"PxrLMMetal\";" )
+        -mi "PxrLMPlastic" ( "rmanLoadPlugin; rmanChangeToRenderMan; rmanCreateAndAssignShader \"PxrLMPlastic\";" )
+        -mi "PxrLMSubsurface" ( "rmanLoadPlugin; rmanChangeToRenderMan; rmanCreateAndAssignShader \"PxrLMSubsurface\";" )
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create PxrDisney" 
+        -enableBackground 0
+        -align "center" 
+        -label "Create PxrDisney" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "render_PxrDisney.png" 
+        -image1 "render_PxrDisney.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanChangeToRenderMan; if(`currentRenderer` == \"renderMan\") {rmanCreateAndAssignShader \"RMSGPSurface\";} else {rmanCreateAndAssignShader \"PxrDisney\";}" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create GPSurface" 
+        -enableBackground 0
+        -align "center" 
+        -label "Create GPSurface" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "render_RMSGPSurface.png" 
+        -image1 "render_RMSGPSurface.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanChangeToRenderMan; if(`currentRenderer` == \"renderMan\") {rmanCreateAndAssignShader \"RMSGPSurface\";} else {rmanCreateAndAssignShader \"PxrDisney\";}" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create Glass" 
+        -enableBackground 0
+        -align "center" 
+        -label "Create Glass" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "render_RMSGlass.png" 
+        -image1 "render_RMSGlass.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanChangeToRenderMan; if(`currentRenderer` == \"renderMan\") {rmanCreateAndAssignShader \"RMSGlass\";} else {rmanCreateAndAssignShader \"PxrGlass\";}" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create Matte" 
+        -enableBackground 0
+        -align "center" 
+        -label "Create Matte" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "render_RMSMatte.png" 
+        -image1 "render_RMSMatte.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanChangeToRenderMan; if(`currentRenderer` == \"renderMan\") {rmanCreateAndAssignShader \"RMSMatte\";} else {rmanCreateAndAssignShader \"PxrDiffuse\";}" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create a holdout from the selected objects." 
+        -enableBackground 0
+        -align "center" 
+        -label "Create a holdout from the selected objects." 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "render_RMSHoldOut.png" 
+        -image1 "render_RMSHoldOut.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanChangeToRenderMan; rmanHoldoutOptions();" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open Lighting Panel" 
+        -enableBackground 0
+        -align "center" 
+        -label "Open Lighting Panel" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_lighting.png" 
+        -image1 "rman_lighting.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "python(\"import rfm.lightsEditor; rfm.lightsEditor.createLightsEditor();\");" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create EnvLight Light" 
+        -enableBackground 0
+        -align "center" 
+        -label "Create EnvLight Light" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_RMSEnvLight.png" 
+        -image1 "rman_RMSEnvLight.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin;\nif (`currentRenderer` == \"renderManRIS\"\n)    rmanCreateNode -asLight \"\" PxrStdEnvMapLight;\nelse\n    rmanCreateNode -asLight \"\" RMSEnvLight;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create DayLight Light" 
+        -enableBackground 0
+        -align "center" 
+        -label "Create DayLight Light" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_PxrStdEnvDayLight.png" 
+        -image1 "rman_PxrStdEnvDayLight.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin;\nrmanCreateNode -asLight \"\" PxrStdEnvDayLight;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create GeoAreaLight Light" 
+        -enableBackground 0
+        -align "center" 
+        -label "Create GeoAreaLight Light" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_RMSGeoAreaLight.png" 
+        -image1 "rman_RMSGeoAreaLight.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin;\nif (`currentRenderer` == \"renderManRIS\"\n)    rmanCreateNode -asLight \"\" PxrStdAreaLight;\nelse\n    rmanCreateNode -asLight \"\" RMSGeoAreaLight;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create Geo LightBlocker" 
+        -enableBackground 0
+        -align "center" 
+        -label "Create Geo LightBlocker" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_RMSGeoLightBlocker.png" 
+        -image1 "rman_RMSGeoLightBlocker.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanCreateNode -asLight \"\" RMSGeoLightBlocker" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Make selected geometry emissive" 
+        -enableBackground 0
+        -align "center" 
+        -label "Make selected geometry emissive" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_emissive_geo.png" 
+        -image1 "rman_emissive_geo.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanCreateMeshLight" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create Archive Node" 
+        -enableBackground 0
+        -align "center" 
+        -label "Create Archive Node" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_CreateArchive.png" 
+        -image1 "rman_CreateArchive.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanCreateRIBArchivesCmd(1);" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Update Archive" 
+        -enableBackground 0
+        -align "center" 
+        -label "Update Archive" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_UpdateArchive.png" 
+        -image1 "rman_UpdateArchive.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanUpdateSelectedRIBArchives;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open last RIB" 
+        -enableBackground 0
+        -align "center" 
+        -label "Open last RIB" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_open_last_rib.png" 
+        -image1 "rman_open_last_rib.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanOpenLastRib;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Inspect RIB for selection" 
+        -enableBackground 0
+        -align "center" 
+        -label "Inspect RIB for selection" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_inspect_rib.png" 
+        -image1 "rman_inspect_rib.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanInspectSelectionRIB;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Shared Geometric Attributes" 
+        -enableBackground 0
+        -align "center" 
+        -label "Shared Geometric Attributes" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_sga.png" 
+        -image1 "rman_sga.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "python(\"import rfm.rmanPassEditor; rfm.rmanPassEditor.createPassEditor(3)\")" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Add Subdiv Scheme" 
+        -enableBackground 0
+        -align "center" 
+        -label "Add Subdiv Scheme" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_subdiv.png" 
+        -image1 "rman_subdiv.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanAddAttrToSelected(\"rman__torattr___subdivScheme\", \"\");" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Add/Attach CoordSys" 
+        -enableBackground 0
+        -align "center" 
+        -label "Add/Attach CoordSys" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_coordsys.png" 
+        -image1 "rman_coordsys.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanAddCoordSys;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Add/Create RIB Box" 
+        -enableBackground 0
+        -align "center" 
+        -label "Add/Create RIB Box" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_ribbox.png" 
+        -image1 "rman_ribbox.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanCreateRIBBox;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open txmake window" 
+        -enableBackground 0
+        -align "center" 
+        -label "Open txmake window" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_txmake.png" 
+        -image1 "rman_txmake.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanTxmake;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create OpenVDB Visualizer" 
+        -enableBackground 0
+        -align "center" 
+        -label "Create OpenVDB Visualizer" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "render_openvdb.png" 
+        -image1 "render_openvdb.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanChangeToRenderMan; rmanCreateOpenVDBVisualize;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "RenderMan Docs" 
+        -enableBackground 0
+        -align "center" 
+        -label "RenderMan Docs" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_help.png" 
+        -image1 "rman_help.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; showHelp -a `rmanGetDocUrl`;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "About RenderMan" 
+        -enableBackground 0
+        -align "center" 
+        -label "About RenderMan" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_info.png" 
+        -image1 "rman_info.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin; rmanAbout;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Load RenderMan For Maya" 
+        -enableBackground 0
+        -align "center" 
+        -label "Load RenderMan For Maya" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "rman_loadplugin.png" 
+        -image1 "rman_loadplugin.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rmanLoadPlugin;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+
+} 

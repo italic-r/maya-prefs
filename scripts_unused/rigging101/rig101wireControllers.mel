@@ -1,0 +1,409 @@
+// 101controlMaker
+//
+//////////////////////////
+//
+// AUTHOR :		Javier "Goosh" Solsona & Lluis Llobera
+//				(jsolsona@digital-dreams.net) (lluisllobera@hotmail.com)
+//
+// Copyright (C) 2003 Rigging 101 - Javier Solsona, Lluis Llobera
+//
+// CREATION DATE :	19/02/2003
+// UPDATED DATE :	22/05/2003
+//
+// VERSION :		2.0
+//
+// DESCRIPTION :	Creates wire controllers to use as manipulators
+//
+// HOW TO USE :		run "rig101wireControllers;" on the command line
+//
+//////////////////////////
+
+
+/////////////////////////////////
+//  rig101WCButtonPressed	    
+/////////////////////////////////
+
+
+global proc rig101WCButtonPressed (string $TYPE)
+  {
+  switch ($TYPE)
+    {
+    case "rig101WCTriangle" :
+      curve -d 1 
+         -p -1.03923 0 0.6 -p 1.03923 0 0.6 -p 0 0 -1.2 -p -1.03923 0 0.6 -k 0 -k 1 -k 2 -k 3 -n "controller1" ;
+	break ;
+
+    case "rig101WCSquare" :
+      curve -d 1 -p 1 0 -1 -p -1 0 -1 -p -1 0 1 -p 1 0 1 -p 1 0 -1 -k 0 -k 1 -k 2 -k 3 -k 4 -n "controller1" ;
+      break ;
+
+    case "rig101WCAngle" :
+      curve -d 1 -p -1 0 -3 -p 1 0 -3 -p 1 0 1 -p -3 0 1 -p -3 0 -1 -p -1 0 -1 -p -1 0 -3 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -n "controller1" ;
+      break ;
+
+    case "rig101WCCross" :
+      curve -d 1 -p 0.4 0 -0.4 -p 0.4 0 -2 -p -0.4 0 -2 -p -0.4 0 -0.4 -p -2 0 -0.4 -p -2 0 0.4 -p -0.4 0 0.4 -p -0.4 0 2 -p 0.4 0 2 -p 0.4 0 0.4 -p 2 0 0.4 -p 2 0 -0.4 -p 0.4 0 -0.4 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -n "controller1" ;
+      break ;
+
+    case "rig101WCFatCross" :
+      curve -d 1 -p 2 0 1 -p 2 0 -1 -p 1 0 -1 -p 1 0 -2 -p -1 0 -2 -p -1 0 -1 -p -2 0 -1 -p -2 0 1 -p -1 0 1 -p -1 0 2 -p 1 0 2 -p 1 0 1 -p 2 0 1 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -n "controller1" ;
+      break ;
+
+    case "rig101WCCircle" :
+      circle -c 0 0 0 -nr 0 1 0 -sw 360 -r 1 -d 3 -ut 0 -tol 0.01 -s 8 -ch 0 -n "controller1" ;
+      break ;
+
+    case "rig101WC270Arc" :
+      curve -d 3 -p -0.707107 0 -0.707107 -p -0.570265 0 -0.843948 -p -0.205819 0 -1.040044 -p 0.405223 0 -0.978634 -p 0.881027 0 -0.588697 -p 1.059487 0 0 -p 0.881027 0 0.588697 -p 0.405223 0 0.978634 -p -0.205819 0 1.040044 -p -0.570265 0 0.843948 -p -0.707107 0 0.707107 -k 0 -k 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 8 -k 8 -n "controller1" ;
+      break ;
+
+    case "rig101WC180Arc" :
+      circle -c 0 0 0 -nr 0 1 0 -sw -180 -r 1 -d 3 -ut 0 -tol 0.01 -s 8 -ch 0 -n "controller1" ;
+      break ;
+
+    case "rig101WCSpiral" :
+      curve -d 3 -p 0.474561 0 -1.241626 -p 0.171579 0 -1.214307 -p -0.434384 0 -1.159672 -p -1.124061 0 -0.419971 -p -1.169741 0 0.305922 -p -0.792507 0 1.018176 -p -0.0412486 0 1.262687 -p 0.915809 0 1.006098 -p 1.258635 0 0.364883 -p 1.032378 0 -0.461231 -p 0.352527 0 -0.810017 -p -0.451954 0 -0.43765 -p -0.634527 0 0.208919 -p -0.0751226 0 0.696326 -p 0.292338 0 0.414161 -p 0.476068 0 0.273078 -k 0 -k 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 13 -k 13 -n "controller1" ;
+      break ;
+
+    case "rig101WC12Pyramid" :
+      curve -d 1 -p -1 0 0 -p 0 0 1 -p 0 1 0 -p -1 0 0 -p 1 0 0 -p 0 1 0 -p 1 0 0 -p 0 0 1 -p 0 1 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -n "controller1" ;
+      break ;
+
+    case "rig101WCPyramid" :
+      curve -d 1 -p 0 2 0 -p 1 0 -1 -p -1 0 -1 -p 0 2 0 -p -1 0 1 -p 1 0 1 -p 0 2 0 -p 1 0 -1 -p 1 0 1 -p -1 0 1 -p -1 0 -1 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -n "controller1" ;
+      break ;
+
+    case "rig101WC12Spear" :
+      curve -d 1 -p 0 2 0 -p 0 0 2 -p 0 0 -2 -p 0 2 0 -p -2 0 0 -p 2 0 0 -p 0 2 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -n "controller1" ;
+      break ;
+
+    case "rig101WCSpear" :
+      curve -d 1 -p 0 2 0 -p 0 0 2 -p 0 -2 0 -p 0 0 -2 -p 0 2 0 -p 0 -2 0 -p 0 0 0 -p 0 0 2 -p 0 0 -2 -p 2 0 0 -p 0 0 2 -p -2 0 0 -p 0 0 -2 -p 0 0 2 -p 0 0 0 -p -2 0 0 -p 2 0 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -n "controller1" ;
+      break ;
+
+    case "rig101WCCube" :
+      curve -d 1 -p 0.5 0.5 0.5 -p 0.5 0.5 -0.5 -p -0.5 0.5 -0.5 -p -0.5 -0.5 -0.5 -p 0.5 -0.5 -0.5 -p 0.5 0.5 -0.5 -p -0.5 0.5 -0.5 -p -0.5 0.5 0.5 -p 0.5 0.5 0.5 -p 0.5 -0.5 0.5 -p 0.5 -0.5 -0.5 -p -0.5 -0.5 -0.5 -p -0.5 -0.5 0.5 -p 0.5 -0.5 0.5 -p -0.5 -0.5 0.5 -p -0.5 0.5 0.5 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -n "controller1" ;
+      break ;
+
+    case "rig101WCHexagon" :
+      curve -d 1 -p -0.5 1 0.866025 -p 0.5 1 0.866025 -p 0.5 -1 0.866025 -p 1 -1 0 -p 1 1 0 -p 0.5 1 -0.866025 -p 0.5 -1 -0.866025 -p -0.5 -1 -0.866026 -p -0.5 1 -0.866026 -p -1 1 -1.5885e-007 -p -1 -1 -1.5885e-007 -p -0.5 -1 0.866025 -p -0.5 1 0.866025 -p -1 1 -1.5885e-007 -p -0.5 1 -0.866026 -p 0.5 1 -0.866025 -p 1 1 0 -p 0.5 1 0.866025 -p 0.5 -1 0.866025 -p -0.5 -1 0.866025 -p -1 -1 -1.5885e-007 -p -0.5 -1 -0.866026 -p 0.5 -1 -0.866025 -p 1 -1 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -n "controller1" ;
+      break ;
+
+    case "rig101WCRombus" :
+      curve -d 1 -p 0 1 0 -p 1 0 0 -p 0 0 1 -p -1 0 0 -p 0 0 -1 -p 0 1 0 -p 0 0 1 -p 0 -1 0 -p 0 0 -1 -p 1 0 0 -p 0 1 0 -p -1 0 0 -p 0 -1 0 -p 1 0 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -n "controller1" ;
+      break ;
+
+    case "rig101WCRombus2":
+		curve -d 1 -p 0 0 2 -p 0 1 0 -p 0 0 -2 -p 0 -1 0 -p -1 0 0 -p 0 1 0 -p 1 0 0 -p 0 -1 0 -p 0 0 2 -p 1 0 0 -p 0 0 -2 -p -1 0 0 -p 0 0 2 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -n helperRombus;
+	break;
+
+    case "rig101WCRombus3":
+		curve -d 1 -p 0 0 2 -p -0.707107 0.707107 0 -p 0 0 -2 -p 0.707107 0.707107 0 -p 0 0 2 -p 0.707107 -0.707107 0 -p 0 0 -2 -p -0.707107 -0.707107 0 -p 0.707107 -0.707107 0 -p 0.707107 0.707107 0 -p -0.707107 0.707107 0 -p -0.707107 -0.707107 0 -p 0 0 2 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -n helperRombus;
+	break;
+
+    case "rig101WCDirSingleThin" :
+      curve -d 1 -p 0 0 1 -p 0 0 -1 -p -1 0 0 -p 0 0 -1 -p 1 0 0 -k 0 -k 1 -k 2 -k 3 -k 4 -n "controller1" ;
+      break ;
+
+    case "rig101WCDirSingleNormal" :
+      curve -d 1 -p 0 0 -1.32 -p -0.99 0 0 -p -0.33 0 0 -p -0.33 0 0.99 -p 0.33 0 0.99 -p 0.33 0 0 -p 0.99 0 0 -p 0 0 -1.32 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -n "controller1" ;
+      break ;
+
+    case "rig101WCDirSingleFat" :
+      curve -d 1 -p 0 0 -0.99 -p -0.66 0 0 -p -0.33 0 0 -p -0.33 0 0.66 -p 0.33 0 0.66 -p 0.33 0 0 -p 0.66 0 0 -p 0 0 -0.99 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -n "controller1" ;
+      break ;
+
+    case "rig101WCDirDoubleThin" :
+      curve -d 1 -p 1 0 1 -p 0 0 2 -p -1 0 1 -p 0 0 2 -p 0 0 -2 -p -1 0 -1 -p 0 0 -2 -p 1 0 -1 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -n "controller1" ;
+      break ;
+
+    case "rig101WCDirDoubleNormal" :
+      curve -d 1 -p 0 0 -2.31 -p -0.99 0 -0.99 -p -0.33 0 -0.99 -p -0.33 0 0.99 -p -0.99 0 0.99 -p 0 0 2.31 -p 0.99 0 0.99 -p 0.33 0 0.99 -p 0.33 0 -0.99 -p 0.99 0 -0.99 -p 0 0 -2.31 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -n "controller1" ;
+      break ;
+
+    case "rig101WCDirDoubleFat" :
+      curve -d 1 -p 0 0 -1.35 -p -0.66 0 -0.36 -p -0.33 0 -0.36 -p -0.33 0 0.36 -p -0.66 0 0.36 -p 0 0 1.35 -p 0.66 0 0.36 -p 0.33 0 0.36 -p 0.33 0 -0.36 -p 0.66 0 -0.36 -p 0 0 -1.35 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -n "controller1" ;
+      break ;
+
+    case "rig101WCDirFourThin" :
+      curve -d 1 -p 1.25 0 -0.5 -p 1.75 0 0 -p 1.25 0 0.5 -p 1.75 0 0 -p -1.75 0 0 -p -1.25 0 -0.5 -p -1.75 0 0 -p -1.25 0 0.5 -p -1.75 0 0 -p 0 0 0 -p 0 0 1.75 -p -0.5 0 1.25 -p 0 0 1.75 -p 0.5 0 1.25 -p 0 0 1.75 -p 0 0 -1.75 -p 0.5 0 -1.25 -p 0 0 -1.75 -p -0.5 0 -1.25 -p 0 0 -1.75 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -n "controller1" ;
+      break ;
+
+    case "rig101WCDirFourNormal" :
+      curve -d 1 -p 0 0 -1.98 -p -0.495 0 -1.32 -p -0.165 0 -1.32 -p -0.165 0 -0.165 -p -1.32 0 -0.165 -p -1.32 0 -0.495 -p -1.98 0 0 -p -1.32 0 0.495 -p -1.32 0 0.165 -p -0.165 0 0.165 -p -0.165 0 1.32 -p -0.495 0 1.32 -p 0 0 1.98 -p 0.495 0 1.32 -p 0.165 0 1.32 -p 0.165 0 0.165 -p 1.32 0 0.165 -p 1.32 0 0.495 -p 1.98 0 0 -p 1.32 0 -0.495 -p 1.32 0 -0.165 -p 0.165 0 -0.165 -p 0.165 0 -1.32 -p 0.495 0 -1.32 -p 0 0 -1.98 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -n "controller1" ;
+      break ;
+
+    case "rig101WCDirFourFat" :
+      curve -d 1 -p 0 0 -1.1025 -p -0.33 0 -0.6075 -p -0.165 0 -0.6075 -p -0.165 0 -0.165 -p -0.6075 0 -0.165 -p -0.6075 0 -0.33 -p -1.1025 0 0 -p -0.6075 0 0.33 -p -0.6075 0 0.165 -p -0.165 0 0.165 -p -0.165 0 0.6075 -p -0.33 0 0.6075 -p 0 0 1.1025 -p 0.33 0 0.6075 -p 0.165 0 0.6075 -p 0.165 0 0.165 -p 0.6075 0 0.165 -p 0.6075 0 0.33 -p 1.1025 0 0 -p 0.6075 0 -0.33 -p 0.6075 0 -0.165 -p 0.165 0 -0.165 -p 0.165 0 -0.6075 -p 0.33 0 -0.6075 -p 0 0 -1.1025 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -n "controller1" ;
+      break ;
+ 
+    case "rig101WCDirEight" :
+      curve -d 1 -p -1.8975 0 0 -p -1.4025 0 0.37125 -p -1.4025 0 0.12375 -p -0.380966 0 0.157801 -p -1.079222 0 0.904213 -p -1.254231 0 0.729204 -p -1.341735 0 1.341735 -p -0.729204 0 1.254231 -p -0.904213 0 1.079222 -p -0.157801 0 0.380966 -p -0.12375 0 1.4025 -p -0.37125 0 1.4025 -p 0 0 1.8975 -p 0.37125 0 1.4025 -p 0.12375 0 1.4025 -p 0.157801 0 0.380966 -p 0.904213 0 1.079222 -p 0.729204 0 1.254231 -p 1.341735 0 1.341735 -p 1.254231 0 0.729204 -p 1.079222 0 0.904213 -p 0.380966 0 0.157801 -p 1.4025 0 0.12375 -p 1.4025 0 0.37125 -p 1.8975 0 0 -p 1.4025 0 -0.37125 -p 1.4025 0 -0.12375 -p 0.380966 0 -0.157801 -p 1.079222 0 -0.904213 -p 1.254231 0 -0.729204 -p 1.341735 0 -1.341735 -p 0.729204 0 -1.254231 -p 0.904213 0 -1.079222 -p 0.157801 0 -0.380966 -p 0.12375 0 -1.4025 -p 0.37125 0 -1.4025 -p 0 0 -1.8975 -p -0.37125 0 -1.4025 -p -0.12375 0 -1.4025 -p -0.157801 0 -0.380966 -p -0.904213 0 -1.079222 -p -0.729204 0 -1.254231 -p -1.341735 0 -1.341735 -p -1.254231 0 -0.729204 -p -1.079222 0 -0.904213 -p -0.380966 0 -0.157801 -p -1.4025 0 -0.12375 -p -1.4025 0 -0.37125 -p -1.8975 0 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -k 30 -k 31 -k 32 -k 33 -k 34 -k 35 -k 36 -k 37 -k 38 -k 39 -k 40 -k 41 -k 42 -k 43 -k 44 -k 45 -k 46 -k 47 -k 48 -n "controller1" ;
+      break ;
+
+    case "rig101WCCone":
+		curve -d 1 -p 0.5 -1 0.866025 -p -0.5 -1 0.866025 -p 0 1 0 -p 0.5 -1 0.866025 -p 1 -1 0 -p 0 1 0 -p 0.5 -1 -0.866025 -p 1 -1 0 -p 0 1 0 -p -0.5 -1 -0.866026 -p 0.5 -1 -0.866025 -p 0 1 0 -p -1 -1 -1.5885e-007 -p -0.5 -1 -0.866026 -p 0 1 0 -p -0.5 -1 0.866025 -p -1 -1 -1.5885e-007 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -n helperCone;
+	break;
+
+    case "rig101WCRot90Thin" :
+      curve -d 1 -p -1.026019 0 0 -p -0.947961 0 0.392646 -p -0.725413 0 0.725516 -p -0.393028 0 0.947932 -p -0.13006 0 1 -p 0.0107043 0 1.001418 -p -0.339542 0 0.5442 -p 0.0107043 0 1.001418 -p -0.446514 0 1.351664 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -n "controller1" ;
+      break ;
+
+    case "rig101WCRot90Normal" :
+      curve -d 1 -p -0.251045 0 1.015808 -p -0.761834 0 0.979696 -p -0.486547 0 0.930468 -p -0.570736 0 0.886448 -p -0.72786 0 0.774834 -p -0.909301 0 0.550655 -p -1.023899 0 0.285854 -p -1.063053 0 9.80765e-009 -p -0.961797 0 8.87346e-009 -p -0.926399 0 0.258619 -p -0.822676 0 0.498232 -p -0.658578 0 0.701014 -p -0.516355 0 0.802034 -p -0.440202 0 0.841857 -p -0.498915 0 0.567734 -p -0.251045 0 1.015808 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -n "controller1" ;
+      break ;
+
+    case "rig101WCRot90Fat" :
+      curve -d 1 -p -0.923366 0 0 -p -1.128672 0 0 -p -1.042702 0 0.431934 -p -0.798049 0 0.798033 -p -0.560906 0 0.946236 -p -0.975917 0 1.036319 -p -0.124602 0 1.096506 -p -0.537718 0 0.349716 -p -0.440781 0 0.788659 -p -0.652776 0 0.652998 -p -0.853221 0 0.353358 -p -0.923366 0 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -n "controller1" ;
+      break ;
+
+    case "rig101WCRot180Thin" :
+      curve -d 1 -p -0.446514 0 -1.351664 -p 0.0107043 0 -1.001418 -p -0.339542 0 -0.5442 -p 0.0107043 0 -1.001418 -p -0.13006 0 -1 -p -0.393028 0 -0.947932 -p -0.725413 0 -0.725516 -p -0.947961 0 -0.392646 -p -1.026019 0 0 -p -0.947961 0 0.392646 -p -0.725413 0 0.725516 -p -0.393028 0 0.947932 -p -0.13006 0 1 -p 0 0 1 -p -0.339542 0 0.5442 -p 0 0 1 -p -0.446514 0 1.351664 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -n "controller1" ;
+      break ;
+
+    case "rig101WCRot180Normal" :
+      curve -d 1 -p -0.251045 0 -1.015808 -p -0.761834 0 -0.979696 -p -0.486547 0 -0.930468 -p -0.570736 0 -0.886448 -p -0.72786 0 -0.774834 -p -0.909301 0 -0.550655 -p -1.023899 0 -0.285854 -p -1.063053 0 9.80765e-009 -p -1.023899 0 0.285854 -p -0.909301 0 0.550655 -p -0.72786 0 0.774834 -p -0.570736 0 0.886448 -p -0.486547 0 0.930468 -p -0.761834 0 0.979696 -p -0.251045 0 1.015808 -p -0.498915 0 0.567734 -p -0.440202 0 0.841857 -p -0.516355 0 0.802034 -p -0.658578 0 0.701014 -p -0.822676 0 0.498232 -p -0.926399 0 0.258619 -p -0.961797 0 8.87346e-009 -p -0.926399 0 -0.258619 -p -0.822676 0 -0.498232 -p -0.658578 0 -0.701014 -p -0.516355 0 -0.802034 -p -0.440202 0 -0.841857 -p -0.498915 0 -0.567734 -p -0.251045 0 -1.015808 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -n "controller1" ;
+      break ;
+
+    case "rig101WCRot180Fat" :
+      curve -d 1 -p -0.124602 0 -1.096506 -p -0.975917 0 -1.036319 -p -0.559059 0 -0.944259 -p -0.798049 0 -0.798033 -p -1.042702 0 -0.431934 -p -1.128672 0 0 -p -1.042702 0 0.431934 -p -0.798049 0 0.798033 -p -0.560906 0 0.946236 -p -0.975917 0 1.036319 -p -0.124602 0 1.096506 -p -0.537718 0 0.349716 -p -0.440781 0 0.788659 -p -0.652776 0 0.652998 -p -0.853221 0 0.353358 -p -0.923366 0 0 -p -0.853221 0 -0.353358 -p -0.652776 0 -0.652998 -p -0.439199 0 -0.785581 -p -0.537718 0 -0.349716 -p -0.124602 0 -1.096506 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -n "controller1" ;
+      break ;
+
+    case "rig101WCTransform" :
+	 $circleHelper = `circle -c 0 0 0 -nr 0 1 0 -sw 360 -r 1.5 -d 3 -ut 0 -tol 0.01 -s 8 -ch 0 -n "controller1"`;
+	 string $arrows[] ;
+	 $arrows[0] = `curve -d 1 -p 1.75625 0 0.115973 -p 1.75625 0 -0.170979 -p 2.114939 0 -0.170979 -p 2.114939 0 -0.314454 -p 2.473628 0 -0.0275029 -p 2.114939 0 0.259448 -p 2.114939 0 0.115973 -p 1.75625 0 0.115973 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -n helperArrow1` ;
+         setAttr ($arrows[0] + ".overrideEnabled") 1 ;
+         setAttr ($arrows[0] + ".overrideDisplayType") 2 ;
+         pickWalk -d down ; TemplateObject ;
+	 $arrows[1] = `curve -d 1 -p 0.143476 0 -1.783753 -p 0.143476 0 -2.142442 -p 0.286951 0 -2.142442 -p 0 0 -2.501131 -p -0.286951 0 -2.142442 -p -0.143476 0 -2.142442 -p -0.143476 0 -1.783753 -p 0.143476 0 -1.783753 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -n helperArrow2` ;
+         setAttr ($arrows[1] + ".overrideEnabled") 1 ;
+         setAttr ($arrows[1] + ".overrideDisplayType") 2 ;
+         pickWalk -d down ; TemplateObject ;
+	 $arrows[2] = `curve -d 1 -p -1.75625 0 -0.170979 -p -2.114939 0 -0.170979 -p -2.114939 0 -0.314454 -p -2.473628 0 -0.0275029 -p -2.114939 0 0.259448 -p -2.114939 0 0.115973 -p -1.75625 0 0.115973 -p -1.75625 0 -0.170979 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -n helperArrow3`;
+         setAttr ($arrows[2] + ".overrideEnabled") 1 ;
+         setAttr ($arrows[2] + ".overrideDisplayType") 2 ;
+         pickWalk -d down ; TemplateObject ;
+	 $arrows[3] = `curve -d 1 -p -0.143476 0 1.728747 -p -0.143476 0 2.087436 -p -0.286951 0 2.087436 -p 0 0 2.446125 -p 0.286951 0 2.087436 -p 0.143476 0 2.087436 -p 0.143476 0 1.728747 -p -0.143476 0 1.728747 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -n helperArrow4`;
+         setAttr ($arrows[3] + ".overrideEnabled") 1 ;
+         setAttr ($arrows[3] + ".overrideDisplayType") 2 ;
+         pickWalk -d down ; TemplateObject ;
+	 string $arrowGRP = `group -n helperArrowsGRP -p $circleHelper $arrows[0] $arrows[1] $arrows[2] $arrows[3]`;
+        select -r $circleHelper ;
+      break ;
+
+    case "rig101WCArrowsOnBall" :
+      curve -d 1 -p 0 0.35 -1.001567 -p -0.336638 0.677886 -0.751175 -p -0.0959835 0.677886 -0.751175 -p -0.0959835 0.850458 -0.500783 -p -0.0959835 0.954001 -0.0987656 -p -0.500783 0.850458 -0.0987656 -p -0.751175 0.677886 -0.0987656 -p -0.751175 0.677886 -0.336638 -p -1.001567 0.35 0 -p -0.751175 0.677886 0.336638 -p -0.751175 0.677886 0.0987656 -p -0.500783 0.850458 0.0987656 -p -0.0959835 0.954001 0.0987656 -p -0.0959835 0.850458 0.500783 -p -0.0959835 0.677886 0.751175 -p -0.336638 0.677886 0.751175 -p 0 0.35 1.001567 -p 0.336638 0.677886 0.751175 -p 0.0959835 0.677886 0.751175 -p 0.0959835 0.850458 0.500783 -p 0.0959835 0.954001 0.0987656 -p 0.500783 0.850458 0.0987656 -p 0.751175 0.677886 0.0987656 -p 0.751175 0.677886 0.336638 -p 1.001567 0.35 0 -p 0.751175 0.677886 -0.336638 -p 0.751175 0.677886 -0.0987656 -p 0.500783 0.850458 -0.0987656 -p 0.0959835 0.954001 -0.0987656 -p 0.0959835 0.850458 -0.500783 -p 0.0959835 0.677886 -0.751175 -p 0.336638 0.677886 -0.751175 -p 0 0.35 -1.001567 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -k 30 -k 31 -k 32 -n "controller1" ;
+      break ;
+ 
+    case "rig101WCSun" :
+	 string $CONTROLLER1[] = `circle -c 0 0 0 -nr 0 1 0 -sw 360 -r 1 -d 3 -ut 0 -tol 0.01 -s 16 -ch 1 -n controller1` ;
+	 select -r ($CONTROLLER1[0] + ".cv[0]") ($CONTROLLER1[0] + ".cv[2]") ($CONTROLLER1[0] + ".cv[4]")($CONTROLLER1[0] + ".cv[6]")($CONTROLLER1[0] + ".cv[8]")($CONTROLLER1[0] + ".cv[10]")($CONTROLLER1[0] + ".cv[12]") ($CONTROLLER1[0] + ".cv[14]") ;
+	 string $CONTROLCLUSTER[] = `cluster -relative -envelope 1` ;
+	 setAttr ($CONTROLCLUSTER[0] + "Handle.scale") 0.5 0.5 0.5 ;
+	 string $CONTROLLER2[] = `circle -c 0 0 0 -nr 0 1 0 -sw 360 -r 0.25 -d 3 -ut 0 -tol 0.01 -s 8 -ch 1 -n controller1` ;
+	 select -r $CONTROLLER2[0] $CONTROLLER1[0] ; parent ; pickWalk -d up ; DeleteHistory ;
+      break ;
+
+    case "rig101WCPin" :
+      curve -d 1 -p 0 0 0 -p 0 0 -1 -p 0 0.5 -1 -p 0 0.5 -0.5 -p 0 1.5 -0.5 -p 0 1.5 -1 -p 0 2.5 -1 -p 0 2.5 1 -p 0 1.5 1 -p 0 1.5 0.5 -p 0 0.5 0.5 -p 0 0.5 1 -p 0 0 1 -p 0 0 0 -p 1 0 0 -p 1 0.5 0 -p 0.5 0.5 0 -p 0.5 1.5 0 -p 1 1.5 0 -p 1 2.5 0 -p -1 2.5 0 -p -1 1.5 0 -p -0.5 1.5 0 -p -0.5 0.5 0 -p -1 0.5 0 -p -1 0 0 -p 0 0 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -n "controller1" ;
+      break ;
+
+    case "rig101WCJack" :
+      curve -d 1 -p 0 0 0 -p 0.75 0 0 -p 1 0.25 0 -p 1.25 0 0 -p 1 -0.25 0 -p 0.75 0 0 -p 1 0 0.25 -p 1.25 0 0 -p 1 0 -0.25 -p 1 0.25 0 -p 1 0 0.25 -p 1 -0.25 0 -p 1 0 -0.25 -p 0.75 0 0 -p 0 0 0 -p -0.75 0 0 -p -1 0.25 0 -p -1.25 0 0 -p -1 -0.25 0 -p -0.75 0 0 -p -1 0 0.25 -p -1.25 0 0 -p -1 0 -0.25 -p -1 0.25 0 -p -1 0 0.25 -p -1 -0.25 0 -p -1 0 -0.25 -p -0.75 0 0 -p 0 0 0 -p 0 0.75 0 -p 0 1 -0.25 -p 0 1.25 0 -p 0 1 0.25 -p 0 0.75 0 -p -0.25 1 0 -p 0 1.25 0 -p 0.25 1 0 -p 0 1 0.25 -p -0.25 1 0 -p 0 1 -0.25 -p 0.25 1 0 -p 0 0.75 0 -p 0 0 0 -p 0 -0.75 0 -p 0 -1 -0.25 -p 0 -1.25 0 -p 0 -1 0.25 -p 0 -0.75 0 -p -0.25 -1 0 -p 0 -1.25 0 -p 0.25 -1 0 -p 0 -1 -0.25 -p -0.25 -1 0 -p 0 -1 0.25 -p 0.25 -1 0 -p 0 -0.75 0 -p 0 0 0 -p 0 0 -0.75 -p 0 0.25 -1 -p 0 0 -1.25 -p 0 -0.25 -1 -p 0 0 -0.75 -p -0.25 0 -1 -p 0 0 -1.25 -p 0.25 0 -1 -p 0 0.25 -1 -p -0.25 0 -1 -p 0 -0.25 -1 -p 0.25 0 -1 -p 0 0 -0.75 -p 0 0 0 -p 0 0 0.75 -p 0 0.25 1 -p 0 0 1.25 -p 0 -0.25 1 -p 0 0 0.75 -p -0.25 0 1 -p 0 0 1.25 -p 0.25 0 1 -p 0 0.25 1 -p -0.25 0 1 -p 0 -0.25 1 -p 0.25 0 1 -p 0 0 0.75 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -k 30 -k 31 -k 32 -k 33 -k 34 -k 35 -k 36 -k 37 -k 38 -k 39 -k 40 -k 41 -k 42 -k 43 -k 44 -k 45 -k 46 -k 47 -k 48 -k 49 -k 50 -k 51 -k 52 -k 53 -k 54 -k 55 -k 56 -k 57 -k 58 -k 59 -k 60 -k 61 -k 62 -k 63 -k 64 -k 65 -k 66 -k 67 -k 68 -k 69 -k 70 -k 71 -k 72 -k 73 -k 74 -k 75 -k 76 -k 77 -k 78 -k 79 -k 80 -k 81 -k 82 -k 83 -n "controller1" ;
+      break ;
+
+    case "rig101WCFootprint" :
+      curve -d 1 -p -0.081122 0 -1.11758 -p 0.390719 0 -0.921584 -p 0.514124 0 -0.616704 -p 0.412496 0 0.0293557 -p 0.86256 0 0.552008 -p 0.920632 0 1.161772 -p 0.775452 0 1.669908 -p 0.38346 0 2.011088 -p -0.131936 0 2.330484 -p -0.552964 0 2.308708 -p -0.654588 0 1.691688 -p -0.57474 0 0.63912 -p -0.364226 0 0.109206 -p -0.531184 0 -0.39893 -p -0.465852 0 -0.841736 -p -0.081122 0 -1.11758 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -n "controller1" ;
+      break ;
+
+    case "rig101WCHand" :
+	string $CONTROLLERS[] ;
+	$CONTROLLERS[0] = `curve -d 1 -p -0.718223 0 -0.925311 -p -0.718223 0 0.462656 -p -0.462656 0 0.925311 -p 0 0 0.925311 -p 0.170548 0 0.873409 -p 0.341096 0 0.925311 -p 0.925311 0 0.925311 -p 0.925311 0 0 -p 0.718223 0 -0.462656 -p 0.718223 0 -0.925311 -p 0.457051 0 -1.156639 -p -0.462656 0 -1.156639 -p -0.718223 0 -0.925311 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -n "controller1"` ;
+	$CONTROLLERS[1] = `curve -d 1 -p -0.718223 0 -0.925311 -p -0.718223 0 -2.544605 -p -0.457051 0 -2.544605 -p -0.462656 0 -1.156639 -k 0 -k 1 -k 2 -k 3 -n "controller1"` ;
+	$CONTROLLERS[2] = `curve -d 1 -p -0.326465 0 -1.156639 -p -0.326465 0 -2.775933 -p -0.065293 0 -2.775933 -p -0.065293 0 -1.156639 -k 0 -k 1 -k 2 -k 3 -n "controller1"` ;
+	$CONTROLLERS[3] = `curve -d 1 -p 0.065293 0 -1.156639 -p 0.065293 0 -3.007261 -p 0.326465 0 -3.007261 -p 0.326465 0 -1.156639 -k 0 -k 1 -k 2 -k 3 -n "controller1"` ;
+	$CONTROLLERS[4] = `curve -d 1 -p 0.457051 0 -1.156639 -p 0.457051 0 -2.775933 -p 0.718223 0 -2.775933 -p 0.718223 0 -0.925311 -k 0 -k 1 -k 2 -k 3 -n "controller1"` ;
+	$CONTROLLERS[5] = `curve -d 1 -p 0.925311 0 0 -p 1.156639 0 -0.231328 -p 1.387967 0 -0.693983 -p 1.619294 0 -0.462656 -p 1.387967 0 0.231328 -p 0.925311 0 0.925311 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -n "controller1"` ;
+	select -r $CONTROLLERS ; 
+	select -d $CONTROLLERS[0] ; 
+	select -add $CONTROLLERS[0] ; parent ;
+	select -d $CONTROLLERS[0] ;
+	for ($ELEMENT in `ls -sl`)
+	  {
+	  setAttr -lock true ($ELEMENT + ".t") ;
+	  setAttr -lock true ($ELEMENT + ".r") ;
+	  setAttr -lock true ($ELEMENT + ".s") ;
+	  setAttr -lock true ($ELEMENT + ".v") ;
+	  setAttr -e -k false ($ELEMENT + ".tx") ;
+	  setAttr -e -k false ($ELEMENT + ".ty") ;
+	  setAttr -e -k false ($ELEMENT + ".tz") ;
+	  setAttr -e -k false ($ELEMENT + ".rx") ;
+	  setAttr -e -k false ($ELEMENT + ".ry") ;
+	  setAttr -e -k false ($ELEMENT + ".rz") ;
+	  setAttr -e -k false ($ELEMENT + ".sx") ;
+	  setAttr -e -k false ($ELEMENT + ".sy") ;
+	  setAttr -e -k false ($ELEMENT + ".sz") ;
+	  setAttr -e -k false ($ELEMENT + ".v") ;
+	  } ;
+	select -r $CONTROLLERS[0] ;
+      break ;
+
+    case "rig101WCNail" :
+      curve -d 1 -p 0 0 0 -p -2 0 0 -p -2.292893 0 0.707107 -p -3 0 1 -p -3.707107 0 0.707107 -p -4 0 0 -p -3.707107 0 -0.707107 -p -3 0 -1 -p -2.292893 0 -0.707107 -p -2 0 0 -p -2.292893 0 0.707107 -p -3.707107 0 -0.707107 -p -4 0 0 -p -3.707107 0 0.707107 -p -2.292893 0 -0.707107 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -n "controller1" ;
+      break ;
+
+    case "rig101WC2Nail" :
+      curve -d 1 -p 0 0 0 -p -2 0 0 -p -2.292893 0 -0.707107 -p -3 0 -1 -p -3.707107 0 -0.707107 -p -4 0 0 -p -3.707107 0 0.707107 -p -3 0 1 -p -2.292893 0 0.707107 -p -2 0 0 -p -2.292893 0 0.707107 -p -3.707107 0 -0.707107 -p -3 0 -1 -p -2.292893 0 -0.707107 -p -3.707107 0 0.707107 -p -3 0 1 -p -2.292893 0 0.707107 -p -2 0 0 -p 0 0 0 -p 2 0 0 -p 2.292893 0 -0.707107 -p 3 0 -1 -p 3.707107 0 -0.707107 -p 4 0 0 -p 3.707107 0 0.707107 -p 3 0 1 -p 2.292893 0 0.707107 -p 2 0 0 -p 2.292893 0 0.707107 -p 3.707107 0 -0.707107 -p 3 0 -1 -p 2.292893 0 -0.707107 -p 3.707107 0 0.707107 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -k 30 -k 31 -k 32 -n "controller1" ;
+      break ;
+
+    case "rig101WC4Nail" :
+      curve -d 1 -p -2 0 0 -p -2.292893 0 -0.707107 -p -3 0 -1 -p -3.707107 0 -0.707107 -p -4 0 0 -p -3.707107 0 0.707107 -p -3 0 1 -p -2.292893 0 0.707107 -p -2 0 0 -p -2.292893 0 0.707107 -p -3.707107 0 -0.707107 -p -4 0 0 -p -3.707107 0 0.707107 -p -2.292893 0 -0.707107 -p -2 0 0 -p 0 0 0 -p 2 0 0 -p 2.292893 0 0.707107 -p 3 0 1 -p 3.707107 0 0.707107 -p 4 0 0 -p 3.707107 0 -0.707107 -p 3 0 -1 -p 2.292893 0 -0.707107 -p 2 0 0 -p 2.292893 0 0.707107 -p 3.707107 0 -0.707107 -p 4 0 0 -p 3.707107 0 0.707107 -p 2.292893 0 -0.707107 -p 2 0 0 -p 0 0 0 -p 0 0 2 -p -0.707107 0 2.292893 -p -1 0 3 -p -0.707107 0 3.707107 -p 0 0 4 -p 0.707107 0 3.707107 -p 1 0 3 -p 0.707107 0 2.292893 -p 0 0 2 -p 0.707107 0 2.292893 -p -0.707107 0 3.707107 -p 0 0 4 -p 0.707107 0 3.707107 -p -0.707107 0 2.292893 -p 0 0 2 -p 0 0 -2 -p -0.707107 0 -2.292893 -p -1 0 -3 -p -0.707107 0 -3.707107 -p 0 0 -4 -p 0.707107 0 -3.707107 -p 1 0 -3 -p 0.707107 0 -2.292893 -p 0 0 -2 -p 0.707107 0 -2.292893 -p -0.707107 0 -3.707107 -p 0 0 -4 -p 0.707107 0 -3.707107 -p -0.707107 0 -2.292893 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -k 30 -k 31 -k 32 -k 33 -k 34 -k 35 -k 36 -k 37 -k 38 -k 39 -k 40 -k 41 -k 42 -k 43 -k 44 -k 45 -k 46 -k 47 -k 48 -k 49 -k 50 -k 51 -k 52 -k 53 -k 54 -k 55 -k 56 -k 57 -k 58 -k 59 -k 60 -n "controller1" ;
+      break ;
+
+    case "rig101WCSphere" :
+      curve -d 1 -p 0 0 1 -p 0 0.5 0.866025 -p 0 0.866025 0.5 -p 0 1 0 -p 0 0.866025 -0.5 -p 0 0.5 -0.866025 -p 0 0 -1 -p 0 -0.5 -0.866025 -p 0 -0.866025 -0.5 -p 0 -1 0 -p 0 -0.866025 0.5 -p 0 -0.5 0.866025 -p 0 0 1 -p 0.707107 0 0.707107 -p 1 0 0 -p 0.707107 0 -0.707107 -p 0 0 -1 -p -0.707107 0 -0.707107 -p -1 0 0 -p -0.866025 0.5 0 -p -0.5 0.866025 0 -p 0 1 0 -p 0.5 0.866025 0 -p 0.866025 0.5 0 -p 1 0 0 -p 0.866025 -0.5 0 -p 0.5 -0.866025 0 -p 0 -1 0 -p -0.5 -0.866025 0 -p -0.866025 -0.5 0 -p -1 0 0 -p -0.707107 0 0.707107 -p 0 0 1 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -k 30 -k 31 -k 32 -n "controller1" ;
+      break ;
+
+    case "rig101WCCog":
+		string $cog=`curve -d 3 -p 7.06316e-009 0 -1 -p 0.104714 0 -0.990425 -p 0.314142 0 -0.971274 -p 0.597534 0 -0.821244 -p 0.822435 0 -0.597853 -p 0.96683 0 -0.314057 -p 1.016585 0 -2.28604e-005 -p 0.96683 0 0.314148 -p 0.822435 0 0.597532 -p 0.597534 0 0.822435 -p 0.314142 0 0.96683 -p 1.22886e-008 0 1.016585 -p -0.314142 0 0.96683 -p -0.597534 0 0.822435 -p -0.822435 0 0.597532 -p -0.96683 0 0.314148 -p -1.016585 0 -2.29279e-005 -p -0.96683 0 -0.314057 -p -0.822435 0 -0.597853 -p -0.597534 0 -0.821244 -p -0.314142 0 -0.971274 -p -0.104714 0 -0.990425 -p 7.06316e-009 0 -1 -k 0 -k 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 20 -k 20 -n helperCog`;
+		select -r $cog.ep[1] $cog.ep[3] $cog.ep[5] $cog.ep[7] $cog.ep[9] $cog.ep[11] $cog.ep[13] $cog.ep[15] $cog.ep[17] $cog.ep[19];
+		scale -r -p 0cm 0cm 0cm 0.732056 0.732056 0.732056 ;
+		select -cl;
+	break;
+
+    case "rig101WCPointer":
+		curve -d 3 -p -1.508537 0 0 -p -1.059622 0 -0.316884 -p -0.161791 0 -0.950653 -p -0.231491 0 -0.132891 -p 0.0199252 0 0.0238494 -p 0.843595 0 -0.46025 -p 1.7044 0 -1.130663 -p 1.00832 0 -0.442815 -p 0.512875 0 -0.0222687 -p 1.031578 0 0.508979 -p 1.701544 0 1.119434 -p 0.831393 0 0.447942 -p 0.018681 0 0.000680685 -p -0.212893 0 0.0475119 -p -0.15231 0 0.973132 -p -1.056461 0 0.324377 -p -1.508537 0 0 -k 0 -k 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 14 -k 14 -n helperPointer;
+	break;
+
+    case "rig101WCAim":
+		 curve -d 1 -p 0 0 1 -p 0 0 -1 -p 0 2 0 -p 0 -2 0 -p 0 0 -1 -p 1 0 0 -p -1 0 0 -p 0 0 -1 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -n helperAim;
+	break;
+
+    case "rig101WCAim2":
+		 curve -d 1 -p 0 0 1 -p 0 0 -1 -p 0 2 0 -p 0 -2 0 -p 0 0 -1 -p 2 0 0 -p -2 0 0 -p 0 0 -1 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -n helperAim;
+	break;
+
+    case "rig101WCDumbell":
+		curve -d 1 -p -1.207536 0 0.0254483 -p -1.123549 -0.202763 0.0254483 -p -0.920786 -0.28675 0.0254483 -p -0.718023 -0.202763 0.0254483 -p -0.63504 -0.00242492 0.0254483 -p 0.634091 0 0.0254483 -p 0.718023 -0.202763 0.0254483 -p 0.920786 -0.28675 0.0254483 -p 1.123549 -0.202763 0.0254483 -p 1.207536 0 0.0254483 -p 1.123549 0.202763 0.0254483 -p 0.920786 0.28675 0.0254483 -p 0.718023 0.202763 0.0254483 -p 0.634091 0 0.0254483 -p -0.63504 -0.00242492 0.0254483 -p -0.718023 0.202763 0.0254483 -p -0.920786 0.28675 0.0254483 -p -1.123549 0.202763 0.0254483 -p -1.207536 0 0.0254483 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -n helperDumbell;
+	break;
+
+    case "rig101WCVision":
+		curve -d 1 -p -0.870728 -0.000469542 -0.28747 -p -0.667456 -0.000469542 -0.203272 -p -0.583258 -0.000469542 0 -p -0.667456 -0.000469542 0.203272 -p -0.870728 -0.000469542 0.28747 -p -1.073999 -0.000469542 0.203272 -p -1.158197 -0.000469542 0 -p -1.073999 -0.000469542 -0.203272 -p -0.870728 -0.000469542 -0.28747 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -n helperVisionR;
+		CenterPivot;
+		curve -d 1 -p 0.870728 -0.000469542 -0.28747 -p 1.073999 -0.000469542 -0.203272 -p 1.158197 -0.000469542 0 -p 1.073999 -0.000469542 0.203272 -p 0.870728 -0.000469542 0.28747 -p 0.667456 -0.000469542 0.203272 -p 0.583258 -0.000469542 0 -p 0.667456 -0.000469542 -0.203272 -p 0.870728 -0.000469542 -0.28747 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -n helperVisionL;
+		CenterPivot;
+		curve -d 1 -p -0.583258 -0.000469542 0 -p 0.583258 -0.000469542 0 -k 0 -k 1 -n helperVision;
+		parent helperVisionL helperVisionR helperVision;
+		select helperVision;
+	break;
+
+    } ;
+
+  } ;
+
+
+
+/////////////////////////////////
+//  llWireControllers	    //
+/////////////////////////////////
+// 
+// MAIN PROC
+//
+/////////////////////////////////
+
+global proc rig101wireControllers ()
+  {
+
+  if (`window -ex rig101WCWindow`) deleteUI rig101WCWindow ;
+
+  window
+    -wh 300 50
+    -title "Rigging 101 wireControllers"
+    -minimizeButton 0
+    -maximizeButton 0
+    -rtf true 
+    -s 1
+  rig101WCWindow ;
+
+string $tabs = `tabLayout -innerMarginWidth 5 -innerMarginHeight 5`;
+
+string $flatShapes = `rowColumnLayout -numberOfColumns 4`;
+	button -l "Triangle" -c "rig101WCButtonPressed rig101WCTriangle"; 
+	button -l "Square" -c "rig101WCButtonPressed rig101WCSquare" ;
+	button -l "Angle" -c "rig101WCButtonPressed rig101WCAngle" ;
+	button -l "Cross" -c "rig101WCButtonPressed rig101WCCross" ;
+	button -l "Fat Cross" -c "rig101WCButtonPressed rig101WCFatCross" ;
+	button -l "Circle" -c "rig101WCButtonPressed rig101WCCircle" ;
+	button -l "270 Arc" -c "rig101WCButtonPressed rig101WC270Arc" ;
+	button -l "180 Arc" -c "rig101WCButtonPressed rig101WC180Arc" ;
+	button -l "Spiral" -c "rig101WCButtonPressed rig101WCSpiral" ;
+	setParent ..;
+
+string $prisms = `rowColumnLayout -numberOfColumns 4`;
+	button -l "1/2 Pyramid" -c "rig101WCButtonPressed rig101WC12Pyramid" ;
+	button -l "Pyramid" -c "rig101WCButtonPressed rig101WCPyramid" ;
+	button -l "1/2 Spear" -c "rig101WCButtonPressed rig101WC12Spear" ;
+	button -l "Spear" -c "rig101WCButtonPressed rig101WCSpear" ;
+	button -l "Cube" -c "rig101WCButtonPressed rig101WCCube" ;
+	button -l "Sphere" -c "rig101WCButtonPressed rig101WCSphere" ;
+	button -l "Hexagon" -c "rig101WCButtonPressed rig101WCHexagon" ;
+	button -l "Rombus" -c "rig101WCButtonPressed rig101WCRombus" ; 		
+	button -l "Rombus2" -c "rig101WCButtonPressed rig101WCRombus2" ; 	
+	button -l "Rombus3" -c "rig101WCButtonPressed rig101WCRombus3" ; 
+	button -l "Cone" -c "rig101WCButtonPressed rig101WCCone" ; 	
+	setParent ..;
+
+string $directionArrows = `rowColumnLayout -numberOfColumns 4`;
+	button -l "Single Thin" -c "rig101WCButtonPressed rig101WCDirSingleThin" ;
+	button -l "Single Normal" -c "rig101WCButtonPressed rig101WCDirSingleNormal" ;
+	button -l "Single Fat" -c "rig101WCButtonPressed rig101WCDirSingleFat" ;
+	button -l "Double Thin" -c "rig101WCButtonPressed rig101WCDirDoubleThin" ;
+	button -l "Double Normal" -c "rig101WCButtonPressed rig101WCDirDoubleNormal" ;
+	button -l "Double Fat" -c "rig101WCButtonPressed rig101WCDirDoubleFat" ;
+	button -l "Four Thin" -c "rig101WCButtonPressed rig101WCDirFourThin" ;
+	button -l "Four Normal" -c "rig101WCButtonPressed rig101WCDirFourNormal" ;
+	button -l "Four Fat" -c "rig101WCButtonPressed rig101WCDirFourFat" ;
+	button -l "Eight" -c "rig101WCButtonPressed rig101WCDirEight" ;
+	setParent ..;
+
+
+string $rotationArrows = `rowColumnLayout -numberOfColumns 4`;
+	button -l "90 Thin" -c "rig101WCButtonPressed rig101WCRot90Thin" ;
+	button -l "90 Normal" -c "rig101WCButtonPressed rig101WCRot90Normal" ;
+	button -l "90 Fat" -c "rig101WCButtonPressed rig101WCRot90Fat" ;
+	button -l "180 Thin" -c "rig101WCButtonPressed rig101WCRot180Thin" ;
+	button -l "180 Normal" -c "rig101WCButtonPressed rig101WCRot180Normal" ;
+	button -l "180 Fat" -c "rig101WCButtonPressed rig101WCRot180Fat" ;
+	setParent ..;
+
+string $char = `rowColumnLayout -numberOfColumns 4`;
+	button -l "Transform" -c "rig101WCButtonPressed rig101WCTransform" ;
+	button -l "Footprint" -c "rig101WCButtonPressed rig101WCFootprint" ;
+	button -l "Hand" -c "rig101WCButtonPressed rig101WCHand" ;
+	button -l "Vision" -c "rig101WCButtonPressed rig101WCVision" ;
+	setParent ..;
+
+string $special = `rowColumnLayout -numberOfColumns 4`;
+	button -l "Arrows on Ball" -c "rig101WCButtonPressed rig101WCArrowsOnBall" ;
+	button -l "Cog" -c "rig101WCButtonPressed rig101WCCog" ;
+	button -l "Sun" -c "rig101WCButtonPressed rig101WCSun" ;
+	button -l "Pin" -c "rig101WCButtonPressed rig101WCPin" ;
+	button -l "Jack" -c "rig101WCButtonPressed rig101WCJack" ;
+	button -l "Nail" -c "rig101WCButtonPressed rig101WCNail" ;
+	button -l "Double Nail" -c "rig101WCButtonPressed rig101WC2Nail" ;
+	button -l "Four Nails" -c "rig101WCButtonPressed rig101WC4Nail" ;
+	button -l "Dumbell" -c "rig101WCButtonPressed rig101WCDumbell" ;
+	button -l "Pointer" -c "rig101WCButtonPressed rig101WCPointer" ;
+	button -l "Aim" -c "rig101WCButtonPressed rig101WCAim" ;
+	button -l "Aim2" -c "rig101WCButtonPressed rig101WCAim2" ;
+	setParent ..;
+
+tabLayout -edit	-tabLabel $flatShapes "Flat Shapes" -tabLabel $prisms "Prisms" -tabLabel $directionArrows "Direction Arrows"
+		-tabLabel $rotationArrows "Rotation Arrows" -tabLabel $char "Char" -tabLabel $special "Special"
+ 			$tabs;
+
+  
+  showWindow rig101WCWindow ;
+
+  } ;

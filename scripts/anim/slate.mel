@@ -1,0 +1,183 @@
+/*
+Creates a minimalist HUD for playblasting, including name and shot name. 
+*/
+
+global proc slate ()
+{
+
+//global variables
+global string $inputName;
+global string $inputNote;
+global string $Name;
+global string $Note;
+
+//string declarations
+string $winName = "slateHUDWin";
+
+//checks to see if window exsists
+if (`window -exists $winName`)
+    deleteUI $winName;
+
+
+
+//window
+window -title "Slate" -w 580 -h 50 -s false -mnb true -mxb true $winName;
+//Hud title centered
+columnLayout;
+	columnLayout;
+		frameLayout -lv false -w 580 -h 50 -mh 10 -mw 10 -bv false -bs "etchedIn";
+			
+				rowColumnLayout -numberOfColumns 7 -cw 1 60 -cw 2 150 -cw 3 40 -cw 4 55 -cw 5 150 -cw 6 10 -cw 7 100;
+
+				text -l "Name:";
+				$inputName = `textFieldGrp -cc "namePlusCheck" -adj 1 -cal 1 left  -text "" `;
+				text -l "";
+				text -l "Note:";
+				$inputNote = `textFieldGrp -cc "notePlusCheck" -adj 1 -cal 1 left -text "" `;
+				text -l "";
+				checkBox -onc "nameHud ($inputName); noteHud ($inputNote); dateHud; frameHud" -ofc "headsUpDisplay -remove HUDName; headsUpDisplay -remove HUDNote; headsUpDisplay -remove HUDdate; headsUpDisplay -remove HUDframe" -v 1 -al left -label "Toggle Slate" checkAll;									
+
+
+	 			setParent..;
+		setParent..;
+					
+			
+showWindow $winName;
+window -e -wh 580 50 $winName;
+setViewAxisVisibility 0;
+setCameraNamesVisibility 0;
+nameHud ($inputName);
+noteHud ($inputNote);
+dateHud;
+frameHud;
+}// end of global proc slate
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+//					Custom HUD Section
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+global proc nameHud (string $inputName)
+{
+	global string $Name;
+		
+	if (`headsUpDisplay -exists HUDName`)
+		headsUpDisplay -remove HUDName;
+	
+	$Name = `textFieldGrp -q -text $inputName`;
+	
+	headsUpDisplay
+		-ao 1
+		-da "left"
+		-dw 1
+		-section 6
+		-block 3
+		-dfs "large"
+		-command getName
+   		-atr
+		HUDName;
+}
+
+global proc string getName ()
+{
+    global string $Name;
+    return $Name;
+}    
+
+/////////////////////////////////////////////////////////
+//namePlusCheck - textField needs this proc in order to use the "enter" key to update text.
+global proc namePlusCheck ()
+{
+	global string $inputName;
+	checkBox -e -v 1 checkAll;
+	nameHud($inputName);
+}
+
+
+/////////////////////////////////////////////////////////
+//Note HUD section
+global proc noteHud (string $inputNote)
+{
+	global string $Note;
+
+	if (`headsUpDisplay -exists HUDNote`)
+		headsUpDisplay -remove HUDNote;
+
+	$Note = `textFieldGrp -q -text $inputNote`;
+	
+	headsUpDisplay
+		-ao 1
+		-da "right"
+		-dw 1
+		-section 8
+		-block 3
+		-dfs "large"
+		-command getNote
+		-atr
+		HUDNote;
+}
+
+global proc string getNote ()
+{
+	global string $Note;
+	return $Note;
+}
+
+/////////////////////////////////////////////////////////
+//NotePlusCheck.
+global proc notePlusCheck ()
+{
+	global string $inputNote;
+	checkBox -e -v 1 checkAll;
+	noteHud($inputNote);
+}
+
+
+/////////////////////////////////////////////////////////
+// dateHud
+global proc dateHud ()
+{
+	if (`headsUpDisplay -exists HUDdate`)
+		headsUpDisplay -remove HUDdate;
+
+	headsUpDisplay
+		-ao 1
+		-da "left"
+		-dw 1
+		-section 6
+		-block 2
+		-dfs "large"
+        	-command "date -format \"hh:mm MM-DD-YYYY \";"
+        	-atr
+        	HUDdate;
+}
+
+
+/////////////////////////////////////////////////////////
+//frameHud
+global proc string frameCounter ()
+{
+	string $frame =`currentTime -q`;
+	int $max =`playbackOptions  -q -max`;
+	int $min =`playbackOptions  -q -min`;
+	string $totalFrame =(($max+1)-$min);
+	return ($frame+" / "+$totalFrame);
+}
+
+global proc frameHud ()
+{
+	if (`headsUpDisplay -exists HUDframe`)
+		headsUpDisplay -remove HUDframe;
+	
+	headsUpDisplay
+		-ao 1
+		-dw 1
+		-da "right"
+		-section 8
+		-block 2
+		-dfs "large"
+		-command "frameCounter;"
+		-atr
+		HUDframe;
+}
+

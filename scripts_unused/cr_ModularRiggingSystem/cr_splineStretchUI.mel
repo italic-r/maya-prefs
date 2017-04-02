@@ -1,0 +1,129 @@
+//---------------------------------------------------------------------------
+// cr_splineStretchUI.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:
+//      stretch spline ik UI
+//
+// REQUIRES:
+//      Nothing
+//
+// AUTHOR:
+//      Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+global proc cr_splineStretchUI()
+{
+if (`window -exists splineStretchWin`)
+deleteUI splineStretchWin;
+
+	window
+	-t "creatureRigs: Spline Stretch"
+	-mxb off
+	-mnb off
+	-resizeToFitChildren on
+	-sizeable off
+	splineStretchWin;
+
+formLayout splineStretchMainForm;
+    textFieldGrp -l "Name:" -tx "" -cw2 60 70 splineNameTFG;
+    textFieldGrp -l "Side:" -tx "" -cw2 30 70 splineSideTFG;
+    separator -height 5 -style "out" splineEndSep;
+    optionMenuGrp -l "Method:" -cw2 60 50 splineTypeOpGrp;
+        menuItem -l "scale";
+        menuItem -l "translate";
+    checkBoxGrp -l "Volume:" -v1 1 -cw2 60 20 splineVolCBG;    
+    textFieldButtonGrp -label "Curve:" -text "" -buttonLabel " select " -bc "cr_updateTextField splineCurveTFBG" -cw3 60 128 50 splineCurveTFBG;
+    textFieldButtonGrp -label "Control:" -text "" -buttonLabel " select " -bc "cr_updateTextField splineControlTFBG" -cw3 60 128 50 splineControlTFBG;
+    checkBoxGrp -l "Scale:" -v1 0 -cw2 60 20 -cc "cr_ssScaleSwitch" scaleCBG;
+    textFieldButtonGrp -label "Scale Node:" -text "" -buttonLabel " select " -bc "cr_updateTextField scaleNodeTFBG" -cw3 60 128 50 scaleNodeTFBG;
+    separator -height 5 -style "out" splineSep1;
+    button -l "Create" -c "cr_splineStretchPreCMD" splineApplyBtn;
+    separator -height 5 -style "out" splineSep2;
+   
+formLayout -e
+    -af splineNameTFG "top" 0
+    -af splineNameTFG "left" 0
+
+    -af splineSideTFG "top" 0
+    -ac splineSideTFG "left" 0 splineNameTFG
+
+    -ac splineEndSep "top" 0 splineSideTFG
+    -af splineEndSep "left" 0
+    -ap splineEndSep "right" 0 100
+        
+    -ac splineTypeOpGrp "top" 0 splineEndSep
+    -af splineTypeOpGrp "left" 0
+
+    -ac splineVolCBG "top" 2 splineTypeOpGrp
+    -af splineVolCBG "left" 0
+    
+    -ac splineCurveTFBG "top" 0 splineVolCBG
+    -af splineCurveTFBG "left" 0
+
+    -ac splineControlTFBG "top" 0 splineCurveTFBG
+    -af splineControlTFBG "left" 0
+    
+    -ac scaleCBG "top" 0 splineControlTFBG
+    -af scaleCBG "left" 0
+
+    -ac scaleNodeTFBG "top" 0 scaleCBG
+    -af scaleNodeTFBG "left" 0
+    
+    -ac splineSep1 "top" 0 scaleNodeTFBG
+    -af splineSep1 "left" 0
+    -ap splineSep1 "right" 0 100
+
+    -ac splineApplyBtn "top" 0 splineSep1
+    -af splineApplyBtn "left" 0
+    -ap splineApplyBtn "right" 0 100
+
+    -ac splineSep2 "top" 0 splineApplyBtn
+    -af splineSep2 "left" 0
+    -ap splineSep2 "right" 0 100     
+splineStretchMainForm;
+
+checkBoxGrp -e -v1 1 scaleCBG;
+showWindow splineStretchWin;
+}
+
+global proc cr_ssScaleSwitch()
+{
+int $switch = `checkBoxGrp -q -v1 scaleCBG`;
+if($switch)
+	textFieldButtonGrp -e -en 1 scaleNodeTFBG;
+else
+	textFieldButtonGrp -e -en 0 scaleNodeTFBG;
+}
+
+global proc cr_splineStretchPreCMD()
+{
+string $name = `textFieldGrp -q -tx splineNameTFG`;
+string $side = `textFieldGrp -q -tx splineSideTFG`;
+string $controller = `textFieldButtonGrp -q -tx splineControlTFBG`;
+string $stretchType = `optionMenuGrp -q -v splineTypeOpGrp`;
+string $crv = `textFieldButtonGrp -q -tx splineCurveTFBG`;
+string $worldScale = `textFieldButtonGrp -q -tx scaleNodeTFBG`;
+int $volume = `checkBoxGrp -q -v1 splineVolCBG`;
+int $scale = `checkBoxGrp -q -v1 scaleCBG`;
+
+cr_stretchySpline($name, $side, $controller, $stretchType, $crv, $scale, $volume, $worldScale);
+}

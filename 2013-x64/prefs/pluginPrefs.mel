@@ -1,0 +1,18 @@
+//Maya Preference 2013 (Release 1)
+//
+//
+evalDeferred("autoLoadPlugin(\"\", \"AnimSchoolPicker\", \"AnimSchoolPicker\")");
+evalDeferred("autoLoadPlugin(\"\", \"OpenEXRLoader\", \"OpenEXRLoader\")");
+evalDeferred("autoLoadPlugin(\"\", \"DirectConnect\", \"DirectConnect\")");
+evalDeferred("autoLoadPlugin(\"\", \"AbcImport\", \"AbcImport\")");
+evalDeferred("autoLoadPlugin(\"\", \"tiffFloatReader\", \"tiffFloatReader\")");
+evalDeferred("autoLoadPlugin(\"\", \"AbcExport\", \"AbcExport\")");
+evalDeferred("autoLoadPlugin(\"\", \"objExport\", \"objExport\")");
+evalDeferred("autoLoadPlugin(\"\", \"animImportExport\", \"animImportExport\")");
+evalDeferred("autoLoadPlugin(\"\", \"studioImport\", \"studioImport\")");
+evalDeferred("autoLoadPlugin(\"\", \"quatNodes\", \"quatNodes\")");
+evalDeferred("autoLoadPlugin(\"\", \"mayaCharacterization\", \"mayaCharacterization\")");
+evalDeferred("autoLoadPlugin(\"\", \"gpuCache\", \"gpuCache\")");
+evalDeferred("autoLoadPlugin(\"\", \"matrixNodes\", \"matrixNodes\")");
+evalDeferred("autoLoadPlugin(\"\", \"fbxmaya\", \"fbxmaya\")");
+evalDeferred("autoLoadPlugin(\"\", \"ik2Bsolver\", \"ik2Bsolver\")");

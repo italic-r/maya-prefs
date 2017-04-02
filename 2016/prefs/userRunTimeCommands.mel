@@ -1,0 +1,548 @@
+//Maya Preference 2016.5 (Release 1)
+//
+//
+
+runTimeCommand
+	-annotation "Scale Selected Keys"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("ackPushPull \"push\";")
+	AckPushKeys;
+
+runTimeCommand
+	-annotation "Scales selected keys"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("ackPushPull \"pull\";")
+	AckPullKeys;
+
+runTimeCommand
+	-annotation "Resets Translation to 0"
+	-category "Custom Scripts.Xform"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import maya.cmds as cmds\ncmds.xform( t=(0.0, 0.0, 0.0) )")
+	ClearTranslation;
+
+runTimeCommand
+	-annotation "Resets rotations to 0"
+	-category "Custom Scripts.Xform"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import maya.cmds as cmds\ncmds.xform( ro=(0.0, 0.0, 0.0) )")
+	ClearRotation;
+
+runTimeCommand
+	-annotation "Resets scale to 1"
+	-category "Custom Scripts.Xform"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import maya.cmds as cmds\ncmds.xform( s=(1.0, 1.0, 1.0) )")
+	ClearScale;
+
+runTimeCommand
+	-annotation "Deletes keys at current time only"
+	-category "Custom Scripts.Xform"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("timeSliderClearKey;")
+	ClearKeys;
+
+runTimeCommand
+	-annotation "Flips selected keys around keys adjacent to selection"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("ackNegateKeys;")
+	AckNegate;
+
+runTimeCommand
+	-annotation "Disables viewport nurbs curves"
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import ita_snippet_collection\nita_snippet_collection.hideVPelement(\"nurbsCurves\")\n")
+	HideCurves;
+
+runTimeCommand
+	-annotation "Go to start of timeline"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\nplayButtonStart;\nundoInfo -stateWithoutFlush on;")
+	FrameFirst;
+
+runTimeCommand
+	-annotation "Go back one frame"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\nplayButtonStepBackward;\nundoInfo -stateWithoutFlush on;")
+	FramePrevious;
+
+runTimeCommand
+	-annotation "Step forward one frame"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\nplayButtonStepForward;\nundoInfo -stateWithoutFlush on;")
+	FrameNext;
+
+runTimeCommand
+	-annotation "Fast forward to end of timeline"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\nplayButtonEnd;\nundoInfo -stateWithoutFlush on;")
+	FrameEnd;
+
+runTimeCommand
+	-annotation "Plays forward"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import ita_PlayView\nita_PlayView.init()\n")
+	FramePlayForward;
+
+runTimeCommand
+	-annotation "steps forward"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\ncurrentTime ( `currentTime -q` + 1 );\nundoInfo -stateWithoutFlush on;")
+	NextFrameUser;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\ncurrentTime ( `currentTime -q` - 1 );\nundoInfo -stateWithoutFlush on;")
+	PreviousFrameUser;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\ncurrentTime -edit `findKeyframe -timeSlider -which next`;\nundoInfo -stateWithoutFlush on;")
+	NextKeyUser;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\ncurrentTime -edit `findKeyframe -timeSlider -which previous`;\nundoInfo -stateWithoutFlush on;")
+	PreviousKeyUser;
+
+runTimeCommand
+	-annotation "Turns off undo queue for time scrubbing"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\nstoreLastAction( \"restoreLastContext \" + `currentCtx` );setToolTo TimeDragger")
+	ScrubNoUndo;
+
+runTimeCommand
+	-annotation "Returns undo behavior to normal"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("invokeLastAction;\nundoInfo -stateWithoutFlush on;")
+	ScrubNoUndoOff;
+
+runTimeCommand
+	-annotation "ackToggleCams"
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("ackToggleCams;")
+	ToggleCams;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("ackToggleCams_setup")
+	ToggleCams_setup;
+
+runTimeCommand
+	-annotation "Toggles joint visibility in active viewport"
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import ita_snippet_collection\nita_snippet_collection.hideVPelement(\"joints\")\n")
+	HideJnts;
+
+runTimeCommand
+	-annotation "Toggles polygon visibility in active viewport"
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import ita_snippet_collection\nita_snippet_collection.hideVPelement(\"polymeshes\")\n")
+	HidePolys;
+
+runTimeCommand
+	-annotation "Sets keys on only X transforms"
+	-category "Custom Scripts.Xform"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("setKeyframe -at translateX;\nsetKeyframe -at rotateX;\nsetKeyframe -at scaleX;")
+	SetKeyX;
+
+runTimeCommand
+	-annotation "Sets keys on only Y transforms"
+	-category "Custom Scripts.Xform"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("setKeyframe -at translateY;\nsetKeyframe -at rotateY;\nsetKeyframe -at scaleY;")
+	SetKeyY;
+
+runTimeCommand
+	-annotation "Sets keys on only Z transforms"
+	-category "Custom Scripts.Xform"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("setKeyframe -at translateZ;\nsetKeyframe -at rotateZ;\nsetKeyframe -at scaleZ;")
+	SetKeyZ;
+
+runTimeCommand
+	-annotation "Sets timeline playback start frame"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("int $cF = `currentTime -q`;\n\nplaybackOptions -min $cF;")
+	TimelineMin;
+
+runTimeCommand
+	-annotation "Sets timeline playback end frame"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("int $cF = `currentTime -q`;\n\nplaybackOptions -max $cF;")
+	TimelineMax;
+
+runTimeCommand
+	-annotation "Expands timeline to end of animation"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\n\nstring $end = `playbackOptions -q -aet`;\nplaybackOptions -max $end;\n\nundoInfo -stateWithoutFlush on;")
+	TimelineMaxExpand;
+
+runTimeCommand
+	-annotation "Expands timeline to start of animation"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\n\nstring $start = `playbackOptions -q -ast`;\nplaybackOptions -min $start;\n\nundoInfo -stateWithoutFlush on;")
+	TimelineMinExpand;
+
+runTimeCommand
+	-annotation "oaSmoothKeys"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("oaSmoothKeys;")
+	SmoothKeys;
+
+runTimeCommand
+	-annotation "Resets channel box attributes to defaults (T,R,S,Custom)"
+	-category "Custom Scripts.Xform"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import llResetChannels\nllResetChannels.llResetChannels()\n")
+	ClearAttr;
+
+runTimeCommand
+	-annotation "Frames playback range in graph editor"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import ita_snippet_collection\nita_snippet_collection.frameRange()\n")
+	TimeFramePlaybackRange;
+
+runTimeCommand
+	-annotation "Playblast active viewport"
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import ita_DefaultCameraChecker\nita_DefaultCameraChecker.init()")
+	Playblast;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import ita_snippet_collection\nita_snippet_collection.centerView()\n")
+	TimeCenter;
+
+runTimeCommand
+	-annotation "Moves keys forward in time"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("ackMoveKeys \"right\";")
+	AckMoveKeysForward;
+
+runTimeCommand
+	-annotation "Moves keys backward in time"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("ackMoveKeys \"left\";")
+	AckMoveKeysBackward;
+
+runTimeCommand
+	-annotation "Rotate (Press)"
+	-category "User Marking Menus"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("if (`popupMenu -exists tempMM`) { deleteUI tempMM; }\nRotateTool;\npopupMenu -button 1 -ctl false -alt false -sh false -allowOptionBoxes true -parent `findPanelPopupParent` -mm 1 tempMM; \nsource \"menu_Rotate\";\n")
+	Rotate_Press;
+
+runTimeCommand
+	-annotation "Rotate (Release)"
+	-category "User Marking Menus"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("if (`popupMenu -exists tempMM`) { deleteUI tempMM; }")
+	Rotate_Release;
+
+runTimeCommand
+	-annotation "Translate (Press)"
+	-category "User Marking Menus"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("if (`popupMenu -exists tempMM`) { deleteUI tempMM; }\nMoveTool;\npopupMenu -button 1 -ctl false -alt false -sh false -allowOptionBoxes true -parent `findPanelPopupParent` -mm 1 tempMM; \nsource \"menu_Translate\";\n")
+	Translate_Press;
+
+runTimeCommand
+	-annotation "Translate (Release)"
+	-category "User Marking Menus"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("if (`popupMenu -exists tempMM`) { deleteUI tempMM; }")
+	Translate_Release;
+
+runTimeCommand
+	-annotation "Scale (Press)"
+	-category "User Marking Menus"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("if (`popupMenu -exists tempMM`) { deleteUI tempMM; }\nScaleTool;\npopupMenu -button 1 -ctl false -alt false -allowOptionBoxes true -parent `findPanelPopupParent` -mm 1 tempMM;\nsource \"menu_Scale\";")
+	Scale_Press;
+
+runTimeCommand
+	-annotation "Scale (Release)"
+	-category "User Marking Menus"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("if (`popupMenu -exists tempMM`) { deleteUI tempMM; }")
+	Scale_Release;
+
+runTimeCommand
+	-annotation "Breaks key tangents"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import ita_snippet_collection\nita_snippet_collection.breakTan(arg=\"Press\")\n")
+	TangentBreakAndUnlock;
+
+runTimeCommand
+	-annotation "Unites key tangents"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import ita_snippet_collection\nita_snippet_collection.breakTan(arg=\"Release\")\n")
+	TangentUnifyAndLock;
+
+runTimeCommand
+	-annotation "Select all control channels of the same type and axis"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import GroupSelection\nGroupSelection.highlightAttrs()")
+	ChannelGroup;
+
+runTimeCommand
+	-annotation "Unpins selected channel from graph editor"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("doPinChannel graphEditor1OutlineEd graphEditor1FromOutliner 0;")
+	ChannelUnpin;
+
+runTimeCommand
+	-annotation "Pins selected channel to graph editor"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("doPinChannel graphEditor1OutlineEd graphEditor1FromOutliner 1;")
+	ChannelPin;
+
+runTimeCommand
+	-annotation "Custom anim menu set"
+	-category "Custom Scripts.Menu Sets"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("if (`menuSet -q -exists menuSet`) { workingMode menuSet; } else { warning \"Anim Menu Set not found.\"; }")
+	ShowAnimUI;
+
+runTimeCommand
+	-annotation "Opens prefs to animation settings"
+	-category "Custom Scripts"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("preferencesWnd \"animation\";")
+	Prefs;
+
+runTimeCommand
+	-annotation "Opens hotkey editor"
+	-category "Custom Scripts"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("hotkeyEditorWindow;")
+	PrefsHotkeys;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import maya.cmds as cmds\n\ncmds.filterCurve(f=\"euler\")")
+	EulerFilter;
+
+runTimeCommand
+	-annotation "HIdes strokes in active viewport"
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import ita_snippet_collection\nita_snippet_collection.hideVPelement(\"strokes\")\n")
+	HideStroke;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import ita_snippet_collection\nita_snippet_collection.TanLock(arg=\"Release\")\n")
+	TangentWeightToggleRelease;
+
+runTimeCommand
+	-annotation "Hold to unlock tangent weight, unified"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import ita_snippet_collection\nita_snippet_collection.TanLock(arg=\"Press\")\n")
+	TangentWeightTogglePress;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("activatePanZoom;")
+	PanZoomPress;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("deactivatePanZoom;")
+	PanZoomRelease;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import ita_snippet_collection\nita_snippet_collection.hideVPelement(\"locators\")\n")
+	HideLocators;
+
+runTimeCommand
+	-annotation "Toggles template curve"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("//doTemplateChannel graphEditor1FromOutliner 1;\n//doTemplateChannel graphEditor1FromOutliner 0;\n")
+	TemplateCurve;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("maya.cmds.keyTangent(itt=\"auto\", ott=\"auto\")")
+	TangentTypeAuto;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("maya.cmds.keyTangent(itt=\"flat\", ott=\"flat\")")
+	TangentTypeFlat;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("maya.cmds.keyTangent(itt=\"linear\", ott=\"linear\")")
+	TangentTypeLinear;
+
+runTimeCommand
+	-annotation "Selected keys or objects to previous keys"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("from aTools.animTools.animBar.subUIs import tweenMachine\nTM = tweenMachine.TweenMachine\nTM().setTween(0)")
+	aToolsTweenMachinePrev;
+
+runTimeCommand
+	-annotation "Selected keys or objects to next keys"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("from aTools.animTools.animBar.subUIs import tweenMachine\nTM = tweenMachine.TweenMachine\nTM().setTween(100)")
+	aToolsTweenMachineNext;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import ackDeleteRedundant\nackDeleteRedundant.ackDeleteRedundant()")
+	ackDeleteRedundant;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("maya.cmds.keyTangent(itt=\"step\", ott=\"step\")")
+	TangentTypeStepped;
+
+runTimeCommand
+	-annotation "Run a number of Maya commands immediately"
+	-category "Custom Scripts"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import sys\nsys.path.append('/home/italic/maya/scripts/Helios')\n\nimport Helios\nHelios.HeliosGUI()")
+	Helios;
+
+runTimeCommand
+	-annotation "Similar to Helios. Invoke to search for an operator."
+	-category "Custom Scripts"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import quicklauncher\nquicklauncher.show()")
+	QuickLauncher;
+

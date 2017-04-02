@@ -1,0 +1,1386 @@
+//-----------------------------------------------------------
+//  Author:  	Matt D Aldridge  <mattdaldridge@gmail.com>
+//  Date:	9.16.05
+//  Version: 	1.0
+//----------------------------------------------------------
+//
+// Custom toolbox with multiple tool shelves.
+// Based on the CPS Toolbox
+//
+// 	A mayaToolbox_Prefs.mel file is saved in the user Maya dir so
+//	it will work in any version of Maya and can be moved or edited.
+//
+//           C:\Documents and Settings\  userName  \My Documents\maya
+//
+//-----------------------------------------------------------------------
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Prep for building GUI
+//----------------------------------------------------------------------
+global proc mayaToolbox() {
+
+	// Setup Directory Path
+	string $userName = `getenv "USER"`;
+	string $saveDIR = ("C:/Documents and Settings/" + $userName + "/My Documents/maya/");
+	string $mayaTB_File = ($saveDIR + "mayaToolbox_Prefs.mel");
+
+	mayaToolbox_GUI;
+
+	if(`filetest -r $mayaTB_File`){
+		mayaToolbox_RestoreFromFile;
+	}
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Strings for building GUI
+//----------------------------------------------------------------------
+global proc mayaToolbox_GUI(){
+
+
+
+	if (`window -exists mayaToolbox_Win`)
+	{
+		deleteUI mayaToolbox_Win;
+	}
+
+	if (`windowPref -q -ex mayaToolbox_Win`)
+	{
+		windowPref -r mayaToolbox_Win;
+	}
+
+
+	//--------------------------------------
+	// Create Window
+	window -tlb 1 -mxb 0 -title " Maya Toolbox" -mb 1 -mbv 1 -wh 200 300 -ret mayaToolbox_Win;
+
+	//---------------------------------
+	//		Toolbox
+	//---------------------------------
+	menu -l "Toolbox" -to 0;
+		menuItem -l "Edit Toolbox" -c "mayaToolboxEditor";
+		menuItem -d 1;
+		menuItem -l "Restore Settings" -c "mayaToolbox_RestoreFromFile";
+		menuItem -l "Save Settings" -c "mayaToolbox_buildEntryArray";
+
+	//---------------------------------
+	//		TABS
+	//---------------------------------
+	menu -l "Tabs" -to 0;
+		menuItem -l "New" -c "mayaToolbox_newTab(\"\")";
+		menuItem -l "Clear" -c "mayaToolbox_clearTab()";
+		menuItem -l "Delete" -c "mayaToolbox_deleteTab()";
+		menuItem -l "Rename" -c "mayaToolbox_renameTab()";
+		menuItem -divider 1;
+		menuItem -l "Move Left" -c "mayaToolbox_moveTab_Left()";
+		menuItem -l "Move Right" -c "mayaToolbox_moveTab_Right()";
+
+	//---------------------------------
+	//		Layouts
+	//---------------------------------
+	menu -l "Layouts" -to 0;
+		menuItem -l "Lay_1" -c "mayaToolbox_setLayout(1)";
+		menuItem -l "Lay_2" -c "mayaToolbox_setLayout(2)";
+		menuItem -l "Lay_3" -c "mayaToolbox_setLayout(3)";
+		menuItem -l "Lay_4" -c "mayaToolbox_setLayout(4)";
+		menuItem -d 1;
+		menuItem -l "Save Layouts" -subMenu 1;
+			menuItem -l "Lay_1" -c "mayaToolbox_saveLayout(1)";
+			menuItem -l "Lay_2" -c "mayaToolbox_saveLayout(2)";
+			menuItem -l "Lay_3" -c "mayaToolbox_saveLayout(3)";
+			menuItem -l "Lay_4" -c "mayaToolbox_saveLayout(4)";
+
+
+	global string $mayaToolbox_form;
+	$mayaToolbox_form = `formLayout -nd 100 mayaTB_FORM`;
+
+	button -l "Close" -c "mayaToolbox_closeWindow" mayaTB_closeButton;
+
+	global string $mayaToolbox_shelf;
+	$mayaToolbox_shelf = `shelfTabLayout -w 1 -h 1 -tv 1 -iv 1 -scr 0 -cr 1
+				-imw 0 -imh 0 -image "smallTrash.xpm" mayaTB_ShelfTabLayout`;
+
+	shelfLayout -cwh 33 33 -p mayaTB_ShelfTabLayout Tools;
+
+
+	formLayout -edit
+		-attachForm mayaTB_ShelfTabLayout "top" 0
+		-attachForm mayaTB_ShelfTabLayout "left" 0
+
+		-attachControl mayaTB_ShelfTabLayout "bottom" 0 mayaTB_closeButton
+
+		-attachNone mayaTB_closeButton "top"
+		-attachPosition mayaTB_closeButton "left" 1 10
+		-attachForm mayaTB_closeButton "bottom" 0
+		-attachPosition mayaTB_closeButton "right" 1 90
+
+		-attachForm mayaTB_ShelfTabLayout "bottom" 0
+		-attachForm mayaTB_ShelfTabLayout "right" 0
+			mayaTB_FORM;
+
+	//-----------------------------------------------
+	//		Hide Text for storing Layouts
+	//-----------------------------------------------
+	columnLayout -adj true -p mayaTB_FORM COLM_LAY_hideText;
+
+		intField -vis 0 mayaTB_PosW_1;
+		intField -vis 0 mayaTB_PosH_1;
+		intField -vis 0 mayaTB_WinW_1;
+		intField -vis 0 mayaTB_WinH_1;
+
+		intField -vis 0 mayaTB_PosW_2;
+		intField -vis 0 mayaTB_PosH_2;
+		intField -vis 0 mayaTB_WinW_2;
+		intField -vis 0 mayaTB_WinH_2;
+
+		intField -vis 0 mayaTB_PosW_3;
+		intField -vis 0 mayaTB_PosH_3;
+		intField -vis 0 mayaTB_WinW_3;
+		intField -vis 0 mayaTB_WinH_3;
+
+		intField -vis 0 mayaTB_PosW_4;
+		intField -vis 0 mayaTB_PosH_4;
+		intField -vis 0 mayaTB_WinW_4;
+		intField -vis 0 mayaTB_WinH_4;
+
+
+	//formLayout -edit
+	//	-attachControl mayaTB_closeButton "bottom" 0 mayaTB_ShelfTabLayout;
+
+showWindow mayaToolbox_Win;
+
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Clear TAB
+//----------------------------------------------------------------------
+global proc mayaToolbox_clearTab()
+{
+	global string $mayaToolbox_shelf;
+	string $currentTab = `shelfTabLayout -q -st $mayaToolbox_shelf`;
+	int $currentTabIndex = `shelfTabLayout -q -sti $mayaToolbox_shelf`;
+	string $tabLabels[] = `shelfTabLayout -q -tabLabel $mayaToolbox_shelf`;
+
+	string $returnCMD = `mayaToolbox_confirmDialog ("Clear contents of the tab \""+$tabLabels[$currentTabIndex-1]+"\"?")`;
+
+	if($returnCMD == "OK" ){
+		mayaToolbox_clearToolboxButtons($currentTab);
+	}
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Delete TAB
+//----------------------------------------------------------------------
+global proc mayaToolbox_deleteTab()
+{
+	global string $mayaToolbox_shelf;
+	int $currentTabIndex = `shelfTabLayout -q -sti $mayaToolbox_shelf`;
+	string $tabLabels[] = `shelfTabLayout -q -tabLabel $mayaToolbox_shelf`;
+	string $currentTabName = `shelfTabLayout -q -st $mayaToolbox_shelf`;
+	string $currentTab = `shelfTabLayout -q -sti $mayaToolbox_shelf`;
+
+	string $returnCMD = `mayaToolbox_confirmDialog ("Delete the tab \""+$tabLabels[$currentTabIndex-1]+"\"?")`;
+
+	if($returnCMD == "OK" ){
+		mayaToolbox_deleteTabIndex($currentTab);
+	}
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Rename TAB
+//----------------------------------------------------------------------
+global proc mayaToolbox_renameTab()
+{
+	global string $mayaToolbox_shelf;
+	string $currentTab= `shelfTabLayout -q -st $mayaToolbox_shelf`;
+	int $currentTabIndex = `shelfTabLayout -q -sti $mayaToolbox_shelf`;
+	string $tabLabels[] = `shelfTabLayout -q -tabLabel $mayaToolbox_shelf`;
+	string $result = `promptDialog 
+		-title ("Rename \""+$tabLabels[$currentTabIndex-1]+"\"")
+		-message "Enter new tab name:" 
+		-button "OK" -button "Cancel"
+		-defaultButton "OK" -cancelButton "Cancel"
+		-dismissString "Cancel"`;
+
+	// If the result was "OK", then proceed
+	//
+	if ( $result == "OK" )
+	{
+		string $tabName = `promptDialog -q`;
+		shelfTabLayout -e -tabLabel $currentTab $tabName $mayaToolbox_shelf;
+	}
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Move TAB LEFT
+//----------------------------------------------------------------------
+global proc mayaToolbox_moveTab_Left()
+{
+	global string $mayaToolbox_shelf;
+	int $currentTabIndex = `shelfTabLayout -q -sti $mayaToolbox_shelf`;
+	int $tabCount = `shelfTabLayout -q -nch $mayaToolbox_shelf`;
+	if( $currentTabIndex > 1 )
+	{
+		shelfTabLayout -e -moveTab $currentTabIndex ($currentTabIndex-1) $mayaToolbox_shelf;
+	}
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Move TAB RIGHT
+//----------------------------------------------------------------------
+global proc mayaToolbox_moveTab_Right()
+{
+	global string $mayaToolbox_shelf;
+	int $currentTabIndex = `shelfTabLayout -q -sti $mayaToolbox_shelf`;
+	int $tabCount = `shelfTabLayout -q -nch $mayaToolbox_shelf`;
+
+	if($currentTabIndex == $tabCount){
+		// Do nothing
+		return;
+	}
+
+	else
+	//if( $currentTabIndex > 1 )
+	{
+		shelfTabLayout -e -moveTab $currentTabIndex ($currentTabIndex+1) $mayaToolbox_shelf;
+	}
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Make New TAB
+//----------------------------------------------------------------------
+
+global proc string mayaToolbox_newTab( string $tabName )
+{
+	string $result = "";
+	int $continue = true;
+
+	global string $mayaToolbox_form;
+	global string $mayaToolbox_shelf;
+
+	if( $tabName == "" )
+	{
+		string $prompt = `promptDialog 
+			-title "Create New Shelf"
+			-message "Enter new shelf name:" 
+			-button "OK" -button "Cancel"
+			-defaultButton "OK" -cancelButton "Cancel"
+			-dismissString "Cancel"`;
+
+		if( $prompt == "OK" )
+		{
+			$tabName = `promptDialog -q`;
+		}
+		else
+		{
+			$continue = false;
+		}
+	}
+	
+	if ( $continue == true )
+	{
+		if( $tabName == "" )
+		{
+			$tabName = "NewTab";
+		}
+
+		string $uniqueTabName = mayaToolbox_getUniqueTabName($tabName);
+	
+		setParent $mayaToolbox_shelf;
+		
+		setParent $mayaToolbox_shelf;
+		string $newShelfName;
+		if ($uniqueTabName == "")
+		{
+			$newShelfName = `shelfLayout`;
+		}
+		
+		else
+		{
+			$newShelfName = `shelfLayout $uniqueTabName`;
+		}
+	
+		shelfTabLayout -e -tabLabel $newShelfName $tabName $mayaToolbox_shelf;
+	
+		// Match the style of the other tabs
+		string $style = `getShelfStyle($mayaToolbox_shelf)`;
+		shelfStyle $style "Small" $newShelfName;
+	
+		tabLayout -e -selectTabIndex `shelfTabLayout -q -nch $mayaToolbox_shelf` $mayaToolbox_shelf;
+
+		$result = $uniqueTabName;
+	}
+
+	return $result;
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Clear Buttons CMD
+//----------------------------------------------------------------------
+global proc mayaToolbox_clearToolboxButtons( string $tabName )
+{
+	// get all icons from shelf
+	string $buttons[] = `shelfLayout -q -childArray $tabName`;
+	if(size($buttons)){
+		deleteUI $buttons;
+	}
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Delete TAB CMD
+//----------------------------------------------------------------------
+global proc mayaToolbox_deleteTabIndex( int $tabIndex )
+{
+	global string $mayaToolbox_shelf;
+
+	string $tabs[] = `shelfTabLayout -q -ca $mayaToolbox_shelf`;
+	deleteUI $tabs[$tabIndex-1];
+	int $childCount = `shelfTabLayout -q -nch $mayaToolbox_shelf`;
+	if( $childCount >= $tabIndex )
+	{
+		shelfTabLayout -e -sti $tabIndex $mayaToolbox_shelf;
+	}
+	else if( $childCount > 0 )
+	{
+		shelfTabLayout -e -sti ($tabIndex-1) $mayaToolbox_shelf;
+	}
+	else
+	{
+		mayaToolbox_newTab("Tools");
+		shelfTabLayout -e -sti 1 $mayaToolbox_shelf;
+	}
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Get Toolbox Buttons
+//----------------------------------------------------------------------
+global proc string[] mayaToolbox_getToolboxButtons( string $tabName ){
+
+	string $icons[], $entryList[];
+	clear($entryList);
+
+	// get all icons from shelf
+	$icons = `shelfLayout -q -childArray $tabName`;
+
+	// get data of all shelf button
+	for( $cnt = 0; $cnt < size( $icons ); $cnt++ ){
+		$entryList[size( $entryList )] = `shelfButton -q -image1 $icons[$cnt]`;
+		$entryList[size( $entryList )] = `shelfButton -q -command $icons[$cnt]`;
+		$entryList[size( $entryList )] = `shelfButton -q -doubleClickCommand $icons[$cnt]`;
+		$entryList[size( $entryList )] = `shelfButton -q -annotation $icons[$cnt]`;
+		$entryList[size( $entryList )] = `shelfButton -q -imageOverlayLabel $icons[$cnt]`;
+	}
+
+	return $entryList;
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Confirm Dialog CMD
+//----------------------------------------------------------------------
+global proc string mayaToolbox_confirmDialog( string $message )
+{
+	return ( `confirmDialog
+	-title "Tool Box"
+	-message $message
+	-button "OK"
+	-button "Cancel"
+	-defaultButton "Cancel"
+	-cancelButton "Cancel"
+	-dismissString "Cancel"` );
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Get Unique TAB Name
+//----------------------------------------------------------------------
+global proc string mayaToolbox_getUniqueTabName( string $tabName )
+{
+	string $result = $tabName;
+
+	if( mayaToolbox_isUniqueTabName( $tabName ) == 0 )
+	{
+		int $nameIndex = 1;
+		string $testName = ($tabName+$nameIndex);
+		while( mayaToolbox_isUniqueTabName( $testName ) == 0 )
+		{
+			$nameIndex ++;
+			$testName = ($tabName+$nameIndex);
+		}
+
+		$result = $testName;
+	}
+
+	return $result;
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Is Unique TAB Name
+//----------------------------------------------------------------------
+global proc int mayaToolbox_isUniqueTabName( string $tabName )
+{
+	global string $mayaToolbox_shelf;
+	int $result = 1;
+
+	global string $mayaToolbox_shelf;
+	string $tabs[] = `shelfTabLayout -q -ca $mayaToolbox_shelf`;
+
+	int $t;
+	for( $t = 0; $t < size($tabs); $t ++ )
+	{
+		if( $tabs[$t] == $tabName )
+		{
+			$result = 0;
+			break;
+		}
+	}
+
+	return $result;
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Toolbox Editor UI
+//----------------------------------------------------------------------
+global proc mayaToolboxEditor(){
+
+	if( `window -exists mayaTB_editorUI` ){
+		deleteUI mayaTB_editorUI;
+	}
+
+	window -tlb 1 -wh 450 550 -mxb 0 -rtf 0 -t "Maya Toolbox Editor" -mb 1 -mbv 1 mayaTB_editorUI;
+
+		string $mayaToolbox_editorForm = `formLayout -numberOfDivisions 100 mayaTB_formLAY_1`;
+
+			textScrollList
+				-ams 0 -sc "mayaToolbox_loadEditorEntry"
+				-dkc "mayaToolbox_editorDeleteEntry"
+			    	mayaToolbox_editorScrollList;
+
+			columnLayout -adj 1 mayaToolbox_editorBottomLayout;
+
+
+			//---------------------------------
+			//		Annotation
+			//---------------------------------
+			rowLayout -nc 2 -cat 1 "right" 5 -ad2 2 -cw 1 150 mayaToolbox_editorAnnotationLayout;
+
+			text -l "Annotation";
+
+			textField -ec "mayaToolbox_editorStoreEntry"
+					-cc "mayaToolbox_editorStoreEntry"
+					mayaToolbox_editorAnnotation;
+				setParent ..;
+
+			//---------------------------------
+			//		Overlay Label
+			//---------------------------------
+			rowLayout -nc 2 -cat 1 "right" 5 -ad2 2 -cw 1 150
+					mayaToolbox_editorOverlayLabelLayout;
+
+			text -l "Overlay Label";
+			
+			textField -ec "mayaToolbox_editorStoreEntry"
+					-cc "mayaToolbox_editorStoreEntry"
+					mayaToolbox_editorOverlayLabel;
+				setParent ..;
+
+			//---------------------------------
+			//		Command
+			//---------------------------------
+			rowLayout -nc 2 -cat 1 "right" 5 -ad2 2 -cw 1 150
+					mayaToolbox_editorCommandLayout;
+
+			text -l "Command";
+
+			scrollField -h 100 -nl 4 -ww false
+					-ec "mayaToolbox_editorStoreEntry"
+					-cc "mayaToolbox_editorStoreEntry"
+					mayaToolbox_editorCommand;
+				setParent ..;
+
+			//---------------------------------
+			//		Double Click CMD
+			//---------------------------------
+			rowLayout -nc 2 -cat 1 "right" 5 -ad2 2 -cw 1 150
+					mayaToolbox_editorDoubleClickCommandLayout;
+
+			text -l "Double Click Command";
+
+			scrollField -h 80 -nl 4 -ww false
+					-ec "mayaToolbox_editorStoreEntry"
+					-cc "mayaToolbox_editorStoreEntry"
+					mayaToolbox_editorDoubleClickCommand;
+				setParent ..;
+
+			//---------------------------------
+			//		Icon
+			//---------------------------------
+			columnLayout -adj 1 -p  mayaToolbox_editorBottomLayout mayaToolbox_COLM_1;
+
+			rowLayout -nc 6 -cw 1 8 
+					-cw 2 33
+					-cw 3 8
+					-cw 5 1
+					-adj 6 
+					-cat 6 "right" 0 
+					mayaTB_icon_ROWLAY;
+
+				separator -h 5 -style "none";
+			picture -image "sphere.xpm" mayaTB_pictCntl;
+				separator -h 5 -style "none";
+			button -l "Change Image..." -c "mayaToolbox_chooseIcon" mayaTB_modBtn;
+				separator -h 5 -style "none";
+			textField -ec "mayaToolbox_editorStoreEntry"
+					-cc "mayaToolbox_editorStoreEntry"
+					mayaToolbox_editorIcon;
+
+			setParent mayaToolbox_COLM_1;
+
+			columnLayout -adj 1 -p  mayaToolbox_editorBottomLayout mayaToolbox_COLM_2;
+			separator -h 10 -style "none";
+
+
+			//---------------------------------
+			//		Buttons
+			//---------------------------------
+			formLayout -numberOfDivisions 100 mayaTB_formLAY_2;
+
+			button -l "Add Button" -c "mayaToolbox_editorAddEntry"
+						mayaToolbox_editorAddEntryButton;
+
+			button -l "Delete Button" -c "mayaToolbox_editorDeleteEntry"
+						mayaToolbox_editorDeleteEntryButton;
+
+			button -l "Update" -c "mayaToolbox_updateEditor()"
+						mayaToolbox_updateEditorButton;
+
+			button -l "Close" -c "mayaToolbox_editorStoreEntry; deleteUI mayaTB_editorUI"
+						mayaToolbox_closeEditorButton;
+
+			setParent mayaTB_formLAY_2;
+
+			columnLayout -adj 1 -p  mayaToolbox_editorBottomLayout mayaToolbox_COLM_3;
+			//separator -h 5 -style "double";
+
+	//--------------------
+	// Set form layouts
+	//--------------------
+	formLayout -edit
+		-attachForm mayaToolbox_editorScrollList "top" 2
+		-attachForm mayaToolbox_editorScrollList "left" 2
+		-attachControl mayaToolbox_editorScrollList "bottom" 2 mayaToolbox_editorBottomLayout
+		-attachForm mayaToolbox_editorScrollList "right" 2
+
+		-attachNone mayaToolbox_editorBottomLayout "top"
+		-attachForm mayaToolbox_editorBottomLayout "left" 2
+		-attachForm mayaToolbox_editorBottomLayout "bottom" 0
+		-attachForm mayaToolbox_editorBottomLayout "right" 2
+
+		mayaTB_formLAY_1;
+
+	formLayout -edit
+		-attachNone mayaToolbox_editorAddEntryButton "top"
+		-attachPosition mayaToolbox_editorAddEntryButton "left" 0 0
+		-attachForm mayaToolbox_editorAddEntryButton "bottom" 2
+		-attachPosition mayaToolbox_editorAddEntryButton "right" 0 25
+
+		-attachNone mayaToolbox_editorDeleteEntryButton "top"
+		-attachPosition mayaToolbox_editorDeleteEntryButton "left" 0 25
+		-attachForm mayaToolbox_editorDeleteEntryButton "bottom" 2
+		-attachPosition mayaToolbox_editorDeleteEntryButton "right" 0 50
+
+		-attachNone mayaToolbox_updateEditorButton "top"
+		-attachPosition mayaToolbox_updateEditorButton "left" 0 50
+		-attachForm mayaToolbox_updateEditorButton "bottom" 2
+		-attachPosition mayaToolbox_updateEditorButton "right" 0 75
+
+		-attachNone mayaToolbox_closeEditorButton "top"
+		-attachPosition mayaToolbox_closeEditorButton "left" 0 75
+		-attachForm mayaToolbox_closeEditorButton "bottom" 2
+		-attachPosition mayaToolbox_closeEditorButton "right" 0 100
+
+		mayaTB_formLAY_2;
+
+	mayaToolbox_editorBuildEntryList 1;
+	
+
+	showWindow mayaTB_editorUI;
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Load Editor Entry
+//----------------------------------------------------------------------
+global proc mayaToolbox_loadEditorEntry(){
+
+	global string $mayaToolbox_shelf;
+	string $currentTab = `shelfTabLayout -q -st $mayaToolbox_shelf`;
+
+	int $selection[] = `textScrollList -q -sii mayaToolbox_editorScrollList`;
+	$selection[0] -= 1;
+
+	if( $selection[0] >= 0 ){
+		string $entryList[] = `mayaToolbox_getToolboxButtons( $currentTab )`;
+	
+		int $entryNum = 5; // $entryList[0];
+	
+		textField -e -text $entryList[$selection[0] * $entryNum + 3] mayaToolbox_editorAnnotation;
+		textField -e -text $entryList[$selection[0] * $entryNum + 1] mayaToolbox_editorCommand ;
+		textField -e -text $entryList[$selection[0] * $entryNum + 2] mayaToolbox_editorDoubleClickCommand;
+		textField -e -text $entryList[$selection[0] * $entryNum + 4] mayaToolbox_editorOverlayLabel;
+		textField -e -text $entryList[$selection[0] * $entryNum + 0] mayaToolbox_editorIcon;
+
+		picture -e -image $entryList[$selection[0] * $entryNum + 0] mayaTB_pictCntl;
+	}
+
+	else{
+		textField -e -text "" mayaToolbox_editorAnnotation;
+		textField -e -text "" mayaToolbox_editorCommand ;
+		textField -e -text "" mayaToolbox_editorDoubleClickCommand;
+		textField -e -text "" mayaToolbox_editorOverlayLabel;
+		textField -e -text "" mayaToolbox_editorIcon;
+
+		picture -e -image commandButton.xpm mayaTB_pictCntl;
+	}
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Build Editor Entry List
+//----------------------------------------------------------------------
+global proc mayaToolbox_editorBuildEntryList( int $activeEntry ){
+	global string $mayaToolbox_shelf;
+	string $currentTab = `shelfTabLayout -q -st $mayaToolbox_shelf`;
+
+	// build entries
+	string $entryList[] = `mayaToolbox_getToolboxButtons( $currentTab )`;
+	int $entryNum = 5; // $entryList[0];
+
+	textScrollList -e -removeAll mayaToolbox_editorScrollList;
+
+	// add all shelfButton to list
+	for( $cnt = 0; $cnt < size( $entryList ) / $entryNum; $cnt++ ){
+		if( size( $entryList[$cnt * $entryNum + 3] ) ){
+			textScrollList -e -append $entryList[$cnt * $entryNum + 3] mayaToolbox_editorScrollList;
+		}
+
+		else{
+			textScrollList -e -append "Unnamed" mayaToolbox_editorScrollList;
+		}
+	}
+
+	string $icons[] = `shelfLayout -q -childArray $currentTab`;
+
+	if( size( $icons ) ){
+		textScrollList -e -selectIndexedItem $activeEntry mayaToolbox_editorScrollList;
+	}
+
+	mayaToolbox_loadEditorEntry;
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Editor Store Entry
+//----------------------------------------------------------------------
+global proc mayaToolbox_editorStoreEntry(){
+
+	global string $mayaToolbox_shelf;
+	string $currentTab = `shelfTabLayout -q -st $mayaToolbox_shelf`;
+
+	string $icons[] = `shelfLayout -q -childArray $currentTab`;
+	int $selection[] = `textScrollList -q -selectIndexedItem mayaToolbox_editorScrollList`;
+
+	if( $selection[0] >= 1 ){
+		shelfButton
+			-e
+			-image1 `textField -q -text mayaToolbox_editorIcon`
+			-command `textField -q -text mayaToolbox_editorCommand`
+			-doubleClickCommand `textField -q -text mayaToolbox_editorDoubleClickCommand`
+			-annotation `textField -q -text mayaToolbox_editorAnnotation`
+			-imageOverlayLabel `textField -q -text mayaToolbox_editorOverlayLabel`
+			$icons[$selection[0] - 1];
+	
+		// rebuild entry list
+		mayaToolbox_editorBuildEntryList $selection[0];
+	}
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Editor Add Entry
+//----------------------------------------------------------------------
+global proc mayaToolbox_editorAddEntry(){
+
+	global string $mayaToolbox_shelf;
+	string $currentTab = `shelfTabLayout -q -st $mayaToolbox_shelf`;
+
+	setParent $currentTab;
+	shelfButton
+		-image1 "commandButton.xpm"
+		-annotation "Empty";
+
+	// rebuild entry list
+	int $numberOfItems = `textScrollList -q -numberOfItems mayaToolbox_editorScrollList`;
+	mayaToolbox_editorBuildEntryList ( $numberOfItems + 1 );
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Editor Delete Entry
+//----------------------------------------------------------------------
+global proc mayaToolbox_editorDeleteEntry(){
+
+	global string $mayaToolbox_shelf;
+	string $currentTab = `shelfTabLayout -q -st $mayaToolbox_shelf`;
+
+	// get all icons from shelf
+	string $icons[] = `shelfLayout -q -childArray $currentTab`;
+
+	// get selected entry
+	int $selection[] = `textScrollList -q -selectIndexedItem mayaToolbox_editorScrollList`;
+
+	if( $selection[0] >= 1 ){
+		// delete shelf button
+		deleteUI $icons[$selection[0] - 1];
+
+		if( $selection[0] > size( $icons ) - 1 )
+			$selection[0] = size( $icons ) - 1;
+	
+		// rebuild entry list
+		mayaToolbox_editorBuildEntryList $selection[0];
+	}
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			Update Editor
+//----------------------------------------------------------------------
+global proc mayaToolbox_updateEditor(){
+
+	if( `window -exists mayaTB_editorUI` ){
+		mayaToolbox_editorBuildEntryList 1;
+		showWindow mayaTB_editorUI;
+	}
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+
+//----------------------------------------------------------------------
+//			File Browser for Icon
+//----------------------------------------------------------------------
+global proc mayaToolbox_chooseIcon(){
+
+    	global string $gDefaultFileBrowserDir;
+
+	//string $mayaTB_dirName = getenv("MAYA_LOCATION");
+	//$mayaTB_dirName = ($mayaTB_dirName + "/extras/icons");
+
+	//$gDefaultFileBrowserDir = $mayaTB_dirName;
+
+    	fileBrowser( "mayaToolbox_chooseIconCB", "Choose", "*.*", 0);	
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+//----------------------------------------------------------------------
+//			Call Back for picked Icon
+//----------------------------------------------------------------------
+global proc mayaToolbox_chooseIconCB(string $file, string $type){
+
+	// Tokenize return to get icon name
+	string $buffIcon[];
+	tokenize($file, "/" , $buffIcon);
+
+	int $buffSize = `size($buffIcon)`;
+
+	int $lastVal = ($buffSize - 1);
+
+	textField -e -tx $buffIcon[$lastVal] mayaToolbox_editorIcon ;
+	mayaToolbox_editorStoreEntry;
+    	return;	
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+//----------------------------------------------------------------------
+//			Set Toolbox Layout
+//----------------------------------------------------------------------
+global proc mayaToolbox_setLayout( int $layoutIndex ){
+
+	int $PosW = `intField -q -v ("mayaTB_PosW_" + $layoutIndex)`;
+	int $PosH = `intField -q -v ("mayaTB_PosH_" + $layoutIndex)`;
+
+	int $WinW = `intField -q -v ("mayaTB_WinW_" + $layoutIndex)`;
+	int $WinH = `intField -q -v ("mayaTB_WinH_" + $layoutIndex)`;
+
+
+	// Set Window Position
+	window -e -tlc $PosW $PosH mayaToolbox_Win;
+
+	// Set Window W and H
+	window -e -wh $WinW $WinH mayaToolbox_Win;
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+//----------------------------------------------------------------------
+//			Save Toolbox Layout
+//----------------------------------------------------------------------
+global proc mayaToolbox_saveLayout( int $layoutIndex ){
+
+	// Init Layouts to ensure values are there first
+	mayaToolbox_InitLayout;
+
+	int $pos[] = `window -q -tlc mayaToolbox_Win`;
+
+	int $size[] = `window -q -wh mayaToolbox_Win`;
+
+	intField -e -v $pos[0] ("mayaTB_PosW_" + $layoutIndex);
+	intField -e -v $pos[1] ("mayaTB_PosH_" + $layoutIndex);
+
+	intField -e -v $size[0] ("mayaTB_WinW_" + $layoutIndex);
+	intField -e -v $size[1] ("mayaTB_WinH_" + $layoutIndex);
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+//----------------------------------------------------------------------
+//			Init Toolbox Layout
+//----------------------------------------------------------------------
+global proc mayaToolbox_InitLayout(){
+
+	int $i;
+	for($i = 1; $i < 5; $i++){
+
+		// Get Values for Window Pos and WH
+		int $PosW = `intField -q -v ("mayaTB_PosW_" + $i)`;
+		int $PosH = `intField -q -v ("mayaTB_PosH_" + $i)`;
+		int $WinW = `intField -q -v ("mayaTB_WinW_" + $i)`;
+		int $WinH = `intField -q -v ("mayaTB_WinH_" + $i)`;
+
+		// Set Vals if defaulted to Zero
+		if($PosW == 0){
+			intField -e -v 500 ("mayaTB_PosW_" + $i);
+		}
+
+		if($PosH == 0){
+			intField -e -v 500 ("mayaTB_PosH_" + $i);
+		}
+
+		if($WinW == 0){
+			intField -e -v 300 ("mayaTB_WinW_" + $i);
+		}
+
+		if($WinH == 0){
+			intField -e -v 300 ("mayaTB_WinH_" + $i);
+		}
+	}
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+//----------------------------------------------------------------------
+//			Build Entry Array for Save
+//----------------------------------------------------------------------
+global proc mayaToolbox_buildEntryArray(){
+
+	// Init Layouts to ensure values are not Zero
+	mayaToolbox_InitLayout;
+
+	global string $mayaTB_entryList[];
+	clear($mayaTB_entryList);
+
+	// Get the Layouts stored
+	string $storedLayout = "";
+
+	int $lay;
+	for( $lay = 1; $lay < 5; $lay ++ ){
+
+		int $PosW = `intField -q -v ("mayaTB_PosW_" + $lay)`;
+		int $PosH = `intField -q -v ("mayaTB_PosH_" + $lay)`;
+		int $WinW = `intField -q -v ("mayaTB_WinW_" + $lay)`;
+		int $WinH = `intField -q -v ("mayaTB_WinH_" + $lay)`;
+
+		if($lay < 4){
+			$storedLayout += ($PosW +" "+ $PosH +" "+ $WinW +" "+ $WinH + " | ");
+		}
+
+		else{
+			$storedLayout += ($PosW +" "+ $PosH +" "+ $WinW +" "+ $WinH);
+		}
+	}
+
+	$mayaTB_entryList[0] = $storedLayout;
+
+	// List all the Tabs found
+	string $tab[] = `shelfTabLayout -q -ca mayaTB_ShelfTabLayout`;
+
+	// List the Tab labels found
+	string $tabLabels[] = `shelfTabLayout -q -tabLabel mayaTB_ShelfTabLayout`;
+
+	int $numTabs = size($tab);
+	$mayaTB_entryList[1] = $numTabs;
+
+	int $t;
+	for( $t = 0; $t < size($tab); $t ++ ){
+
+		// Get all of the button info for current Tab
+		string $icons[];
+		string $iconList[];
+		clear($iconList);
+
+		// get all icons from shelf
+		string $exPath = ("mayaToolbox_Win|mayaTB_FORM|mayaTB_ShelfTabLayout|" + $tab[$t]);
+		$icons = `shelfLayout -q -childArray $exPath`;
+
+
+		// get data of all shelf buttons
+		for( $cnt = 0; $cnt < size($icons); $cnt++ ){
+
+			$iconList[size( $iconList )] = `shelfButton -q -annotation $icons[$cnt]`;
+			$iconList[size( $iconList )] = `shelfButton -q -imageOverlayLabel $icons[$cnt]`;
+
+			////////////////////////////////////
+			// Tokenize CMD for multiple lines;
+			////////////////////////////////////
+			string $fullCMD_List = `shelfButton -q -command $icons[$cnt]`;
+			string $bufCMD_List[];
+			tokenize($fullCMD_List, "\n", $bufCMD_List);
+
+
+			string $CMD_List = "";	
+
+			int $a;
+			for( $a = 0; $a < size($bufCMD_List); $a++ ){
+
+				string $CMD_newLineString = "";
+				$CMD_newLineString = match( "^[^(\r\n)]*", $bufCMD_List[$a] );
+
+				$CMD_List += ($CMD_newLineString + " ");
+			}
+
+
+			$iconList[size( $iconList )] = $CMD_List;
+
+
+			///////////////////////////////////////
+			// Tokenize DC_CMD for multiple lines;
+			///////////////////////////////////////
+			string $full_DC_CMD_List = `shelfButton -q -doubleClickCommand $icons[$cnt]`;
+			string $buf_DC_CMD_List[];
+			tokenize($full_DC_CMD_List, "\n", $buf_DC_CMD_List);
+
+			string $DC_CMD_List = "";	
+
+			int $b;
+			for( $b = 0; $b < size($buf_DC_CMD_List); $b++ ){
+
+				string $DC_CMD_newLineString = "";
+				$DC_CMD_newLineString = match( "^[^(\r\n)]*", $buf_DC_CMD_List[$b] );
+
+				$DC_CMD_List += ($DC_CMD_newLineString + " ");
+			}
+
+			$iconList[size( $iconList )] = $DC_CMD_List;
+
+			$iconList[size( $iconList )] = `shelfButton -q -image1 $icons[$cnt]`;
+		}
+
+		$mayaTB_entryList[size($mayaTB_entryList)] = $tabLabels[$t];
+		$mayaTB_entryList[size($mayaTB_entryList)] = string(size($iconList)/5);
+
+		int $e;
+		for( $e = 0; $e < size($iconList); $e ++ ){
+			$mayaTB_entryList[size($mayaTB_entryList)] = $iconList[$e];
+		}
+	}
+
+	// Ready to save to file
+	mayaToolbox_Save2file;
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+//----------------------------------------------------------------------
+//			Save To File
+//----------------------------------------------------------------------
+global proc mayaToolbox_Save2file(){
+
+	global string $mayaTB_entryList[];
+
+	// Setup Directory Path
+	string $userName = `getenv "USER"`;
+
+	string $saveDIR = ("C:/Documents and Settings/" + $userName + "/My Documents/maya/");
+
+	string $mayaTB_File = ($saveDIR + "mayaToolbox_Prefs.mel");
+
+
+	// ----OPEN----
+	cmdFileOutput -o $mayaTB_File;
+
+	print $mayaTB_entryList;
+
+	//----CLOSE----
+	cmdFileOutput -c 1;
+
+	print ("Saved to: " + $mayaTB_File + "\n");
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+//----------------------------------------------------------------------
+//			Restore From File
+//----------------------------------------------------------------------
+global proc mayaToolbox_RestoreFromFile(){
+
+	// Setup Directory Path
+	string $userName = `getenv "USER"`;
+
+	string $saveDIR = ("C:/Documents and Settings/" + $userName + "/My Documents/maya/");
+
+	string $mayaTB_File = ($saveDIR + "mayaToolbox_Prefs.mel");
+
+
+	// Check to see if file already exists
+	if(`filetest -r $mayaTB_File`){
+
+       		string $fileTEXTarray[];
+		clear $fileTEXTarray;
+
+		// Open file and grab all the lines of text
+		int $fileId = `fopen $mayaTB_File "r"`;
+		string $nextLine = `fgetline $fileId`;
+
+    			while ( size( $nextLine ) > 0 ) {
+  
+				$fileTEXTarray[size($fileTEXTarray)] = $nextLine;
+    				$nextLine = `fgetline $fileId`;
+    			}
+
+		fclose $fileId;
+
+		// Number of text lines found
+		int $textArraySize = `size($fileTEXTarray)`;
+
+		// Strip out the new lines at the end of each string in array
+		int $i;
+		for($i = 0; $i < $textArraySize; $i++){
+
+			string $bufArray[];
+			tokenize($fileTEXTarray[$i], "\n", $bufArray);
+			$fileTEXTarray[$i] = $bufArray[0];
+		}
+
+		// Number of lines in the Prefs
+		int $lineSize = size($fileTEXTarray);
+
+
+		/////////////////////////////////
+		// Sort the window Layout data
+		/////////////////////////////////
+		string $bufLayout_FAT[];
+		tokenize($fileTEXTarray[0], "|" , $bufLayout_FAT);
+
+		int $Layout_1[];
+		int $Layout_2[];		
+		int $Layout_3[];
+		int $Layout_4[];
+
+		int $z;
+		for($z = 0; $z < size($bufLayout_FAT); $z++){
+
+			string $bufLayout_Array[];
+			tokenize($bufLayout_FAT[$z], " " , $bufLayout_Array);
+
+			if($z == 0){
+				$Layout_1[0] = $bufLayout_Array[0];
+				$Layout_1[1] = $bufLayout_Array[1];
+				$Layout_1[2] = $bufLayout_Array[2];
+				$Layout_1[3] = $bufLayout_Array[3];
+			}
+
+			if($z == 1){
+				$Layout_2[0] = $bufLayout_Array[0];
+				$Layout_2[1] = $bufLayout_Array[1];
+				$Layout_2[2] = $bufLayout_Array[2];
+				$Layout_2[3] = $bufLayout_Array[3];
+			}
+
+			if($z == 2){
+				$Layout_3[0] = $bufLayout_Array[0];
+				$Layout_3[1] = $bufLayout_Array[1];
+				$Layout_3[2] = $bufLayout_Array[2];
+				$Layout_3[3] = $bufLayout_Array[3];
+			}
+
+			if($z == 3){
+				$Layout_4[0] = $bufLayout_Array[0];
+				$Layout_4[1] = $bufLayout_Array[1];
+				$Layout_4[2] = $bufLayout_Array[2];
+				$Layout_4[3] = $bufLayout_Array[3];
+			}
+		}
+
+
+		/////////////////////////////////
+		// Plug-in the Layout Data
+		/////////////////////////////////
+		intField -e -v $Layout_1[0] mayaTB_PosW_1;
+		intField -e -v $Layout_1[1] mayaTB_PosH_1;
+		intField -e -v $Layout_1[2] mayaTB_WinW_1;
+		intField -e -v $Layout_1[3] mayaTB_WinH_1;
+
+		intField -e -v $Layout_2[0] mayaTB_PosW_2;
+		intField -e -v $Layout_2[1] mayaTB_PosH_2;
+		intField -e -v $Layout_2[2] mayaTB_WinW_2;
+		intField -e -v $Layout_2[3] mayaTB_WinH_2;
+
+		intField -e -v $Layout_3[0] mayaTB_PosW_3;
+		intField -e -v $Layout_3[1] mayaTB_PosH_3;
+		intField -e -v $Layout_3[2] mayaTB_WinW_3;
+		intField -e -v $Layout_3[3] mayaTB_WinH_3;
+
+		intField -e -v $Layout_4[0] mayaTB_PosW_4;
+		intField -e -v $Layout_4[1] mayaTB_PosH_4;
+		intField -e -v $Layout_4[2] mayaTB_WinW_4;
+		intField -e -v $Layout_4[3] mayaTB_WinH_4;
+
+
+		// How many Tabs to create
+		int $tabNum = $fileTEXTarray[1];
+
+		int $tabNameLine = 2;
+		int $readLine = 4;
+
+
+		// Remove current Tabs for rebuild
+		string $oldTabs[] = `shelfTabLayout -q -ca mayaTB_ShelfTabLayout`;
+
+		int $i;
+		for($i = 0; $i < size($oldTabs); $i++){
+			string $exPath = ("mayaToolbox_Win|mayaTB_FORM|mayaTB_ShelfTabLayout|" + $oldTabs[$i]);
+			deleteUI $exPath;
+		}
+
+
+			// Loop to create Tabs
+			int $a;
+			for($a = 0; $a < $tabNum; $a++){
+
+				// Tab Name
+				string $tabName = $fileTEXTarray[$tabNameLine];
+
+				// Make Tab
+				shelfLayout -p mayaTB_ShelfTabLayout $tabName;
+
+				// How many icons to make
+				string $numIcon = $fileTEXTarray[($tabNameLine + 1)];
+				int $iconNum = (int)$numIcon;
+
+				// This runs when we hit a new Tab name
+				if($readLine == $tabNameLine){
+					$readLine = ($readLine + 2);
+				}
+
+				// Next tab line
+				$tabNameLine = ($tabNameLine + ($iconNum * 5) + 2);
+
+				////////////////
+				// Make Button
+				////////////////
+				int $b;
+				for($b = 0; $b < $iconNum; $b++){
+
+					string $annotation = $fileTEXTarray[($readLine)];
+					string $overlayLabel = $fileTEXTarray[($readLine + 1)];
+					string $command = $fileTEXTarray[($readLine + 2)];
+					string $DC_command = $fileTEXTarray[($readLine + 3)];
+					string $iconName = $fileTEXTarray[($readLine) + 4];
+
+
+					// Make Shelf Button:
+					shelfButton -ann $annotation
+							-iol $overlayLabel
+							-c $command
+							-dcc $DC_command
+							-i $iconName
+							-p $tabName;
+
+					// Set start pos for next icon
+					$readLine = ($readLine + 5);
+
+				}
+
+			}
+	}
+
+	else{
+		error "No Maya Toolbox Prefs found!\n";
+
+	}
+}
+
+
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+
+//----------------------------------------------------------------------
+//			Close Maya Toolbox Window
+//----------------------------------------------------------------------
+global proc mayaToolbox_closeWindow(){
+
+	if (`window -exists mayaToolbox_Win`)
+	{
+		deleteUI mayaToolbox_Win;
+	}
+
+	if (`windowPref -q -ex mayaToolbox_Win`)
+	{
+		windowPref -r mayaToolbox_Win;
+	}
+}
+

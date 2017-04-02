@@ -1,0 +1,389 @@
+//---------------------------------------------------------------------------
+// cr_createModuleRigFromUI.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:
+//      Character rig from modules
+//
+// REQUIRES:
+//		cr_buildArmSetup.mel
+//		cr_buildBipedLegSetup.mel
+//		cr_buildQuadLegSetup.mel
+//		cr_buildSpineSetup.mel
+//		cr_buildEyeSetup.mel
+//		cr_buildHandSetup.mel
+//		cr_buildNeckHeadSetup.mel
+//		cr_buildSpaceSwitchSetup.mel
+//		cr_buildTentacleSetup.mel
+//		cr_autoRigGetFromUI.mel
+//		cr_charUtilsLib.mel
+//
+// AUTHOR:
+//      Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+
+eval("source \"cr_buildArmSetup.mel\";");
+eval("source \"cr_buildBipedLegSetup.mel\";");
+eval("source \"cr_buildQuadLegSetup.mel\";");
+eval("source \"cr_buildSpineSetup.mel\";");
+eval("source \"cr_buildEyeSetup.mel\";");
+eval("source \"cr_buildHandSetup.mel\";");
+eval("source \"cr_buildNeckHeadSetup.mel\";");
+eval("source \"cr_buildSpaceSwitchSetup.mel\";");
+eval("source \"cr_buildTentacleSetup.mel\";");
+eval("source \"cr_autoRigGetFromUI.mel\";");
+cr_charUtilsLib;
+
+global proc cr_createModuleRigFromUI() {
+	return;
+	}
+
+global proc cr_createRig()
+{
+string $spineRigPart;
+string $spineRigPartArray[];
+string $neckHeadRigPart;
+string $neckHeadRigPartArray[];
+string $tentacleRigPart;
+string $tentacleRigPartArray[];
+
+//global option declaration...
+string $ikFkType = `optionMenu -q -v rotTypeGlobalOpGrp`;
+string $stretchType = `optionMenu -q -v scaleTypeGlobalOpGrp`;
+int $stretch = `checkBox -q -v stretchGlobalChk`;
+int $midLock = `checkBox -q -v midGlobalChk`;
+int $volume = `checkBox -q -v volGlobalChk`;
+int $cr_buildWorld = 1;
+float $scale = 1;
+
+if(`objExists masterRigPartsHolder_node`)
+	{
+	string $moduleList ;
+	
+	if(`attributeExists "spineRigParts" masterRigPartsHolder_node`)
+		{
+		string $spineModule = `getAttr ("masterRigPartsHolder_node.spineRigParts")`;
+		$moduleList += ($spineModule+" ");
+		}
+	
+	if(`attributeExists "neckHeadRigParts" masterRigPartsHolder_node`)
+		{
+		string $neckModule = `getAttr ("masterRigPartsHolder_node.neckHeadRigParts")`;
+		$moduleList += ($neckModule+" ");
+		}
+	
+	if(`attributeExists "tentacleRigParts" masterRigPartsHolder_node`)
+		{
+		string $tentModule = `getAttr ("masterRigPartsHolder_node.tentacleRigParts")`;
+		$moduleList += ($tentModule+" ");
+		}
+	
+	if(`attributeExists "armRigParts" masterRigPartsHolder_node`)
+		{
+		string $armModule = `getAttr ("masterRigPartsHolder_node.armRigParts")`;
+		$moduleList += ($armModule+" ");
+		}
+	
+	if(`attributeExists "legRigParts" masterRigPartsHolder_node`)
+		{
+		string $legModule = `getAttr ("masterRigPartsHolder_node.legRigParts")`;
+		$moduleList += ($legModule+" ");
+		}	
+	
+	string $moduleInf[] = stringToStringArray($moduleList," ");
+
+	//error checking........
+	if(`attributeExists "spineRigParts" masterRigPartsHolder_node`)
+	{
+	$spineRigPart = getAttr ("masterRigPartsHolder_node.spineRigParts");
+	$spineRigPartArray = stringToStringArray($spineRigPart," ");
+		for($i=0;$i<size($spineRigPartArray);$i++)
+			if(!`attributeExists "joints" $spineRigPartArray[$i]`)
+				error ("You must specify no of joints on "+$spineRigPartArray[$i]+" for SPINE setup");
+	}
+	
+	if(`attributeExists "neckHeadRigParts" masterRigPartsHolder_node`)
+	{
+	$neckHeadRigPart = getAttr ("masterRigPartsHolder_node.neckHeadRigParts");
+	$neckHeadRigPartArray = stringToStringArray($neckHeadRigPart," ");
+		for($i=0;$i<size($neckHeadRigPartArray);$i++)
+			if(!`attributeExists "joints" $neckHeadRigPartArray[$i]`)
+				error ("You must specify no of joints on "+$neckHeadRigPartArray[$i]+" for NECK setup");
+	}
+	
+	if(`attributeExists "tentacleRigParts" masterRigPartsHolder_node`)
+	{
+	$tentacleRigPart = getAttr ("masterRigPartsHolder_node.tentacleRigParts");
+	$tentacleRigPartArray = stringToStringArray($tentacleRigPart," ");
+		for($i=0;$i<size($tentacleRigPartArray);$i++)
+			if(!`attributeExists "joints" $tentacleRigPartArray[$i]`)
+				error ("You must specify no of joints on "+$tentacleRigPartArray[$i]+" for TENTACLE setup");
+	}
+
+	progressWindow -t "Building Anim Rig" -progress 0 -status ("building animation rig from skeleton :") -min 0 -max `size $moduleInf` -isInterruptable true;
+	select -cl;
+	symmetricModelling -e -symmetry false;
+	softSelect -e -softSelectEnabled false;
+	setToolTo nurbsSelect;
+
+	if(`attributeExists "spineRigParts" masterRigPartsHolder_node`)
+	{
+		for($i=0;$i<size($spineRigPartArray);$i++)
+			{
+			string $name = getAttr($spineRigPartArray[$i]+".name");
+			string $side = getAttr($spineRigPartArray[$i]+".sides");		
+			string $spineRigCmdPart = getAttr($spineRigPartArray[$i]+".spineRig");
+			string $spineRigCmdArray[] = stringToStringArray($spineRigCmdPart," ");
+
+			float $dis = cr_getChainLength($spineRigCmdArray[0],$spineRigCmdArray[1]);
+			$scale = $dis/3;
+			
+			catch (`deleteAttr -attribute "name" $spineRigPartArray[$i]`);
+			catch (`deleteAttr -attribute "sides" $spineRigPartArray[$i]`);
+			catch (`deleteAttr -attribute "spineRig" $spineRigPartArray[$i]`);
+			
+			int $numJoints = getAttr($spineRigPartArray[$i]+".joints");
+			select -r $spineRigPartArray[$i];
+			cr_removeTwistJointsAttr("joints");
+			select -cl;
+			
+			cr_buildSpineSetup($name,$side,$spineRigCmdArray[0],$spineRigCmdArray[1],$spineRigCmdArray[2],$stretchType,$numJoints,$stretch,$volume,$cr_buildWorld,$scale); 
+			if(`progressWindow -q -isCancelled`) { progressWindow -endProgress; undoInfo -state on;return;}
+			progressWindow -e -step 1 -status ("building anim rig on : "+$spineRigPartArray[$i]);	
+			}
+	}
+	
+	if(`attributeExists "neckHeadRigParts" masterRigPartsHolder_node`)
+	{
+		for($i=0;$i<size($neckHeadRigPartArray);$i++)
+			{
+			string $name = getAttr($neckHeadRigPartArray[$i]+".name");
+			string $side = getAttr($neckHeadRigPartArray[$i]+".sides");		
+			string $neckHeadRigCmdPart = getAttr($neckHeadRigPartArray[$i]+".neckHeadRig");
+			string $neckHeadRigCmdArray[] = stringToStringArray($neckHeadRigCmdPart," ");
+			
+			string $eyeRigCmdPart = getAttr($neckHeadRigPartArray[$i]+".eyeRig");
+			string $eyeRigCmdArray[] = stringToStringArray($eyeRigCmdPart," ");
+			
+			catch (`deleteAttr -attribute "name" $neckHeadRigPartArray[$i]`);
+			catch (`deleteAttr -attribute "sides" $neckHeadRigPartArray[$i]`);
+			catch (`deleteAttr -attribute "neckHeadRig" $neckHeadRigPartArray[$i]`);
+			catch (`deleteAttr -attribute "eyeRig" $neckHeadRigPartArray[$i]`);
+			
+			int $numJoints = getAttr($neckHeadRigPartArray[$i]+".joints");
+			select -r $neckHeadRigPartArray[$i];
+			cr_removeTwistJointsAttr("joints");
+			select -cl;
+
+			string $list[] = `cr_findJointArrey $neckHeadRigCmdArray[0] $neckHeadRigCmdArray[1]`;
+			float $dis = cr_getChainLength($neckHeadRigCmdArray[0],$neckHeadRigCmdArray[1]);
+			if(`size($list)`>2)
+				$scale = $dis/2;
+			else
+				$scale = $dis;
+
+			cr_buildNeckHeadSetup($name,$side,$neckHeadRigCmdArray[0],$neckHeadRigCmdArray[1],$stretchType,$stretch,$numJoints,$volume,$cr_buildWorld,$scale);
+			cr_buildEyeSetup($name,$side,$eyeRigCmdArray[0],$eyeRigCmdArray[1],$cr_buildWorld,$scale);
+			if(`progressWindow -q -isCancelled`) { progressWindow -endProgress; undoInfo -state on;return;}
+			progressWindow -e -step 1 -status ("building anim rig on : "+$neckHeadRigPartArray[$i]);	
+			}
+	}		
+	
+	if(`attributeExists "tentacleRigParts" masterRigPartsHolder_node`)
+	{
+	int $dynamic = `checkBox -q -v dynamicGlobalChk`;
+	int $offset = `checkBox -q -v offsetGlobalChk`;		
+		for($i=0;$i<size($tentacleRigPartArray);$i++)
+			{
+			string $name = getAttr($tentacleRigPartArray[$i]+".name");
+			string $side = getAttr($tentacleRigPartArray[$i]+".sides");
+			string $type = getAttr($tentacleRigPartArray[$i]+".types");				
+			string $tentacleRigCmdPart = getAttr($tentacleRigPartArray[$i]+".tentacleRig");
+			string $tentacleRigCmdArray[] = stringToStringArray($tentacleRigCmdPart," ");
+	
+			catch (`deleteAttr -attribute "name" $tentacleRigPartArray[$i]`);
+			catch (`deleteAttr -attribute "sides" $tentacleRigPartArray[$i]`);
+			catch (`deleteAttr -attribute "types" $tentacleRigPartArray[$i]`);
+			catch (`deleteAttr -attribute "tentacleRig" $tentacleRigPartArray[$i]`);
+			
+			int $numJoints = getAttr($tentacleRigPartArray[$i]+".joints");
+			select -r $tentacleRigPartArray[$i];
+			cr_removeTwistJointsAttr("joints");
+			select -cl;
+
+			float $dis = cr_getChainLength($tentacleRigCmdArray[0],$tentacleRigCmdArray[1]);
+			$scale = $dis/9;
+			
+			cr_buildTentacleSetup($name,$tentacleRigCmdArray[0],$tentacleRigCmdArray[1],"square",$offset,"plus",$dynamic,($side+$type),$stretchType,$stretch,$numJoints,$volume,$cr_buildWorld,$scale); 
+			if(`progressWindow -q -isCancelled`) { progressWindow -endProgress; undoInfo -state on;return;}
+			progressWindow -e -step 1 -status ("building anim rig on : "+$tentacleRigPartArray[$i]);	
+
+			}
+	}
+	
+	if(`attributeExists "armRigParts" masterRigPartsHolder_node`)
+	{
+	string $armRigPart = getAttr ("masterRigPartsHolder_node.armRigParts");
+	string $armRigPartArray[] = stringToStringArray($armRigPart," ");
+		for($i=0;$i<size($armRigPartArray);$i++)
+			{
+			string $name = getAttr($armRigPartArray[$i]+".name");
+			string $side = getAttr($armRigPartArray[$i]+".sides");
+			string $armRigCmdPart = getAttr($armRigPartArray[$i]+".armRig");
+			string $armRigCmdArray[] = stringToStringArray($armRigCmdPart," ");
+
+			string $fingerName[];
+			string $startJoint[];
+			string $fingers;
+			int $numFingers;
+			int $fingerRotAxis[];
+			int $fingerCheck = 0;
+
+			if(`attributeExists "fingers" $armRigPartArray[$i]`)
+				{
+				$fingerName = {"thumb","index","mid","ring","pinky"};
+				$fingers = getAttr($armRigPartArray[$i]+".fingers");
+				$startJoint = stringToStringArray($fingers, " ");
+		
+				$numFingers = size($startJoint);
+				$fingerRotAxis = cr_getFingerAxisFigures($startJoint[0]);
+				$fingerCheck = 1;				
+				}
+				
+			catch (`deleteAttr -attribute "name" $armRigPartArray[$i]`);
+			catch (`deleteAttr -attribute "sides" $armRigPartArray[$i]`);
+			catch (`deleteAttr -attribute "armRig" $armRigPartArray[$i]`);
+			catch (`deleteAttr -attribute "fingers" $armRigPartArray[$i]`);
+
+			float $dis = cr_getChainLength($armRigCmdArray[0],$armRigCmdArray[1]);
+			$scale = $dis/7;
+		
+			cr_buildArmSetup($name,$side,$armRigCmdArray[0],$armRigCmdArray[1],$stretchType,$ikFkType,$stretch,$midLock,$volume,$cr_buildWorld,$scale); 
+			if($fingerCheck)
+				cr_buildHandSetup($name,$side,($name + $side + "armSwitches_ctrl"),1,"square",$numFingers,$fingerName,$startJoint,$fingerRotAxis,2,1,"",$cr_buildWorld,$scale);
+			if(`progressWindow -q -isCancelled`) { progressWindow -endProgress; undoInfo -state on;return;}
+			progressWindow -e -step 1 -status ("building anim rig on : "+$armRigPartArray[$i]);	
+
+			}
+	}		
+	
+	if(`attributeExists "legRigParts" masterRigPartsHolder_node`)
+	{
+	string $legRigPart = getAttr ("masterRigPartsHolder_node.legRigParts");
+	string $legRigPartArray[] = stringToStringArray($legRigPart," ");
+		for($i=0;$i<size($legRigPartArray);$i++)
+			{
+			string $fingerName[];
+			string $startJoint[];
+			string $quadFinger[];
+			string $newFinger = "";
+			string $fingers;
+			string $fingerCmd;
+			int $numFingers;
+			int $fingerRotAxis[];
+			int $fingerCheck = 0;
+			string $tempFinger;
+			
+			string $name = getAttr($legRigPartArray[$i]+".name");
+			string $side = getAttr($legRigPartArray[$i]+".sides");
+			string $legType = getAttr($legRigPartArray[$i]+".legType");
+			
+			if(`attributeExists "fingers" $legRigPartArray[$i]`)
+				{
+				$fingerCmd = getAttr($legRigPartArray[$i]+".fingers");
+				$fingerCheck = 1;
+				}
+			string $legRigCmdPart = getAttr($legRigPartArray[$i]+".legRig");
+			string $legRigCmdArray[] = stringToStringArray($legRigCmdPart," ");
+				
+			catchQuiet (`deleteAttr -attribute "name" $legRigPartArray[$i]`);
+			catchQuiet (`deleteAttr -attribute "sides" $legRigPartArray[$i]`);
+			catchQuiet (`deleteAttr -attribute "legRig" $legRigPartArray[$i]`);
+			catchQuiet (`deleteAttr -attribute "fingers" $legRigPartArray[$i]`);
+			catchQuiet (`deleteAttr -attribute "legType" $legRigPartArray[$i]`);
+
+			float $dis = cr_getChainLength($legRigCmdArray[0],$legRigCmdArray[1]);
+			$scale = $dis/7;
+	
+			if($legType == "bipedLeg")	
+				cr_buildBipedLegSetup($name,$side,$legRigCmdArray[0],$legRigCmdArray[1],$legRigCmdArray[2],$stretchType,$ikFkType,$stretch,$midLock,$volume,$cr_buildWorld,$scale); 
+			else if($legType == "quadLeg")	
+				cr_buildQuadLegSetup($name,$side,$legRigCmdArray[0],$legRigCmdArray[1],$legRigCmdArray[2],$legRigCmdArray[3],$stretchType,$ikFkType,$stretch,$midLock,$volume,$cr_buildWorld,$scale); 
+		
+			if($fingerCheck)
+				{
+				if($legType == "bipedLeg")
+					{
+					$fingerName = {"thumb","index","mid","ring","pinky"};
+					$fingers = $fingerCmd;
+					$startJoint = stringToStringArray($fingers, " ");
+			
+					$numFingers = size($startJoint);
+					$fingerRotAxis = cr_getFingerAxisFigures($startJoint[0]);				
+					}
+				else if($legType == "quadLeg")
+					{
+					$fingerName = {"thumb","index","mid","ring","pinky"};
+					$fingers = $fingerCmd;
+					$quadFinger = stringToStringArray($fingers, " ");
+					for($x=0;$x<size($quadFinger);$x++)
+						{
+						$tempFinger = cr_buildQuadFingerIkSetup($quadFinger[$x],$legRigCmdArray[(size($legRigCmdArray)-1)]);
+						$newFinger += (" "+$tempFinger);
+						}
+					$startJoint = stringToStringArray($newFinger, " ");
+					
+					$numFingers = size($startJoint);
+					$fingerRotAxis = cr_getFingerAxisFigures($startJoint[0]);	
+					}
+
+				cr_buildHandSetup($name,$side,($name + $side + "legSwitches_ctrl"),1,"square",$numFingers,$fingerName,$startJoint,$fingerRotAxis,2,1,"parent",$cr_buildWorld,$scale);
+			if(`progressWindow -q -isCancelled`) { progressWindow -endProgress; undoInfo -state on;return;}
+			progressWindow -e -step 1 -status ("building anim rig on : "+$legRigPartArray[$i]);	
+
+				}
+			}
+	}
+	delete masterRigPartsHolder_node;
+	progressWindow -endProgress;
+	select -cl;
+	print("Operation successful: Animation rig created.\n");
+	}
+}
+
+global proc string cr_buildQuadFingerIkSetup(string $joint, string $parent)
+{
+string $list[] = cr_listHierarchy($joint);
+string $IK[] = `cr_dupId $joint suffix ik`;
+parent $IK[0] $parent;
+for($i=0; $i<(size($list)-1); $i++)
+	{
+	string $strip = `objGetPrefix $list[$i]`;
+	string $ikhName = ($strip + "_ikh");
+	string $ikHandleA[] = ikHandle ("-name", ($ikhName), "-startJoint", $list[$i], "-endEffector", $list[$i+1], "-solver", "ikSCsolver");
+	hide $ikHandleA[0];
+	parent $ikHandleA[0] $IK[$i];
+	cr_lockAndHide $ikHandleA[0] lock "trans rot vis";
+	select -cl;
+	}
+return $IK[0];
+}

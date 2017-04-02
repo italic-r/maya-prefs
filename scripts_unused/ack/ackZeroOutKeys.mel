@@ -1,0 +1,15 @@
+//////////////////////////////////////////////////////////
+//	ackZeroOutKeys 1.0			
+//	6/2/05					
+//	Aaron Koressel				
+//						
+//  Zeroes out the values of selected keys in the
+//  graph editor.
+//////////////////////////////////////////////////////////
+global proc ackZeroOutKeys() {
+	//Don't do anything if no keys are selected	
+	$keyCount = `keyframe -an keys -q -kc`;
+	if ($keyCount != 0) {
+		keyframe -valueChange 0;
+	}
+}

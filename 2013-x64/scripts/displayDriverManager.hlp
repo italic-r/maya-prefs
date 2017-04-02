@@ -1,0 +1,63 @@
+INTRODUCTION
+------------
+
+The displayDriver framework consists of few layers built on top of each other.
+At the very bottom is the displayDriver node that does all the "heavy lifting" in OpenGL and Maya API mechanics.
+Second level is the IconsDesigner - to provide easy to use interface for making new or modifying existing icons with unique look and specific features.
+DisplayDriverManager is the top level interface. It is designed to simplify the creation, manipulation and i/o of large amount of displayDriver nodes in the scene.
+It's primary target are character rigs where displayDriver nodes are used to visually enhance animation controls, logical connections and other dependencies between.
+The overall result is much more appealing and pleasent to the eye product.
+
+
+
+NODE, ICON, LINE, PRIMITVE
+--------------------
+Each displayDriver node can draw arbitrary number of icons, lines and primitives.
+Node-global control parameters:
+- icons config file - ascii file containing icon descriptions (created and managed by the IconsDesigner)
+- icon ignore ZDepth - draw the icons on top of everything else in the viewport
+- icon Ignore Holdouts - icons can be occluded by special "holdout" objects connected to the displayDriver nodes, this flag provides easy to use on/off switch for that
+- exclusive camera - draw icons only when seen through the specified camera
+
+Icon control parameters:
+- world matrix - icon will be drawn in space defined by world matrix (DAG node)
+- style - the look of the icon when not selected
+- style selected - the look of the icon when selected
+- scale - multiplier for the default size of the icon
+- scale threshold - icons can maintain their relative screen (pixel) size, but that may be a problem if we have a lot of icons in the scene and start zooming out - they will start overlapping, that's why we may want them to start scaling down when further away from camera
+- alpha - opacity multiplier
+- obey selection handle - if the DAG node connected to the icon's world matrix has selection handle we can make the icon to snap to it - very useful in many situations when having overlapping animation controls for example
+
+Line/primitive control parameters:
+- world matrix A - lines are defined by two points (world matrices) in space, this is the first one
+- world matrix B - ... and this is the second one
+- line specific:
+	- style - there are few standard dashed
+	- width - how thick the line is
+	- color R - self explanatory
+	- color G - self explanatory
+	- color B - self explanatory
+	- alpha - self explanatory
+	- obey selection handle A - snap the start point of the line to the display handle of the first control node
+	- obey selection handle B - snap the end point of the line to the display handle of the second control node
+- primitive specific:
+	- count - defines the number of primitives that will be created between the two control nodes (world matrix A and B)
+	- style - at this point only sphere primitives are supported
+	- scale - array attribute that defines the scale of the individual primitives along the "virtual line" between their two controls nodes
+	- color R - self explanatory
+	- color G - self explanatory
+	- color B - self explanatory
+	- alpha - self explanatory
+
+
+
+WORKFLOW
+--------
+Point the "config file" line to valid config file on disk.
+For animation controls or other objects that are visually defined by their "shape icon" the suggested approach is to create one displayDriver under their transforms. To do that select one or more of these transform/joint nodes and press the "create as shape under transform" button. That action will populate the "displayDriver nodes" field with the newly created node(s). Remember that all commands available in the icons, lines, primtives, load/save tabs operate only on the nodes listed in that field.
+Once we created the displayDriver node for given transform we can add icon(s) to it by pressing the "add icon" button. Respectivelly we can do the same for holdout object(s) that will occlude the icon if behind them. The "remove *" buttons will remove icon and/or holdout object assigned to the node(s) in the "displayDriver nodes" field.
+The get and set attributes buttons allow us to easily copy/paste control values between different icons/lines/primitives located on the same or different displayDriver nodes.
+All lines and or primitives can be handled by one "standalone" node. But better approach is to split that between multiple "standalone" displayDriver nodes in a logical way. So for example - all the lines and/or primitives used in the left arm of a character rig should be handled by one displayDriver node, for the arm arm we use another one, same for every other body part. This way we can easily manage their visibility later if we have to switch between FK/IK, change animation spaces, etc. For reference check the displayDriver example scene to get a better feeling of how this works.
+We can load/save data to disk for all nodes listed in the "displayDirver nodes" field. The output format is reverse engineered snapshot of the scene stored as mel file that can be directly sourced and executed later even outside the DisplayDriverManager UI.
+The point here is to have easy way to "pipelinaze" the workflow, so if we have to deal with 20 rigs with similar structure we can build the entire displayDriver setup only once, save it on disk and then apply it to the rest of the assets.
+Often we need to create expressions or script nodes for more advanced control over the displayDriver nodes (usually switching visibility on/off based on combination of multiple events). If we add them to the "script nodes" they will be saved along with the rest of the data on disk and will be restored later upon loading.

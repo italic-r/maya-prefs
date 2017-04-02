@@ -1,0 +1,24 @@
+/*
+/////////////////////////////////////////////////////////////////////////////
+
+ackToggleHighlight 1.0			
+8/20/07
+Aaron Koressel				
+
+Toggles the wireframe highlighting of selected objects.  Useful for seeing
+changes on a selected object without the highlight cluttering up the display.
+
+SYNTAX:	
+ackToggleHighlight;
+
+////////////////////////////////////////////////////////////////////////////
+*/
+
+global proc ackToggleHighlight (){
+	string $states[] = {"none","full"};
+	if (`displayPref -q -wsa` == $states[0]){
+		displayPref -wsa $states[1];
+	} else {
+		displayPref -wsa $states[0];
+	}
+}

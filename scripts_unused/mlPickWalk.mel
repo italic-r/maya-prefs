@@ -1,0 +1,55 @@
+global proc mlPickWalk(string $direction)
+{
+string $sel[] =`ls -sl`;
+string $current;
+string $targets[0];
+string $regularWalk[0];
+
+string $attr = ("mlPW_"+$direction);
+string $targets[0];
+
+string $attrs[0];
+string $connection[0];
+
+
+select -cl;
+
+for ($i = 0; $i < size($sel); $i++)
+	{
+	
+	$attrs = `listAttr -st $attr $sel[$i]`;
+	if (size($attrs))
+		$connection = `listConnections ($sel[$i]+"."+$attr)`;
+	
+	if (size($connection))
+		$targets[size($targets)] = $connection[0];
+	else
+		$regularWalk[size($regularWalk)] = $sel[$i];
+	}
+
+//take care of the objects that don't have pickwalk attributes first
+if (size($regularWalk))
+	{
+	select -add $regularWalk;
+	switch ($direction)
+		{
+		case "u":
+			pickWalk -d up;
+			break;
+		case "d":
+			pickWalk -d down;
+			break;
+		case "l":
+			pickWalk -d left;
+			break;
+		case "r":
+			pickWalk -d right;
+			break;
+		default:
+			break;
+		}
+	}
+//then add the target objects to the selection
+select -add $targets;
+
+}

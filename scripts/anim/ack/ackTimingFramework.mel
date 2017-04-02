@@ -1,0 +1,83 @@
+/*
+//////////////////////////////////////////////////////////
+
+ackTimingFramework		
+7/30/07					
+Aaron Koressel
+www.aaronkoressel.com
+
+Inserts keys across all selected curves at all times that
+keys exist.  Only considers keys that are selected.
+Preserves tangents.
+
+Useful for adding a new control to current blocking with
+the same timing.
+
+- If only one curve is selected, this curve will be used as
+the framework.  Keys will be added to all other curves.
+- If no curves are selected, all keys in the graph editor
+will be used as the framework and all curves will have keys
+set on them.
+
+SYNTAX: 
+ackTimingFramework;
+
+EXAMPLE:
+Assign this commnad to "Ctrl Alt Ins":  ackTimingFramework;
+//////////////////////////////////////////////////////////
+*/
+
+global proc ackTimingFramework() {
+	//progess window
+	int $max = 1;
+	progressWindow
+		-title "ackTimingFramework"
+		-maxValue $max
+		-status ""
+		-isInterruptable true;
+
+
+	float $allTimes[] = `keyframe -q -timeChange`;
+
+	//loop over selected curves and process independently
+	string $selectedCurves[] = `keyframe -selected -q -name`;
+
+	if (size($selectedCurves) <= 1){
+		//one or none curves selected so insert keys on all curves
+		$max = size($allTimes);
+		progressWindow -e -maxValue $max;
+
+		for ($i = 0; $i < size($allTimes); $i++){
+			progressWindow -e -step 1;
+			if ( `progressWindow -query -isCancelled` ){break;}
+
+			setKeyframe -insert -time $allTimes[$i];
+		}
+	} else {
+		//only key selected curves
+
+		//estimate time
+		string $sc[] = `keyframe -selected -q -name`;
+		$max = size($sc);
+		for ($x = 0; $x < size($sc); $x++){
+			$max += size(`keyframe -q -timeChange $sc[$x]`);
+		}
+
+
+		for ($c = 0; $c < size($selectedCurves); $c++){
+			//channel to use for this pass
+			$channel = $selectedCurves[$c];
+
+			for ($i = 0; $i < size($allTimes); $i++){
+				progressWindow -e -step 1;
+				if ( `progressWindow -query -isCancelled` ){break;}
+
+				setKeyframe -insert -time $allTimes[$i] $channel;
+			}
+		}
+	}
+
+	//kill window
+	progressWindow -endProgress;
+
+}

@@ -1,0 +1,6 @@
+// timelineOut
+global proc timelineOut() {
+	$theTime = `currentTime -q`;
+	playbackOptions -e -maxTime $theTime;
+
+}

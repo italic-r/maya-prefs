@@ -1,0 +1,359 @@
+//---------------------------------------------------------------------------
+// cr_buildHandSetup.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:	
+//		finger setup
+//
+// REQUIRES:
+//		cr_buildWorld.mel
+//		cr_curveUtilitiesLib.mel
+//		cr_charUtilsLib.mel
+//		libString.mel
+//		snaps.mel
+//
+// AUTHOR:
+//		Wasim Khan - wasim.cg@gmail.com
+//		code based on Gregory Smith
+//----------------------------------------------------------------------------
+
+eval("source \"cr_buildWorld.mel\";");
+source "snaps.mel";
+cr_charUtilsLib;
+cr_curveUtilitiesLib;
+libString;
+
+global proc cr_buildHandSetup(string $name, string $side, string $controller, int $cr_fkControl, string $controlType, int $numFingers, string $fingerName[], string $startJoint[], int $fingerAxis[], int $nameMethod, int $skipLast, string $consType, int $cr_buildWorld, float $scale)
+{
+
+         int $i, $j = 0;
+         int $installCurl       = 1;
+              int $curlAxis     = $fingerAxis[1];  
+         int $installSpread     = 1;
+              int $spreadAxis   = $fingerAxis[2];
+         int $installSpin       = 1;
+              int $spinAxis     = $fingerAxis[0];
+         int $installStretch    = 1;
+              int $stretchAxis  = $fingerAxis[3];         
+         //int $cr_fkControl    = 1;
+         //int $nameMethod      = 2;
+         //int $skipLast        = 1; //in arguments
+         //int $numFingers      = 3; //in arguments
+         //string $fingerName[] = {"thumb","index","mid","ring","pinky"};//in arguments
+         //string $startJoint[] = {"joint1","joint5","joint9"};  //in arguments       
+
+         int $stepTemp = ($numFingers/2); 
+         float $step = (1.00/$stepTemp);
+         
+         //if installing spreads we need to make some controller attributes to reverse the direction
+         if($installSpread == 1)
+         {            
+              $j = 1;
+              
+              //add attributes to offset the full spread
+              for($i = 0; $i < $numFingers; $i++)
+              {
+                   //add an attribute on it
+                   if($i < $stepTemp) addAttr -k 0 -ln ($fingerName[$i] + "SpreadOffset") -at double -dv (1 - ($i * $step)) $controller;
+                   else if (($i+.5) == ($numFingers/2.00)) addAttr -k 0 -ln ($fingerName[$i] + "SpreadOffset") -at double -dv 0 $controller;
+                   else if ($i < ($numFingers-1)){addAttr -k 0 -ln ($fingerName[$i] + "SpreadOffset") -at double -dv (-1 * $j * $step) $controller; $j++;}
+                   else addAttr -k 0 -ln ($fingerName[$i] + "SpreadOffset") -at double -dv (-1) $controller;
+              }
+         }//end of installSpreads function
+         
+         
+         // create some attributes on the controller
+         addAttr -k 1 -ln fingerCONTROLS -at "enum" -en "==========:" $controller; 
+         setAttr -lock true ($controller + ".fingerCONTROLS");
+
+//string $controlType = "square";
+string $fkFingerJoints[];
+if($cr_fkControl)//create fk control for finger
+{
+string $list[] = `cr_listHierarchy $startJoint[0]`;
+int $size = `size $list`;
+addAttr -ln "fingerFkVis" -dv 1 -at bool -keyable true $controller;
+setAttr -keyable false -channelBox true ($controller + ".fingerFkVis");
+	for($i = 0; $i < $numFingers; $i++)
+	{
+	$fkFingerJoints = cr_fkControl ($startJoint[$i], $controlType, 0);
+	$startJoint[$i] = $fkFingerJoints[0];
+	connectAttr ($controller + ".fingerFkVis") ($fkFingerJoints[0] + ".v");
+	}
+
+}
+
+    ////////////////
+    // Run installs
+    // 
+	if($installCurl == 1)
+	{
+	//add curl seperator attribute
+	addAttr -k 1 -ln CURLS -at "enum" -en "++++++++++++:" $controller; 
+	setAttr -lock true ($controller + ".CURLS");
+	
+	//add full hand curl attribute (.fullCurl)
+	addAttr -k 1 -ln fullCurl -at double -dv 0 $controller;
+	
+	//intall the specific finger controls
+	cr_installFingers(1, $curlAxis, $controller, $fingerName, $startJoint, $numFingers, $skipLast, $nameMethod);
+	}
+    
+	if($installSpread == 1)
+	{
+	//add curl seperator attribute
+	addAttr -k 1 -ln SPREADS -at "enum" -en "++++++++++++:" $controller; 
+	setAttr -lock true ($controller + ".SPREADS");
+	
+	//add full hand curl attribute (.fullCurl)
+	addAttr -k 1 -ln fullSpread -at double -dv 0 $controller;
+	
+	//intall the specific finger controls
+	cr_installFingers(2, $spreadAxis, $controller, $fingerName, $startJoint, $numFingers, $skipLast, $nameMethod);
+	}
+
+	if($installSpin == 1)
+	{
+	 //add curl seperator attribute
+	 addAttr -k 1 -ln SPINS -at "enum" -en "++++++++++++:" $controller; 
+	 setAttr -lock true ($controller + ".SPINS");
+	 
+	 //intall the specific finger controls
+	 cr_installFingers(3, $spinAxis, $controller, $fingerName, $startJoint, $numFingers, $skipLast, $nameMethod);
+	}
+    
+	if($installStretch == 1)
+	{   
+	//add curl seperator attribute
+	addAttr -k 1 -ln STRETCH -at "enum" -en "++++++++++++:" $controller; 
+	setAttr -lock true ($controller + ".STRETCH");
+	
+	//intall the specific finger controls
+	cr_installFingers(4, $stretchAxis, $controller, $fingerName, $startJoint, $numFingers, $skipLast, $nameMethod);
+	} 
+
+if($cr_fkControl)//zeroOut finger joints and transfer connection to grp .....
+{
+string $partGrp = `group -em`;
+$partGrp = `rename $partGrp ($name+ $side +"fingersParts_grp#")`;
+cr_lockAndHide $partGrp cr_locknHide "trans rot scale";
+
+if($cr_buildWorld)
+	{
+	string $cleanGrp[] = cr_buildWorld ($name, $scale);
+	parent $partGrp $cleanGrp[0];
+	}
+
+	for($i=0;$i<$numFingers;$i++)
+	{
+	string $zeroGrp[];
+	string $grp[];
+	string $list[] = `cr_listHierarchy $startJoint[$i]`;
+	int $size = `size $list`;
+	//this local scale for control
+	cr_resizeCurves $list 1 1 1 0.5;
+	// now apply global scale for control
+	cr_resizeCurves $list 1 1 1 $scale;
+	
+		for($j=0;$j<size($list);$j++)
+		{
+		$grp = `cr_quickJointZeroOut $list[$j]`;
+		cr_transferConnection($list[$j], $grp[0], "rx");
+		cr_transferConnection($list[$j], $grp[0], "ry");
+		cr_transferConnection($list[$j], $grp[0], "rz");
+		cr_lockAndHide $list[$j] cr_locknHide "trans scale vis";
+		$zeroGrp[$j] = $grp[0];
+		}
+	//for($x=0;$x<($size-1);$x++)connectAttr ($zeroGrp[$x]+".scale") ($list[$x]+".inverseScale");
+	string $parent = `cr_getParent $zeroGrp[0]`;
+	//$parentGrp = `cr_quickZeroOut $zeroGrp[0]`;
+	$parentGrp[0] = `group -em -n($zeroGrp[0]+"Const")`;
+	snap $parent $parentGrp[0];
+	cr_lockAndHide $parentGrp[0] unlock "trans rot scale";
+	parent $zeroGrp[0] $parentGrp[0];
+
+	parent $parentGrp[0] $partGrp;
+
+	if($parent != "")
+		{
+		if ($consType == "parent")
+			parentConstraint -mo -w 1 $parent $parentGrp[0]; 
+		else
+			{
+			pointConstraint -mo -w 1 $parent $parentGrp[0]; 
+			orientConstraint -mo -w 1 $parent $parentGrp[0]; 
+			}
+		}
+
+	select -r $zeroGrp;
+	cr_lockAndHide "" lock "trans rot scale vis";
+	cr_lockAndHide $parentGrp[0] lock "trans rot scale vis";
+	select -cl;
+	
+	if($skipLast)
+		delete $list[$size-1];
+	}
+}//end loop zeroOut
+
+select -r $controller;
+}
+
+global proc cr_installFingers(int $installOpt, int $installAxis, string $controller, string $fingerName[], string $startJoint[], int $numFingers, int $skipLast, int $nameMethod)
+{
+
+int $size = 0;
+string $curlMDN[];
+string $fingerJoints[];
+int $damp = 0;
+
+$fingerJoints[0] = $startJoint[0];
+
+$fingerJoints = `cr_listHierarchy $startJoint[0]`;
+	if($skipLast)
+		$size = size($fingerJoints)-1;
+	else
+		$size = size($fingerJoints);
+
+if($installOpt == 1)
+	{
+	//create attribute for offset each section of finger
+	         for($i=0; $i<($size); $i++)
+		         {
+						 //create the MDN
+						 $curlMDN[$i] = `createNode multDoubleLinear -n ("fingerCurlAdjust_" + ($i+1) + "_mdl")`;
+						 //hook the full curl to the input1X
+						 connectAttr -f ($controller + ".fullCurl") ($curlMDN[$i] + ".input1");
+						 //create custom attributes to adjust these
+						 addAttr -k 0 -ln ("curlOffset_s" + ($i+1)) -at double -dv (.9 + ($i/10.00)) $controller;
+						 //hook the custom attributes up
+						 connectAttr -f ($controller + ".curlOffset_s"+ ($i+1)) ($curlMDN[$i] + ".input2");
+		         }
+	}
+
+for($i = 0; $i < $numFingers; $i++)
+{
+	
+$fingerJoints = `cr_listHierarchy $startJoint[$i]`;
+
+string $location[];  //holds the subfinger naming based on naming method
+    if($nameMethod == 1)
+        {
+            for($j=1; $j<($size+1); $j++)
+            {
+               $location[($j-1)] = $j;
+            } 
+        }         
+    if($nameMethod == 2)  
+    $location = {"_A_","_B_","_C_","_D_","_E_","_F_","_G_","_H_","_I_","_J_","_K_","_L_","_M_","_N_","_O_","_P_","_Q_","_R_","_S_","_T_","_U_","_V_","_W_","_X_","_Y_","_Z_"};
+    if($nameMethod == 3)
+    $location = {"Base","Mid","Tip"};
+    
+string $installCaps[] = {"", "CURLS","SPREADS","SPINS","STRETCH"};
+string $installLower[] = { "", "Curl", "Spread", "Spin", "Stretch"}; 
+string $axis[] = {"","X","Y","Z"};
+   
+if($installOpt == 1)
+	{	
+	string $Cap = `toupper $fingerName[$i]`; 
+	
+	addAttr -k 1 -ln ("___" + $Cap + "___") -at "enum" -en "++++++++++++:" $controller; 
+	setAttr -lock true ($controller + "." + ("___" + $Cap + "___"));	
+	
+	if (`attributeExists "damp" $startJoint[$i]`)
+		{
+		catch (`deleteAttr -attribute "damp" $startJoint[$i]`);
+		addAttr -ln ($fingerName[$i] + "Damp") -min 0 -max 1 -dv 0.3  -at double -keyable true $controller;
+		setAttr -keyable false -channelBox true ($controller + "." + $fingerName[$i] + "Damp");
+		$damp = 1;
+		}
+	else 
+		$damp = 0;
+	
+	for ($j=0;$j<($size);$j++)
+		{
+		addAttr -ln ($fingerName[$i] + $location[$j] + $installLower[$installOpt])  -at double -keyable true $controller;
+		
+		//create a variable and ASN to add the rotations/scale for the selected instal
+		string $ASN = `createNode addDoubleLinear -n ($fingerJoints[$j] + "_r" + $axis[$installAxis] + "_adl")`; //if rotations are installed
+		
+		if($damp)
+			{
+			string $DampMDN = `createNode multDoubleLinear -n ($startJoint[$i] + "_r" + $axis[$installAxis] + "Damp_mdl")`;
+			connectAttr -f ($curlMDN[$j] + ".output") ($DampMDN + ".input1");
+			connectAttr -f ($controller + "." + $fingerName[$i] + "Damp") ($DampMDN + ".input2");
+			connectAttr -f ($DampMDN + ".output") ($ASN + ".input1");
+			}
+		else
+			connectAttr -f ($curlMDN[$j] + ".output") ($ASN + ".input1");
+
+		//hook up the individual control to the ASN
+		connectAttr -f ($controller + "." + $fingerName[$i] + $location[$j] + $installLower[$installOpt]) ($ASN + ".input2");
+		
+		//hook the ASN to the joint
+		connectAttr -f ($ASN + ".output") ($fingerJoints[$j] + ".rotate" + $axis[$installAxis]);
+		}
+	}
+	
+	else if($installOpt == 4) //STRETCH
+	{      
+	   //create a specific attribute for the finger stretch
+	   addAttr -k 1 -ln ($fingerName[$i] + $installLower[$installOpt]) -at double -min .01 -dv 1 $controller;             
+	   
+	   for($j = 0; $j < ($size); $j++)
+	   {              
+	        //connect the finger spread to the joints for that finger
+	        connectAttr -f ($controller + "." + $fingerName[$i] + $installLower[$installOpt]) ($fingerJoints[$j] + ".scale" + $axis[$installAxis]);
+	   }             
+	}
+	
+	else if($installOpt == 2) //SPREADS
+	{
+	  // create an attribute for this finger
+	  addAttr -k 1 -ln ($fingerName[$i] + $installLower[$installOpt]) -at double -dv 0 $controller;
+	  
+	  // create an ASN
+	  string $ASN = `createNode addDoubleLinear -n ($startJoint[$i] + "_r" + $axis[$installAxis] + "_adl")`;
+	  
+	  // create an MDN
+	  string $MDN = `createNode multDoubleLinear -n ($startJoint[$i] + "_r" + $axis[$installAxis] + "_mdl")`;
+	  
+	  //hook up the ASN to the output of the MDN and the finger spread attr
+	  connectAttr -f ($MDN + ".output") ($ASN + ".input1");
+	  connectAttr -f ($controller + "." + $fingerName[$i] + $installLower[$installOpt]) ($ASN + ".input2");
+	  
+	  //hook the MDN up to the controller's adjusters and the controller.fullSpread
+	  connectAttr -f ($controller + "." + $fingerName[$i] + "SpreadOffset") ($MDN + ".input1");
+	  connectAttr -f ($controller + ".fullSpread") ($MDN + ".input2");
+	  
+	  //hook up the ASN to the joint
+	  connectAttr -f ($ASN + ".output") ($startJoint[$i] + ".rotate" + $axis[$installAxis]);
+	}
+	
+	else if($installOpt == 3) //SPINS
+	{
+	  //create the attribute for this finger
+	  addAttr -k 1 -ln ($fingerName[$i] + $installLower[$installOpt]) -at double -dv 0 $controller;
+	  
+	  //connect it to the base joint for the finger
+	  connectAttr -f ($controller + "." + $fingerName[$i] + $installLower[$installOpt]) ($startJoint[$i] + ".rotate" + $axis[$installAxis]);
+	}
+}		
+}

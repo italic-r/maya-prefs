@@ -1,0 +1,21 @@
+Using the installer
+===================
+
+
+Double click on the Install icon to launch the installer.
+By default the path is set to your default Maya script directory, but if you prefer to install Helios in another directory you're free to change the path.
+
+.. image:: img/using_installer_01.jpg
+
+Once you've set the path, just click on 'Start Installation' and the installer will move the needed files to the specified directory.
+
+.. image:: img/using_installer_02.jpg
+
+If everything goes well you'll see the python script you need to execute in Maya in order to run Helios.
+
+Now |click here| to see how you can create a Hotkey in Maya to launch Helios.
+
+
+.. |click here| raw:: html
+
+   <a href="creating_hotkey_in_maya.html">click here</a>

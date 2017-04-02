@@ -1,0 +1,42 @@
+/////////////////////////////////////////////////////////
+//	ackCycleTangents 1.0				
+//	9/9/05						
+//	Aaron Koressel				
+//								
+//	Cycles between Flat, Spline, and Linear tangents
+//	on selected keys.
+/////////////////////////////////////////////////////////
+
+
+global proc ackCycleTangents() {    
+	//set three tangent types to cycle through:
+	string $tangent1 = "flat";
+	string $tangent2 = "spline";
+	string $tangent3 = "linear";
+	
+	// get graph outliner 
+	string $connection = `editor -q -mainListConnection graphEditor1GraphEd`;
+	
+	// get selection from outliner
+	string $curveSel[] = `expandSelectionConnectionAsArray $connection`;
+	
+	int $keyCount = 0;
+	$keyCount = `keyframe -an keys -q -kc`;
+
+	if ($keyCount == 0) {  							//no keys selected: do nothing
+		
+	} else {								//keys are selected:  flatten seleted
+		string $cur[] = `keyTangent -q -ott`;
+		if ($cur[0] == $tangent1) {
+			doKeyTangent ("-itt "+$tangent2+" -ott "+$tangent2) graphEditor1GraphEd bufferCurve;
+		} else if ($cur[0] == $tangent2) {
+			doKeyTangent ("-itt "+$tangent3+" -ott "+$tangent3) graphEditor1GraphEd bufferCurve;
+		} else if ($cur[0] == $tangent3){
+			doKeyTangent ("-itt "+$tangent1+" -ott "+$tangent1) graphEditor1GraphEd bufferCurve;
+		} else {
+			//default action
+			doKeyTangent ("-itt "+$tangent1+" -ott "+$tangent1) graphEditor1GraphEd bufferCurve;
+		}
+
+	};
+};

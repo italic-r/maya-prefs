@@ -1,0 +1,138 @@
+global proc shelf_LongWinter () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 32
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open Speed Pick" 
+        -enableBackground 0
+        -align "center" 
+        -label "Speed" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "/home/italic/maya/icons/LWS/LWS_ShelfButton_SpeedBlock.png" 
+        -image1 "/home/italic/maya/icons/LWS/LWS_ShelfButton_SpeedBlock.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import LWS_speedPick\nreload(LWS_speedPick)\nLWS_speedPick.UI()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 183
+        -height 58
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open File Clerk" 
+        -enableBackground 0
+        -align "center" 
+        -label "FCC" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "/home/italic/maya/icons/LWS/lws_FileClerk.png" 
+        -image1 "/home/italic/maya/icons/LWS/lws_FileClerk.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import LWS_fileClerk\nreload(LWS_fileClerk)\nLWS_fileClerk.UI()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 32
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "open Quick Snap" 
+        -enableBackground 0
+        -align "center" 
+        -label "Snap" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "/home/italic/maya/icons/LWS/LWS_ShelfButton_Snap.png" 
+        -image1 "/home/italic/maya/icons/LWS/LWS_ShelfButton_Snap.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import LWS_Snap\nreload(LWS_Snap)\nLWS_Snap.UI()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 32
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "open Picker" 
+        -enableBackground 0
+        -align "center" 
+        -label "Pkr" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "/home/italic/maya/icons/LWS/LWS_ShelfButton_Picker.png" 
+        -image1 "/home/italic/maya/icons/LWS/LWS_ShelfButton_Picker.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import LWS_picker\nreload(LWS_picker)\nLWS_picker.UI()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 32
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open HandKey" 
+        -enableBackground 0
+        -align "center" 
+        -label "key" 
+        -labelOffset 0
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "/home/italic/maya/icons/LWS/LWS_ShelfButton_HK.png" 
+        -image1 "/home/italic/maya/icons/LWS/LWS_ShelfButton_HK.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import LWS_HandKey\nreload(LWS_HandKey)\nLWS_HandKey.UI()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+
+} 

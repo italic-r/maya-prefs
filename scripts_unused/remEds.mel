@@ -1,0 +1,25 @@
+//removes reference edits from a list of objects.  if the $cmd arg is an empty string
+//then ALL commands are removed.  if $cmd is a valid reference edit command, only those
+//commands are removed from the list of objects supplied
+global proc remEds( string $objs[], string $cmd ) {
+	string $refNodes[] = {};
+	int $loadStates[] = {};
+
+	for( $obj in $objs ) if( `referenceQuery -inr $obj` ) $refNodes[`size $refNodes`] = `referenceQuery -rfn $obj`;
+	for( $node in $refNodes ) $loadStates[`size $loadStates`] = size(`referenceQuery -n $node`);
+	$refNodes = `stringArrayRemoveDuplicates $refNodes`;
+
+	//now unload all references so we can remove edits
+	for( $node in $refNodes ) file -ur $node;
+
+	//
+	for( $obj in $objs ) referenceEdit -fld 1 -scs 0 -removeEdits $obj;
+	for( $obj in $objs ) {
+		if( $cmd == "" ) referenceEdit -fld 1 -scs 1 -removeEdits $obj;
+		else referenceEdit -fld 1 -scs 1 -editCommand $cmd -removeEdits $obj;
+		}
+
+	//now set the refs to their initial load state
+	for( $n=0; $n<`size $refNodes`; $n++ ) if( $loadStates[$n] ) file -lr $refNodes[$n];
+	select $objs;
+	}

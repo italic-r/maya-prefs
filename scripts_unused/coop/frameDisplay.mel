@@ -1,0 +1,22 @@
+//////////////////////////////////////////////////////////////////
+// frameDisplay.mel
+
+// Displays current timeline in HUD
+//////////////////////////////////////////////////////////////////
+
+global proc frameDisplay()
+{
+	
+	int $hud = `headsUpDisplay -exists  HUDFrameCount`;
+	if($hud == 1)
+	{
+		headsUpDisplay -rem HUDFrameCount;
+		
+	} 
+else
+	{ 
+		headsUpDisplay -section 5 -block 1 -blockSize "small" -dfs "large" -ao 1 -l frame -command "currentTime -q;" -atr HUDFrameCount; 
+		
+	}
+
+}

@@ -1,0 +1,422 @@
+// Copy Transformations Tool 2
+// Written by Jeremy Cantor
+// December 19, 2001
+
+
+//   BY: Danny Burbol @ Shaba Games
+// DATE: 03/23/05
+// DESC:
+//		added: HasAnyKeyThisFrame() and hasSpecificKeyThisFrame()
+//		changed: the do_* function to first check if there was a key on
+//				the frame before copying it.
+//		added: a checkbox to specify if you wanted to "Key Every Frame" or not
+//		added: copyTrans(), copyTransf(), and copyTransfs() so animatiors 
+//				don't have to type out "copyTransformations()" --which is
+//				NOT the name of the mel file and can be confusing.
+//		changed: made sure stepby is ignored if not keying every frame
+
+
+
+//returns 1 if the object has a key on this frame
+//$objName: the object to check.  EX: "pCube1"
+global proc int hasAnyKeyThisFrame( string $objName )
+{
+	// we get the current time.
+	$curFrame = `currentTime -q`;
+	$prevFrame = $curFrame - 1;
+	$nextKey = `findKeyframe -time $prevFrame -which next $objName`;
+	if( $nextKey == $curFrame )
+		return 1;
+
+	return 0;
+}
+
+//returns 1 if the object has a specific key on this frame
+//$objName: the object to check.  EX: "pCube1"
+//$attr: is the attribute you want to check. EX: "t" for trans, "s" for scale, and "sx" for scale.x
+global proc int hasSpecificKeyThisFrame( string $objName, string $attr )
+{
+	// we get the current time.
+	$curFrame = `currentTime -q`;
+	$prevFrame = $curFrame - 1;
+	$nextKey = `findKeyframe -time $prevFrame -attribute $attr -which next $objName`;
+	if( $nextKey == $curFrame )
+		return 1;
+
+	return 0;
+}
+
+
+
+global proc do_trans(string $areWeBaking) 
+{
+	string $picked[] = `ls -sl`;
+	if (size($picked) <= 1)
+	{
+		text -e -l "Must select at least two items" feedbackText; return;
+	}
+	
+	//if( no key ) skip it
+	if( hasSpecificKeyThisFrame( $picked[0], "t" ) == 0 && ifKeyEveryFrame() == 0 )
+		return;
+
+	text -e -l ("Magnet: " + $picked[0]) feedbackText;
+	for ($x=1; $x<size($picked); $x++)
+	{
+		select -r $picked[$x];
+		string $tempDupe[] = `duplicate`;
+		setAttr -lock false ($tempDupe[0] + ".t");
+		setAttr -lock false ($tempDupe[0] + ".tx");
+		setAttr -lock false ($tempDupe[0] + ".ty");
+		setAttr -lock false ($tempDupe[0] + ".tz");
+		pointConstraint -w 1 $picked[0] $tempDupe[0];
+		string $tempX = $tempDupe[0] + ".tx";
+		string $tempY = $tempDupe[0] + ".ty";
+		string $tempZ = $tempDupe[0] + ".tz";
+		float $transXX = `getAttr $tempX`;
+		float $transYY = `getAttr $tempY`;
+		float $transZZ = `getAttr $tempZ`;
+		string $newX = $picked[$x] + ".tx";
+		string $newY = $picked[$x] + ".ty";
+		string $newZ = $picked[$x] + ".tz";
+		if (`getAttr -lock $newX` == 0) setAttr $newX $transXX;
+		if (`getAttr -lock $newY` == 0) setAttr $newY $transYY;
+		if (`getAttr -lock $newZ` == 0) setAttr $newZ $transZZ;
+		delete $tempDupe[0];
+
+		if ((`checkBox -q -v keyTrans` == 1) || ($areWeBaking == "yes"))
+		{
+			if( hasSpecificKeyThisFrame( $picked[0], "tx" ) || ifKeyEveryFrame() )
+				setKeyframe ($picked[$x] + ".tx");
+
+			if( hasSpecificKeyThisFrame( $picked[0], "ty" ) || ifKeyEveryFrame() )
+				setKeyframe ($picked[$x] + ".ty");
+
+			if( hasSpecificKeyThisFrame( $picked[0], "tz" ) || ifKeyEveryFrame() )
+				setKeyframe ($picked[$x] + ".tz");
+		}
+		select -r $picked;
+	}
+}
+
+
+
+global proc do_rot(string $areWeBaking) 
+{
+
+	string $picked[] = `ls -sl`;
+	if (size($picked) <= 1)
+	{
+		text -e -l "Must select at least two items" feedbackText; return;
+	}
+
+	//if( no key ) skip it
+	if( hasSpecificKeyThisFrame( $picked[0], "r" ) == 0 && ifKeyEveryFrame() == 0 )
+		return;
+	
+	text -e -l ("Magnet: " + $picked[0]) feedbackText;
+	for ($x=1; $x<size($picked); $x++)
+	{
+		select -r $picked[$x];
+		string $tempDupe[] = `duplicate`;
+		setAttr -lock false ($tempDupe[0] + ".r");
+		setAttr -lock false ($tempDupe[0] + ".rx");
+		setAttr -lock false ($tempDupe[0] + ".ry");
+		setAttr -lock false ($tempDupe[0] + ".rz");
+		orientConstraint -w 1 $picked[0] $tempDupe[0];
+		string $tempX = $tempDupe[0] + ".rx";
+		string $tempY = $tempDupe[0] + ".ry";
+		string $tempZ = $tempDupe[0] + ".rz";
+		float $rotXX = `getAttr $tempX`;
+		float $rotYY = `getAttr $tempY`;
+		float $rotZZ = `getAttr $tempZ`;
+		string $newX = $picked[$x] + ".rx";
+		string $newY = $picked[$x] + ".ry";
+		string $newZ = $picked[$x] + ".rz";
+		if (`getAttr -lock $newX` == 0) setAttr $newX $rotXX;
+		if (`getAttr -lock $newY` == 0) setAttr $newY $rotYY;
+		if (`getAttr -lock $newZ` == 0) setAttr $newZ $rotZZ;
+		delete $tempDupe[0];
+
+		if ((`checkBox -q -v keyRot` == 1) || ($areWeBaking == "yes"))
+		{
+			if( hasSpecificKeyThisFrame( $picked[0], "rx" ) || ifKeyEveryFrame() )
+				setKeyframe ($picked[$x] + ".rx");
+
+			if( hasSpecificKeyThisFrame( $picked[0], "ry" ) || ifKeyEveryFrame() )
+				setKeyframe ($picked[$x] + ".ry");
+
+			if( hasSpecificKeyThisFrame( $picked[0], "rz" ) || ifKeyEveryFrame() )
+				setKeyframe ($picked[$x] + ".rz");
+		}
+		select -r $picked;
+	}
+
+}
+
+
+
+
+
+
+global proc do_scale(string $areWeBaking) 
+{
+	string $picked[] = `ls -sl`;
+	if (size($picked) <= 1)
+	{
+		text -e -l "Must select at least two items" feedbackText; return;
+	}
+	
+	//if( no key ) skip it
+	if( hasSpecificKeyThisFrame( $picked[0], "s" ) == 0 && ifKeyEveryFrame() == 0 )
+		return;
+
+	text -e -l ("Magnet: " + $picked[0]) feedbackText;
+	for ($x=1; $x<size($picked); $x++)
+	{
+		select -r $picked[$x];
+		string $tempDupe[] = `duplicate`;
+		setAttr -lock false ($tempDupe[0] + ".s");
+		setAttr -lock false ($tempDupe[0] + ".sx");
+		setAttr -lock false ($tempDupe[0] + ".sy");
+		setAttr -lock false ($tempDupe[0] + ".sz");
+		scaleConstraint -w 1 $picked[0] $tempDupe[0];
+		string $tempX = $tempDupe[0] + ".sx";
+		string $tempY = $tempDupe[0] + ".sy";
+		string $tempZ = $tempDupe[0] + ".sz";
+		float $scaleXX = `getAttr $tempX`;
+		float $scaleYY = `getAttr $tempY`;
+		float $scaleZZ = `getAttr $tempZ`;
+		string $newX = $picked[$x] + ".sx";
+		string $newY = $picked[$x] + ".sy";
+		string $newZ = $picked[$x] + ".sz";
+		if (`getAttr -lock $newX` == 0) setAttr $newX $scaleXX;
+		if (`getAttr -lock $newY` == 0) setAttr $newY $scaleYY;
+		if (`getAttr -lock $newZ` == 0) setAttr $newZ $scaleZZ;
+		delete $tempDupe[0];
+
+		if ((`checkBox -q -v keyScale` == 1) || ($areWeBaking == "yes"))
+		{
+
+			if( hasSpecificKeyThisFrame( $picked[0], "sx" ) || ifKeyEveryFrame() )
+				setKeyframe ($picked[$x] + ".sx");
+
+			if( hasSpecificKeyThisFrame( $picked[0], "sy" ) || ifKeyEveryFrame() )
+				setKeyframe ($picked[$x] + ".sy");
+
+			if( hasSpecificKeyThisFrame( $picked[0], "sz" ) || ifKeyEveryFrame() )
+				setKeyframe ($picked[$x] + ".sz");
+
+		}
+		select -r $picked;
+	}
+}
+
+
+
+global proc doBake() 
+{
+	string $picked[] = `ls -sl`;
+	if (size($picked) <= 1)
+	{
+		text -e -l "Must select at least two items" feedbackText; return;
+	}
+	int $rangeStart = `intField -q -v rangeStart`;
+	int $rangeEnd = `intField -q -v rangeEnd`;
+	int $stepBy = `intField -q -v stepBy`;
+
+	//if( we're not keying every frame )
+	if( ifKeyEveryFrame() == 0 )
+	{
+		// we must step by 1
+		$stepBy = 1;
+	}
+	
+	for ($increment = $rangeStart; $increment <= $rangeEnd; $increment = $increment + $stepBy)
+	{
+		currentTime -e $increment;
+		if (`checkBox -q -v bakeTrans` == 1) do_trans "yes"; 
+		if (`checkBox -q -v bakeRot` == 1) do_rot "yes";
+		if (`checkBox -q -v bakeScale` == 1) do_scale "yes";
+	}
+}
+
+global proc int ifKeyEveryFrame()
+{
+	if( `checkBox -q -v checkBox_KeyEveryFrame` == 1 )
+		return 1;
+	
+	return 0;
+}
+
+global proc enableBaking() 
+{
+	if ((`checkBox -q -v bakeTrans` == 1) ||
+		(`checkBox -q -v bakeRot` == 1) ||
+		(`checkBox -q -v bakeScale` == 1))
+	{
+		button -e -en true bakeButton;
+		text -e -en true rangeText;
+		intField -e -en true rangeStart;
+		text -e -en true toText;
+		intField -e -en true rangeEnd;
+		button -e -en true resetButton;
+		text -e -en true byText;
+		intField -e -en true stepBy;
+	}  
+	else
+	{
+		button -e -en false bakeButton;
+		text -e -en false rangeText;
+		intField -e -en false rangeStart;
+		text -e -en false toText;
+		intField -e -en false rangeEnd;
+		button -e -en false resetButton;
+		text -e -en false byText;
+		intField -e -en false stepBy;
+	}
+}
+
+global proc resetRange() 
+{
+	intField -e -v (`playbackOptions -q -min`) rangeStart;
+	intField -e -v (`playbackOptions -q -max`) rangeEnd;
+	intField -e -v 1 stepBy;
+}
+
+global proc checkStart() 
+{
+	int $rangeStart = `intField -q -v rangeStart`;
+	int $rangeEnd = `intField -q -v rangeEnd`;
+	if ($rangeStart > $rangeEnd)
+		intField -e -v $rangeEnd rangeStart; 
+}
+
+global proc checkEnd() 
+{
+	int $rangeStart = `intField -q -v rangeStart`;
+	int $rangeEnd = `intField -q -v rangeEnd`;
+	if ($rangeEnd < $rangeStart)
+		intField -e -v $rangeStart rangeEnd; 
+}
+
+
+
+
+global proc copyTransformations() 
+{
+
+	if ((`window -ex copyTransformations`) == true) deleteUI
+		copyTransformations;
+
+	if (`windowPref -q -ex copyTransformations`)
+	{
+		if ((`windowPref -q -w copyTransformations`) != 250)
+			windowPref -e -w 250 copyTransformations;
+		if ((`windowPref -q -h copyTransformations`) != 225)
+			windowPref -e -h 225 copyTransformations;
+	}
+
+	window  -title " Copy Transfs 03.07.02" -mnb true -s true copyTransformations;
+
+	rowColumnLayout -nr 11
+		-rh 1 5 -rh 2 22  -rh 3 22
+		-rh 4 22 -rh 5 22 -rh 6 22 -rh 7 5
+		-rh 8 22 -rh 9 5 -rh 10 22 -rh 11 22;
+
+	//row 1
+	button -l "" -vis false;
+
+	//row 2
+	rowColumnLayout -nc 2 -cw 1 230 -co 1 "left" 15;
+	text -al "left" -l "Shift-Select Magnet (first), then Copycat(s)" feedbackText;
+	setParent ..;
+
+	//row 3
+	rowColumnLayout -nc 2 -cw 1 105 -cw 2 150
+		-co 1 "left" 10 -co 2 "left" 10;
+	button -l "TRANSLATION" -c ("do_trans \"no\"");
+	checkBox -v 0 -l " key new position" keyTrans;
+	setParent ..;
+
+	//row 4
+	rowColumnLayout -nc 2 -cw 1 105 -cw 2 150
+		-co 1 "left" 10 -co 2 "left" 10;
+	button -l "ROTATION" -c ("do_rot \"no\"");
+	checkBox -v 0 -l " key new orientation" keyRot;
+	setParent ..;
+
+	//row 5
+	rowColumnLayout -nc 2 -cw 1 105 -cw 2 150
+		-co 1 "left" 10 -co 2 "left" 10;
+	button -l "SCALE" -c ("do_scale \"no\"");
+	checkBox -v 0 -l " key new scale" keyScale;
+	setParent ..;
+
+	//row 6
+	rowColumnLayout -nc 4 -cw 1 90 -cw 2 80 -cw 3 10 -cw 4 50 -co 1 "left" 10;
+	button -l "prev frame" -c "currentTime (`currentTime -q` - 1)";
+	button -l "next frame" -c "currentTime (`currentTime -q` + 1)";
+	button -l "" -en false;
+	button -l "undo" -c "undo";
+	setParent ..;
+
+	//row 7
+	button -l "" -vis false;
+
+
+	//row 8
+	rowColumnLayout -nc 7 -cw 1 40 -cw 2 40 -cw 3 20 -cw 4 40
+		-cw 5 20 -cw 6 30 -cw 7 40
+		-co 1 "left" 10 -co 7 "left" 5;
+	text -l "From" -en false rangeText;
+	intField -v (`playbackOptions -q -min`)
+		-en false -cc checkStart rangeStart;
+	text -l " to" -en false toText;
+	intField -v (`playbackOptions -q -max`)
+		-en false -cc checkEnd rangeEnd;
+	text -l " by" -en false byText;
+	intField -v 1 -en false stepBy;
+	button -l "reset" -en false -c resetRange resetButton;
+	setParent ..;
+
+	//row 9
+	button -l "" -vis false;
+
+	//row 10
+	rowColumnLayout -nc 4 -cw 1 65 -cw 2 70 -cw 3 50 -cw 4 55
+		-co 1 "left" 10 -co 2 "left" 10;
+	button -l "BAKE" -en false -c doBake bakeButton;
+	checkBox -v 0 -l "Trans" -cc enableBaking bakeTrans;
+	checkBox -v 0 -l "Rot" -cc enableBaking bakeRot;
+	checkBox -v 0 -l "Scale" -cc enableBaking bakeScale;
+	setParent ..;
+
+	//row 11
+	rowColumnLayout -nc 2 -cw 1 230 -co 1 "left" 15;
+	checkBox -v 1 -l "Key Every Frame" -cc enableBaking checkBox_KeyEveryFrame;
+	setParent ..;
+
+	showWindow copyTransformations;
+
+}
+
+//so people don't have to type so much to open the dialog
+global proc copyTrans() 
+{
+	copyTransformations();
+}
+
+//so people don't have to type so much to open the dialog
+global proc copyTransf() 
+{
+	copyTransformations();
+}
+
+//so people don't have to type so much to open the dialog
+global proc copyTransfs() 
+{
+	copyTransformations();
+}
+
+

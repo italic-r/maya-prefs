@@ -1,0 +1,8 @@
+proc matchPos() {
+
+string $pntCon2[] = `pointConstraint`;
+delete $pntCon2[0];
+
+}
+
+matchPos();

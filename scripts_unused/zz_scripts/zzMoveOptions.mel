@@ -1,0 +1,63 @@
+//
+// move tool options
+//
+// Created by Hamish McKenzie www.emissionpossible.com
+// Created : 03 November 2001
+//
+// Description:
+// This is basically byran ewert's script for the move tool options
+// beefed up slightly.  you can now assign it to the w key, so
+// that when you hit w, it changes to the move tool, and when you
+// hold it down, it brings up your move tool options.  just creates
+// a better workflow, and saves having to waste a shortcut key on
+// yet another marking menu.
+//
+// Now displays the current context in bold.
+//
+// Usage:
+//  assign this function to a key press:
+//	zzMoveOptions
+//
+//  assign this function to the release;
+//	if( `popupMenu -exists tempMM` ) { deleteUI tempMM; }
+//
+// NOTE: if the hotkey you want to assign this script to contains
+// either ctrl, alt or shift, then modify the "popupMenu" line below
+// to reflect which key is used (ie if you're using alt-w then
+// change it to -alt 1).
+//
+// Hamish McKenzie ©2007...
+
+
+global proc zzMoveOptions() {
+    if( `popupMenu -ex tempMM` )  deleteUI tempMM;
+	global string $gMove;
+	setToolTo $gMove;
+
+	popupMenu -ctl 0 -alt 0 -sh 0 -mm 1 -b 1 -aob 1 -p( `getPanel -up` ) -pmc zzDisplayMoveOptions tempMM;
+	}
+
+
+global proc zzDisplayMoveOptions() {
+	if( `popupMenu -ex tempMM` ) menu -e -dai tempMM;
+	int $isSpacingOn = `manipMoveContext -q -snapComponentsRelative Move`;
+	int $isSnapOn = `manipMoveContext -q -snap Move`;
+	int $isRelativeOn = `manipMoveContext -q -snapRelative Move`;
+	int $ctxMode = `manipMoveContext -q -mode Move`;
+
+	menuItem -rp "W" -l "Move -> Object (self)" -c "manipMoveContext -e -mode 0 Move;" -bld( $ctxMode == 0 );
+	menuItem -rp "N" -l "Move -> Local (parent)" -c "manipMoveContext -e -mode 1 Move;" -bld( $ctxMode == 1 );
+	menuItem -rp "S" -l "Move -> World" -c "manipMoveContext -e -mode 2 Move;" -bld( $ctxMode == 2 );
+	menuItem -rp "E" -l "Move -> Normal" -c "manipMoveContext -e -mode 3 Move;" -bld( $ctxMode == 3 );
+
+	menuItem -l "retain spacing" -checkBox $isSpacingOn -c ( "manipMoveContext -e -snapComponentsRelative " + !$isSpacingOn + " Move" );
+	menuItem -d 1;
+	menuItem -l "snap" -cb $isSnapOn -c ( "manipMoveContext -e -snap " + !$isSnapOn + " Move" );
+	menuItem -l "relative" -cb $isRelativeOn -c ( "manipMoveContext -e -snapRelative " + !$isRelativeOn + " Move" );
+	menuItem -l "mirror selection" -c( "zooMirrorSelection 0;" );
+	menuItem -l "additive mirror selection" -c( "zooMirrorSelection 1;" );
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007

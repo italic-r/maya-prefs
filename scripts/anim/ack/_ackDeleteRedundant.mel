@@ -1,0 +1,120 @@
+/*
+/////////////////////////////////////////////////////////////////////////////
+
+ackDeleteRedundant 1.1		
+12/04/07					
+Aaron Koressel				
+
+Deletes keys that have the same value as it's two
+neighboring keys.  Will only delete keys that are
+in the current selection.
+
+SYNTAX:	
+ackDeleteRedundant;
+
+EXAMPLE:
+Assign this commnad to Ctrl-Alt-R:  ackDeleteRedundant;
+
+CHANGELOG:
+1.1 - 12/04/07
+Uses a tolerance value for checking redundancy
+1.0 - 2/9/07
+First version
+
+////////////////////////////////////////////////////////////////////////////
+*/
+global proc _ackDeleteRedundant() {
+	float $tolerance = .00001;
+
+	//estimate time
+	string $sc[] = `keyframe -selected -q -name`;
+	int $max = size($sc);
+	for ($x = 0; $x < size($sc); $x++){
+		$max += size(`keyframe -q -valueChange $sc[$x]`);
+	}
+	
+	//progess window
+	progressWindow
+		-title "ackDeleteRedundant"
+		-maxValue $max
+		-status "Deleting Redundant Keys..."
+		-isInterruptable true;
+		
+	//only run if at least one key is selected
+	$keyCount = `keyframe -an keys -q -keyframeCount`;
+	if ($keyCount != 0) {
+		//loop over selected curves and process independently
+		string $selectedCurves[] = `keyframe -selected -q -name`;
+		for ($c = 0; $c < size($selectedCurves); $c++){
+			//progress update
+			if ( `progressWindow -query -isCancelled` ){break;}
+			progressWindow -e -step 1;
+			
+			//channel to use for this pass
+			$channel = $selectedCurves[$c];
+			//get values for current channel as array
+			$valueArray = `keyframe -q -valueChange $channel`;
+			
+			$inSeries = 0;
+			$first = 0;
+			float $deleteArray[];
+			float $seriesArray[];
+			
+			//search for redundant keys
+			for ($i = 0; $i < size($valueArray)-1; $i++){
+				//progress update
+				if ( `progressWindow -query -isCancelled` ){break;}
+				progressWindow -e -step 1;
+				
+				//if ($valueArray[$i] == $valueArray[$i+1]){
+				float $delta = $valueArray[$i] - $valueArray[$i+1];
+				print (abs($delta)+"\n");
+				print (abs($delta) <= $tolerance);
+				print "\n\n";
+				if (abs($delta) <= $tolerance){
+					$seriesArray[$i] = $valueArray[$i];
+					if ($first == 0 && $inSeries == 0){
+						$first = 1;
+						$inSeries = 1;
+					} else if ($inSeries == 1){
+						//add to array of keys to delete
+						$keyTime = `keyframe -index $i -q -timeChange $channel`;
+						$deleteArray[size($deleteArray)] = $keyTime[0];
+					}
+				} else {
+					//this value not the same as next
+					//so start series over
+					$first = 0;
+					$inSeries = 0;
+				}
+			}
+			
+			//delete the redundant keys
+			//but only those that were selected
+			$selectedArray = `keyframe -q -timeChange -selected $channel`;
+			for ($i = 0; $i < size($deleteArray); $i++){
+				//progress check
+				if ( `progressWindow -query -isCancelled` ){break;}
+				
+				//see if this key is in the selection
+				for ($j = 0; $j < size($selectedArray); $j++){
+					//progress check
+					if ( `progressWindow -query -isCancelled` ){break;}
+					
+					if ($selectedArray[$j] == $deleteArray[$i]){
+						//remove key
+						cutKey -time ($deleteArray[$i]) -clear $channel;
+						break;
+					}
+				}
+				
+			}
+			
+			//free arrays for next curve
+			clear ($deleteArray);
+			clear ($seriesArray);
+		}		
+	}
+	//kill window
+	progressWindow -endProgress;
+}

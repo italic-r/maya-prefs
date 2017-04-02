@@ -1,0 +1,48 @@
+// outlinerSelected.mel  v1.0  (6 Jun 2000)
+//
+// MEL script for Maya
+//
+// by Bryan Ewert
+//    http://www.ewertb.com
+//    bryan@ewertb.com
+//
+//    H2O Entertainment Corporation
+//    Vancouver, Canada
+//    http://www.h2oent.com
+
+global proc outlinerSelected() 
+{
+	string $select[] = `ls -sl`;
+	
+	if (`size $select`) 
+	{
+		// Create our selectionConnection - as 'connectionList' type
+		$sc = `selectionConnection -lst`;
+
+		// Add current selection to selectionConnection
+		for ($node in $select) 
+		{ 
+				selectionConnection -e -select $node $sc;
+		} 
+
+		// Create window layout to hold Outliner
+		$win = `window -rtf 1 -title "Outliner (Custom)" -iconName "Outliner*"`;
+			string $frame = `frameLayout -lv 0`;
+
+		// Create an unparented outlinerEditor
+		string $oped = `outlinerEditor -showSetMembers true -unParent`;
+
+		// Attach our custom selectionConnection
+		outlinerEditor -e -mlc $sc -slc "modelList" $oped;
+
+		// Parent the outlinerEditor to this window
+		outlinerEditor -e -parent $frame $oped;
+
+		// Create scriptJob to delete selectionConnection when no longer needed
+		scriptJob -uiDeleted $win ( "deleteUI " + $sc );
+		
+		showWindow $win;
+	}
+	else
+		warning ( "Nothing selected!  Custom Outliner not created." );
+}

@@ -1,0 +1,30 @@
+Shot Mask:
+	from shot_mask import ShotMaskUi
+	ShotMaskUi.display()
+
+DockableOuputWindow:
+	mel: czDockableOutputWindow;
+
+Display Overrides:
+	mel: czDisplayColorOverrideUI();
+	python: from display_color_override import DisplayColorOverrideUi
+			DisplayColorOverrideUi.display()
+
+CreatureRigs StretchIK:
+	import cr_stretchLib
+	cr_stretchLib.widget()
+
+CreatureRigs ConstraintTool:
+	import cr_constraintTool
+	cr_constraintTool.widget()
+
+CreatureRigs CurveUilities:
+	cr_curveUtil();
+
+softIK:
+	python:
+		import nm_python_softIK_UI
+		reload(nm_python_softIK_UI)
+		nm_python_softIK_UI.softIK_UI()
+		import nm_python_softIK_proc
+		reload (nm_python_softIK_proc)

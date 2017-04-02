@@ -1,0 +1,2912 @@
+//------------------------------------------------------------------------------------------------
+//
+//	creates assembly representations and definitions
+//
+//	AUTHOR:			Ingo Clemens
+//					www.braverabbit.com
+//
+//					copyright brave rabbit, Ingo Clemens 2013-2015
+//
+//	DATE:			May 28, 2015
+//					created: Jun 05, 2013
+//
+//------------------------------------------------------------------------------------------------
+
+//------------------------------------------------------------------------------------------------
+//
+//	USE AND MODIFY AT YOUR OWN RISK!!
+//
+//------------------------------------------------------------------------------------------------
+
+//------------------------------------------------------------------------------------------------
+//
+//	changelog:
+//
+//	May 28, 2015 - 1.2 - fixed an issue with path names containing spaces when using alembic
+//	May 13, 2015 - 1.1 - fixed a poly reduce command error
+//
+//------------------------------------------------------------------------------------------------
+
+//----------------------------------------------------------------------------------------------
+//
+// checking for the library directory
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samVerifyLibPath()
+{
+	if (`optionVar -ex "samRelativePathCheck"` && !`optionVar -q "samRelativePathCheck"`)
+	{
+		if (`samGetUserLibPath` == "")
+			optionVar -iv "samRelativePathCheck" 1;
+	}
+}
+
+global proc string samGetUserLibPath()
+{
+	if (`optionVar -ex "samUserLibraryRootPath"`)
+	{
+		string $path = `optionVar -q "samUserLibraryRootPath"`;
+		if (`filetest -e $path`)
+			return $path;
+		else
+			return "";
+	}
+	else
+		return "";
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// set the library directory
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samSetLibPath( int $set )
+{
+	global string $gSamRootDir;
+	
+	string $libPath = "";
+	
+	if ($set != 1)
+	{
+		int $choose = 1;
+		
+		if ($set == 0)
+		{
+			string $path = `samGetUserLibPath`;
+			if ($path != "")
+			{
+				$libPath = $path + $gSamRootDir;
+				$choose = 0;
+			}
+		}
+		
+		if ($choose)
+		{
+			string $pathString[] = `fileDialog2 -fm 3 -okc "Select" -cap "Select Library Root Folder"`;
+			if (size($pathString) != 0)
+			{
+				$libPath = $pathString[0] + "/";
+				optionVar -sv "samUserLibraryRootPath" $libPath;
+			}
+			else
+			{
+				$libPath = "../" + $gSamRootDir;
+				menuItem -e -cb 1 samRelativePathCheck;
+			}
+		}
+	}
+	else
+	{
+		$libPath = "../" + $gSamRootDir;
+	}
+	
+	menuItem -e -l $libPath samLibraryPathItem;
+	
+	samSetEnvDefault;
+	samGetAssets();
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// get the project root directory
+//
+//----------------------------------------------------------------------------------------------
+
+global proc string samCheckLibDir( string $path )
+{
+	string $userPath = `samGetUserLibPath`;
+	string $workDir;
+	if ($userPath != "" && `optionVar -ex "samRelativePathCheck"` && !`optionVar -q "samRelativePathCheck"`)
+		$workDir = $userPath;
+	else
+		// get the project root folder
+		$workDir = `workspace -q -rd`;
+
+	//save the current directory temporarily
+	string $tempDir = `workspace -q -dir`;
+	if (!`filetest -d $tempDir`)
+		$tempDir = $workDir;
+	
+	string $fullPath = $workDir + $path;
+	if (!`filetest -e $fullPath`)
+		workspace -cr $fullPath;
+
+	//set the workspace back to the inital setting
+	workspace -dir $tempDir;
+
+	return $fullPath;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// create the library directories
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samCreateLibFolders( string $type, string $name )
+{
+	global string $gSamRootDir;
+	global string $gSamRepDir;
+	global string $gSamDefDir;
+	//global string $gSamRefDir;
+	
+	string $libDir = samCheckLibDir( $gSamRootDir );
+	if (!`filetest -e $libDir`)
+		error "Failed to create an assemblies folder in the current project";
+	
+/*	string $repTypes[] = samDataList( 0, 1, "");
+	for ($r in $repTypes)
+	{
+		$r = tolower($r);
+		samCheckLibDir( $gSamRootDir + $type + "/" + $name + "/" + $gSamRepDir + $r );
+	}
+*/	
+	samCheckLibDir( $gSamRootDir + $type + "/" + $name + "/" + $gSamDefDir );
+	//samCheckLibDir( $gSamRootDir + $type + "/" + $name + "/" + $gSamRefDir );
+	
+	print ("// Created assembly library structure for " + $type + " '" + $name + "' at location: " + $libDir + " //\n");
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// assemble the library directory path for the given item
+//
+//----------------------------------------------------------------------------------------------
+
+global proc string samAssembleLibFolderPath( string $type, string $name, string $rep )
+{
+	global string $gSamRootDir;
+	global string $gSamRepDir;
+	global string $gSamDefDir;
+	//global string $gSamRefDir;
+	
+	string $path = samCheckLibDir( $gSamRootDir + $type + "/" + $name + "/" + $gSamRepDir + $rep );
+	
+	return $path;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// check for already existing representation files and create versions if needed
+//
+//----------------------------------------------------------------------------------------------
+
+global proc int samCheckForRepresentationVersions( string $path )
+{
+	int $return = 0;
+	
+	if (`file -q -ex $path`)
+	{
+		string $pathItems[];
+		tokenize $path "/" $pathItems;
+		string $nameItems[];
+		tokenize $pathItems[size($pathItems) - 1] "." $nameItems;
+		
+		string $fileName = $nameItems[0] + ".v$ID." + $nameItems[1];
+		$pathItems[size($pathItems) - 1] = $fileName;
+		$fileName = "/" + stringArrayToString($pathItems, "/");
+		
+		string $temp = `substitute "$ID" $fileName "1"`;
+		
+		if (`file -q -ex $temp`)
+		{
+			//check if the version already exists on disk and set the version number
+			int $version = 1;
+			string $versionString;
+			int $exists = 1;
+			while ($exists == 1)
+			{
+				$versionString = $version;
+				$temp = `substitute "$ID" $fileName $versionString`;
+			
+				if (!`file -q -ex $temp`)
+					$exists = 0;
+				
+				$version ++;
+			}
+			$temp = `substitute "$ID" $fileName $versionString`;
+		}
+		
+		string $cmd = "sysFile -rename " + "\"/" + $temp + "\" \"" + $path + "\"";
+		eval $cmd;
+		print ("// Saved previous file to version: " + $temp + " //\n");
+		
+		$return = 1;
+	}
+	
+	return $return;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// save the current scene to a temp file in the project's root folder
+//
+//----------------------------------------------------------------------------------------------
+
+global proc string samSaveTempFile()
+{
+	string $tempPath = samCheckLibDir( "" );
+	$tempPath += "temp.ma";
+	file -rename $tempPath;
+	file -save -options "v=0;" -type "mayaAscii";
+	
+	print ("//\n// Original scene saved to: " + $tempPath + " //\n");
+	
+	return $tempPath;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// export the connected shaders when exporting to an alembic cache
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samExportShader( string $mesh[], string $type, string $name, string $path, string $script, int $alembic )
+{
+	string $scriptDir = samAssembleLibFolderPath( $type, $name, "scripts" ) + "/";
+	string $shaderDir = samAssembleLibFolderPath( $type, $name, "shader" ) + "/";
+	string $file = $scriptDir + $script;
+	
+	string $exportShader[];
+	
+	int $fileID = `fopen $file "w"`;
+	
+	string $fileLine;
+	
+	for ($m in $mesh)
+	{
+		if ($alembic)
+		{
+			string $shader[] = `listConnections -type shadingEngine $m`;
+			string $mat[] = `listConnections ($shader[0] + ".surfaceShader")`;
+			$exportShader[size($exportShader)] = $mat[0];
+		
+			$fileLine += "sets -r 1 -nss 1 -em -n " + $mat[0] + "SG;\n";
+			$fileLine += "catchQuiet(`connectAttr -f " + $mat[0] + ".outColor " + $mat[0] + "SG.surfaceShader`);\n";
+			$fileLine += "sets -e -fe " + $mat[0] + "SG " + $m + ";\n";
+		
+			//-----------------------
+			// VRay shape attributes
+			//-----------------------
+		
+			$fileLine += samGetSetVRayAttributes( "vray_subdivision", $m, {"vraySubdivEnable", "vrayPreserveMapBorders", "vraySubdivUVs", "vrayStaticSubdiv", "vrayClassicalCatmark"} );
+			$fileLine += samGetSetVRayAttributes( "vray_subquality", $m, {"vrayOverrideGlobalSubQual", "vrayViewDep", "vrayEdgeLength", "vrayMaxSubdivs"} );
+			$fileLine += samGetSetVRayAttributes( "vray_displacement", $m, {"vrayDisplacementNone", "vrayDisplacementStatic", "vrayDisplacementType", "vrayDisplacementAmount", "vrayDisplacementShift", "vrayDisplacementKeepContinuity", "vrayEnableWaterLevel", "vrayWaterLevel", "vray2dDisplacementResolution", "vray2dDisplacementPrecision", "vray2dDisplacementTightBounds", "vray2dDisplacementFilterTexture", "vray2dDisplacementFilterBlur", "vrayDisplacementUseBounds", "vrayDisplacementMinValueR", "vrayDisplacementMinValueG", "vrayDisplacementMinValueB", "vrayDisplacementMaxValueR", "vrayDisplacementMaxValueG", "vrayDisplacementMaxValueB"} );
+			$fileLine += samGetSetVRayAttributes( "vray_roundedges", $m, {"vrayRoundEdges", "vrayRoundEdgesRadius"} );
+			$fileLine += samGetSetVRayAttributes( "vray_objectID", $m, {"vrayObjectID"} );
+			$fileLine += samGetSetVRayAttributes( "vray_fogFadeOut", $m, {"vrayFogFadeOut"} );
+			//$fileLine += samGetSetVRayAttributes( "vray_phoenix_object", $m, {"vrayPhoenixObjVoxels"} );
+		}
+		
+		//-----------------------
+		// VRay extra nodes
+		//-----------------------
+		
+		string $transform[] = `listRelatives -p $m`;
+		string $conn[] = `listConnections ($transform[0] + ".instObjGroups")`;
+		
+		int $vis = `getAttr ($transform[0] + ".v")`;
+		$fileLine += "setAttr " + $transform[0] + ".visibility " + $vis + ";\n";
+		
+		for ($c = 0; $c < size($conn); $c ++)
+		{
+			//-----------------------
+			// VRay displacement
+			//-----------------------
+			
+			if (`nodeType $conn[$c]` == "VRayDisplacement")
+			{
+				int $globalOverride = `getAttr ($conn[$c] + ".overrideGlobalDisplacement")`;
+		
+				string $map[] = `listConnections ($conn[$c] + ".displacement")`;
+				string $mapPlug[] = `listConnections -p 1 ($conn[$c] + ".displacement")`;
+				if (size($map) != 0)
+				{
+					$exportShader[size($exportShader)] = $map[0];
+
+					$fileLine += "createNode VRayDisplacement -n \"" + $conn[$c] + "\";\n";
+					$fileLine += "sets -add " + $conn[$c] + " " + $m + ";\n";
+					$fileLine += "setAttr " + $conn[$c] + ".overrideGlobalDisplacement " + $globalOverride + ";\n";
+		
+					$fileLine += samGetSetVRayAttributes( "vray_subdivision", $conn[$c], {"vraySubdivEnable", "vrayPreserveMapBorders", "vraySubdivUVs", "vrayStaticSubdiv", "vrayClassicalCatmark"} );
+					$fileLine += samGetSetVRayAttributes( "vray_subquality", $conn[$c], {"vrayOverrideGlobalSubQual", "vrayViewDep", "vrayEdgeLength", "vrayMaxSubdivs"} );
+					$fileLine += samGetSetVRayAttributes( "vray_displacement", $conn[$c], {"vrayDisplacementNone", "vrayDisplacementStatic", "vrayDisplacementType", "vrayDisplacementAmount", "vrayDisplacementShift", "vrayDisplacementKeepContinuity", "vrayEnableWaterLevel", "vrayWaterLevel", "vray2dDisplacementResolution", "vray2dDisplacementPrecision", "vray2dDisplacementTightBounds", "vray2dDisplacementFilterTexture", "vray2dDisplacementFilterBlur", "vrayDisplacementUseBounds", "vrayDisplacementMinValueR", "vrayDisplacementMinValueG", "vrayDisplacementMinValueB", "vrayDisplacementMaxValueR", "vrayDisplacementMaxValueG", "vrayDisplacementMaxValueB"} );
+					$fileLine += "catchQuiet(`connectAttr -f " + $mapPlug[0] + " " + $conn[$c] + ".displacement`);\n";
+				}
+			}
+			else if (`nodeType $conn[$c]` == "VRayFur")
+			{
+				string $uvSet = `getAttr ($conn[$c] + ".uvBasesSet")`;
+				
+				$fileLine += "select -r " + $transform[0] + ";\n";
+				$fileLine += "vray objectProperties add_multiple VRayFur;\n";
+				$fileLine += "rename " + $transform[0] + "_vrayFurProperties " + $conn[$c] + ";\n";
+				$fileLine += "setAttr " + $conn[$c] + ".uvBasesSet -type \"string\" \"" + $uvSet + "\";\n";
+				
+				$fileLine += samGetSetVRayAttributes( "VRayFur", $conn[$c], {"length", "thickness", "gravity", "bend", "taper", "curlAngle", "curlRadius", "curlEnabled", "manualGravityDir", "gravityDir0", "gravityDir1", "gravityDir2", "sides", "knots", "flatNormals", "directionVar", "lengthVar", "thicknessVar", "gravityVar", "curlRadiusVar", "splineHairs", "distribution", "perFace", "perArea", "fixedAreas", "fixedAreasTime"} );
+				
+				string $textureList[] = {"bendDirTex", "initDirTex", "lengthTex", "thicknessTex", "gravityTex", "bendTex", "densityTex", "curlTex"};
+				string $mapPlugs[] = samGetConnectedVRayTextures( $conn[$c], $textureList );
+				for ($t = 0; $t < size($textureList); $t ++)
+				{
+					if ($mapPlugs[$t] != "")
+					{
+						string $plugItems[];
+						tokenize $mapPlugs[$t] "." $plugItems;
+						$exportShader[size($exportShader)] = $plugItems[0];
+					
+						$fileLine += "catchQuiet(`connectAttr -f " + $mapPlugs[$t] + " " + $conn[$c] + "." + $textureList[$t] + "`);\n";
+					}
+				}
+			}
+		}
+	}
+	
+	string $headerLine;
+	if ($alembic)
+		$headerLine = "AbcImport -mode import \"" + $path + "\";\n";
+	else
+		$headerLine = "file -i -type \"mayaAscii\" -mnc 0 -pr " + "\"" + $path + "\";\n";
+	
+	if (size($exportShader) != 0)
+		$headerLine += "file -i -type \"mayaAscii\" -mnc 0 -pr " + "\"" + $shaderDir + $name + "_shader.ma\";\n";
+
+	$headerLine += "FrameSelected;\n";
+	$fileLine = $headerLine + $fileLine;
+	//print $fileLine;
+	fprint $fileID $fileLine;
+	
+	fclose $fileID;
+
+	if (size($exportShader) != 0)
+	{
+		// get the global curve tangent type and set it to linear for the baking
+		// the previous state will be restored afterwards
+		string $inOutTangent[] = `keyTangent -q -g -itt -ott`;
+		keyTangent -g -itt linear -ott linear;
+		
+		for ($node in $exportShader)
+			samBakeDrivenShaderAttributes( $node );
+			
+		keyTangent -g -itt $inOutTangent[0] -ott $inOutTangent[1];
+		
+		select -r $exportShader;
+		file -f -op "v=0;p=17" -typ "mayaAscii" -pr -es ($shaderDir + $name + "_shader.ma");
+		print ("// Exported " + size($exportShader) + " shader to: " + $shaderDir + $name + "_shader.ma //\n");
+	}
+
+	print ("// Saved assignment script to: " + $file + " //\n");
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// find any attributes driven by expressions or SDK and bake these channels
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samBakeDrivenShaderAttributes( string $shadeNode )
+{
+	string $conn[] = `listConnections -s 1 -d 0 -p 1 $shadeNode`;
+	
+	float $start = `floatField -q -v samStartField`;
+	float $end = `floatField -q -v samEndField`;
+	
+	int $done = 0;
+	while ($done == 0)
+	{
+		if (size($conn) > 0)
+		{
+			for ($c in $conn)
+			{
+				string $items[];
+				tokenize $c "." $items;
+				string $type = `nodeType $items[0]`;
+				if ($type == "expression" || `gmatch $type "animCurveU*"`)
+				{
+					string $attr[] = `listConnections -p 1 $c`;
+					tokenize $attr[0] "." $attr;
+					bakeResults -t ($start + ":" + $end) -sb 1 -sm 1 -dic 1 -pok 0 -sac 0 -ral 0 -bol 0 -at $attr[1] $attr[0];
+					
+					print ("// Baked driven attribute '" + $attr[0] + "." + $attr[1] + "' //\n");
+				}
+				else
+					samBakeDrivenShaderAttributes( $items[0] );
+			}
+			$done = 1;
+		}
+		else
+			$done = 1;
+	}
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// get the vray major version number for version specific settings
+//
+//----------------------------------------------------------------------------------------------
+
+global proc int samGetVRayMajorVersion()
+{
+	string $vrayVersion = `pluginInfo -q -v vrayformaya`;
+	string $parts[];
+	tokenize $vrayVersion "." $parts;
+	return $parts[0];
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// get the vray attributes for the given set and create setAttr commands
+//
+//----------------------------------------------------------------------------------------------
+
+global proc string samGetSetVRayAttributes( string $attrGrp, string $mesh, string $list[] )
+{
+	string $fileLine;
+	if (`attributeExists $list[0] $mesh`)
+	{
+		if ($attrGrp != "VRayFur")
+			$fileLine = "vray addAttributesFromGroup " + $mesh + " " + $attrGrp + " 1;\n";
+		
+		for ($a in $list)
+		{
+			float $val = `getAttr ($mesh + "." + $a)`;
+			$fileLine += "if (`attributeExists " + $a + " " + $mesh + "`) setAttr " + $mesh + "." + $a  + " " + $val + ";\n";
+		}
+		
+		print ("// Saved '" + $attrGrp + "' attribute settings //\n");
+	}
+	
+	return $fileLine;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// get any connected textures of vray property nodes
+//
+//----------------------------------------------------------------------------------------------
+
+global proc string[] samGetConnectedVRayTextures( string $node, string $list[] )
+{
+	string $plugs[];
+	
+	for ($a in $list)
+	{
+		string $mapPlug[] = `listConnections -p 1 ($node + "." + $a)`;
+		if (size($mapPlug))
+			$plugs[size($plugs)] = $mapPlug[0];
+		else
+			$plugs[size($plugs)] = "";
+	}
+	
+	return $plugs;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// export the shaders and create script for vray proxy
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samExportForVrayProxy( string $mesh[], string $type, string $name, string $path, string $script )
+{
+	string $scriptDir = samAssembleLibFolderPath( $type, $name, "scripts" ) + "/";
+	string $shaderDir = samAssembleLibFolderPath( $type, $name, "shader" ) + "/";
+	string $file = $scriptDir + $script;
+	
+	int $fileID = `fopen $file "w"`;
+	
+	string $objectPath = "";
+	if (`samGetVRayMajorVersion` > 2)
+		$objectPath = " \"\"";
+	
+	string $fileLine = "{\n";
+	$fileLine += "\tvrayCreateProxyExisting \"" + $name + "\" \"" + $path + "\"" + $objectPath + ";\n";
+	if (!`menuItem -q -cb samUseVRayMeshCheck`)
+		$fileLine += "\tsetAttr " + $name + "_vraymesh.numPreviewFaces 100;\n";
+	$fileLine += "\trename " + $name + "_vraymeshmtl " + $name + "_MM_SH;\n";
+	fprint $fileID $fileLine;
+	
+	for ($m in $mesh)
+	{
+		string $shader[] = `listConnections -type shadingEngine $m`;
+		string $mat[] = `listConnections ($shader[0] + ".surfaceShader")`;
+		select -r $mat[0];
+		
+		file -f -op "v=0;p=17" -typ "mayaAscii" -pr -es ($shaderDir + $mat[0] + ".ma");
+		print ("// Exported " + $mat[0] + " to: " + $shaderDir + $mat[0] + ".ma //\n");
+		
+		$fileLine = "\tfile -i -type \"mayaAscii\" -mnc 0 -pr " + "\"" + $shaderDir + $mat[0] + ".ma\";\n";
+		
+		// alembic cache files list the mesh name in the mesh material
+		if (!`menuItem -q -cb samUseVRayMeshCheck`)
+			$fileLine += "\tint $id = samMeshMaterialShaderNameID( \"" + $name + "_MM_SH\", \"" + $m + "\" );\n";
+		// vrmesh cache files list the shader name in the mesh material
+		else
+			$fileLine += "\tint $id = samMeshMaterialShaderNameID( \"" + $name + "_MM_SH\", \"" + $mat[0] + "\" );\n";
+		
+		$fileLine += "\tcatchQuiet(`connectAttr -f " + $mat[0] + ".outColor " + $name + "_MM_SH.shaders[$id]`);\n";
+
+		//print $fileLine;
+		fprint $fileID $fileLine;
+	}
+	
+	$fileLine = "}\n";
+	fprint $fileID $fileLine;
+	
+	fclose $fileID;
+	print ("// Saved VRay proxy script to: " + $file + " //\n");
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// get the shaderName id of the mesh material for the given mesh
+// called by the VRay proxy script
+//
+//----------------------------------------------------------------------------------------------
+
+global proc int samMeshMaterialShaderNameID( string $material, string $mesh )
+{
+	int $idList[] = `getAttr -mi ($material + ".shaderNames")`;
+	int $shapeId = -1;
+	for ($id in $idList)
+	{
+		string $shapeName = `getAttr ($material + ".shaderNames[" + $id + "]")`;
+		if ($shapeName == $mesh)
+			$shapeId = $id;
+	}
+	return $shapeId;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// create the script for mental ray proxy
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samExportScriptForMRProxy( string $group, string $type, string $name, string $path, string $script )
+{
+	string $scriptDir = samAssembleLibFolderPath( $type, $name, "scripts" ) + "/";
+	string $file = $scriptDir + $script;
+	
+	int $fileID = `fopen $file "w"`;
+	
+	string $fileLine = "polyCube -ch 0 -n \"" + $group + "\";\n";
+	$fileLine += "setAttr " + $group + ".miProxyFile -type \"string\" \"" + $path + "\";\n";
+	$fileLine += "AEmentalrayRenderProxyUpdate \"" + $group + "Shape.miProxyFile\";\n";
+	fprint $fileID $fileLine;
+	
+	fclose $fileID;
+	print ("// Saved MentalRay proxy script to: " + $file + " //\n");
+}
+
+
+//----------------------------------------------------------------------------------------------
+//
+// execute the export script for the representation
+//
+//----------------------------------------------------------------------------------------------
+
+global proc string samApplyRepresentationScript( string $type, string $name, string $path, string $script, string $ext )
+{
+	print ("// Building new representation file for '" + $name + "' //\n");
+	
+	file -f -new;
+
+	string $dir = samAssembleLibFolderPath( $type, $name, "scripts" );
+	eval("source \"" + $dir + "/" + $script + "\"");
+	
+	string $temp = $path;
+	string $pathItems[] = stringToStringArray($path, "/");
+	$pathItems[size($pathItems) - 1] = `substitute $ext $pathItems[size($pathItems) - 1] "ma"`;
+	$path = stringArrayToString($pathItems, "/");
+	// in case of osx paths
+	if (`substring $temp 1 1` == "/")
+		$path = "/" + $path;
+	
+	// only check for existing versions if needed and if the given extension doesn't match the ascii format;
+	// this might be the case if the current file is saved (exported) and the script is applied to this file;
+	// if the scene is exported to alembic the given extension is not maya ascii and therefore it's ok to check versions
+	if (`menuItem -q -cb samKeepVersionsCheck` && $ext != "ma")
+		samCheckForRepresentationVersions( $path );
+	
+	file -rename $path;
+	file -save -options "v=0;" -type "mayaAscii";
+	
+	print ("// Applied script to: " + $path + " //\n");
+	
+	return $path;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// get the selection for the UI or find the contained mesh nodes
+//
+// when called from the UI button the selection is processed and the UI field is populated.
+// When called from the script the field content is used to find all contained mesh objects
+// which will be used as the return value.
+//
+//----------------------------------------------------------------------------------------------
+
+global proc string[] samGetSelection( int $fromButton )
+{
+	global string $gSamAssemblyNodes[];
+	
+	string $sel[];
+	int $assembly;
+	int $nonAssembly = 0;
+	
+	if ($fromButton)
+	{
+		clear $gSamAssemblyNodes;
+		
+		$sel = `ls -sl -tr`;
+		
+		// check if only assembly nodes are selected
+		for ($s in $sel)
+		{
+			if (`nodeType $s` == "assemblyReference")
+			{
+				$gSamAssemblyNodes[size($gSamAssemblyNodes)] = $s;
+				$assembly = 1;
+			}
+			else
+				$nonAssembly ++;
+		}
+		if ($assembly == 1 && $nonAssembly != 0)
+			error "Only assembly nodes are allowed to be selected";
+	}
+	else
+	{
+		$sel[0] = `textFieldButtonGrp -q -tx samSelectedField`;
+		if ($sel[0] == "<Assembly reference list>")
+			$assembly = 1;
+	}
+	string $shapes[];
+	
+	
+	if (size($sel) == 0)
+		error "No hierarchy selected to work with";
+	if (size($sel) != 1 && $assembly == 0)
+		error "Only one hierarchy is allowed to be selected";
+	
+	if ($fromButton)
+	{
+		if ($assembly == 0)
+			textFieldButtonGrp -e -tx $sel[0] samSelectedField;
+		else
+		{
+			textFieldButtonGrp -e -tx "<Assembly reference list>" samSelectedField;
+			//optionMenuGrp -e -sl 4 samAssetTypeList;
+			optionMenuGrp -e -sl 4 samBuildDefinitionOptions;
+			samBuildTypeDidChange();
+		}
+		button -e -en 1 samCreateButton;
+	}
+	else
+	{
+		if ($assembly == 0)
+		{
+			string $hi[] = `listRelatives -ad -ni $sel[0]`;
+			select -cl;
+			for ($node in $hi)
+			{
+				if (`nodeType $node` == "mesh" && `getAttr ($node + ".io")` == 0)
+					$shapes[size($shapes)] = $node;
+			}
+		}
+		else
+			$shapes = $gSamAssemblyNodes;
+	}
+	
+	return $shapes;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// find the lowest common group of the contained meshes for converting to bbox
+//
+// this helps to make sure that the conversion result is a simple hierarchy which is
+// named as the original parent hierarchy.
+// I.e. a character group contains a geo group and the rig group. Converting to BBox with
+// shapes combined is not able to combine the mesh shapes correctly and keeps them separate.
+// This function also helps to omit warning messages because of the contained character
+// controls when converting to BBox, because only the contained meshes are processed.
+//
+//----------------------------------------------------------------------------------------------
+
+global proc string[] samFindLowestCommonMeshGroup()
+{
+	string $list[] = samGetSelection( 0 );
+	
+	string $hier = `textFieldButtonGrp -q -tx samSelectedField`;
+	if ($hier == "<Assembly reference list>")
+		return $list;
+	
+	if (size($list) == 1)
+		$list = `listRelatives -p $list[0]`;
+	else
+	{
+		string $parent[];
+		while (size($list) > 1)
+		{
+			for ($i in $list)
+			{
+				string $rel[] = `listRelatives -p $i`;
+				if (`nodeType $i` == "mesh")
+					$rel = `listRelatives -p $rel[0]`;
+				if ($rel[0] != "")
+					$parent[size($parent)] = $rel[0];
+			}
+			$list = stringArrayRemoveDuplicates( $parent );
+			clear $parent;
+		}
+	}
+
+	string $groupName;
+	if ($list[0] != $hier)
+	{
+		$groupName = $list[0];
+		rename $hier ($hier + "_original");
+		rename $list[0] $hier;
+	}
+	
+	return {$hier, $groupName};
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// build the dock panel
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samBuildDock( string $win )
+{
+	global string $gSamRootDir;
+	
+	window -t "Scene Assembly Manager" -w 325 -mb 1 $win;
+	
+	int $selectionStyle = `selectPref -q -containerCentricSelection`;
+	
+	string $repTypes[] = samDataList( 0, 1, "");
+	string $categories[] = samDataList( 0, 0, "");
+	
+	string $libPath = "..";
+	if (`optionVar -ex "samRelativePathCheck"` && !`optionVar -q "samRelativePathCheck"`)
+	{
+		string $path = `samGetUserLibPath`;
+		if ($path != "")
+			$libPath = $path;
+	}
+	$libPath += $gSamRootDir;
+	
+	int $count = 5;
+
+	//-----------------------------------------------------
+	// create the menu bar
+	//-----------------------------------------------------
+	
+	menu -label "Edit" -tearOff 0;
+		menuItem -l "Save settings" -c "samSetEnvDefault";
+		menuItem -l "Reset settings" -c "samGetEnvDefault 1; samToggleExportTimeRange; samSetEnvDefault; samBuildTypeDidChange; samGetAssets;";
+	menu -label "Create" -tearOff 1;
+		menuItem -l "Get name from selected asset" -c "samGetNameFromSelectedAsset";
+		menuItem -l "Create variation for selected asset" -c "samCreateAssetVariation" samAssetVariation;
+		menuItem -d 1;
+		menuItem -l "Keep existing representations as versions" -cb 1 -c "samSetEnvDefault" samKeepVersionsCheck;
+		menuItem -l "Apply shader to alembic" -cb 1 -c "samSetEnvDefault" samApplyShadingCheck;
+		menuItem -l "VRayProxy uses VRayMesh" -cb 1 -c "samSetEnvDefault" samUseVRayMeshCheck;
+	menu -label "Library" -tearOff 1;
+		menuItem -l "Relative To Project" -cb 1 -c "samSetLibPath #1" samRelativePathCheck;
+		menuItem -l "Set Library Path..." -c "samSetLibPath 2" samSetPathItem;
+		menuItem -l $libPath -en 0 samLibraryPathItem;
+		menuItem -d 1;
+		menuItem -l "Reload library" -c "samGetAssets";
+		menuItem -l "Use popup menu to load source files" -cb 0 -c "samSetEnvDefault" samLoadSourceCheck;
+		menuItem -l "Delete asset from library" -c "samDeleteFromLibraryConfirm";
+	menu -label "Tools" -tearOff 1;
+		menuItem -l "Import source files" -c "samImportAssetSource";
+	menu -label "Help";
+		menuItem -l "About" -c "samOpenAboutWindow";
+	
+	scrollLayout -cr 1;
+		columnLayout -adj 1;
+	
+			//-------------------
+			// general settings
+			//-------------------
+			
+			frameLayout -l "General Settings" -li 3 -cll 1 -cl 0 -mw 5 -mh 5 samGeneralFrame;
+			
+				rowColumnLayout -nc 2 -co 2 "both" 5 -cw 1 15;
+					checkBox -l "" -v $selectionStyle -cc "selectPref -containerCentricSelection (1 - (`selectPref -q -containerCentricSelection`))" samSelStyle;
+					text -l "Asset centric selection" -al "left";
+				setParent ..;
+				
+				columnLayout -adj 1 samSwitchRepColumn;
+				// space for inserting samSwitchRepOption
+				setParent ..;
+				
+				rowColumnLayout -nc 2 -co 2 "both" 5 -cw 1 15;
+					checkBox -l "" samIncludeHierarchyCheck;
+					text -l "Auto load hierarchical assets" -al "left";
+				setParent ..;
+			setParent ..;
+			
+			//-------------------
+			// create definition
+			//-------------------
+			
+			frameLayout -l "Assembly Definition Setup" -li 3 -cll 1 -cl 1 -mw 5 -mh 5 samDefFrame;
+
+				//-----------------------------------------------------
+				// selection and description fields
+				//-----------------------------------------------------
+	
+				textFieldButtonGrp -l "Hierarchy" -bl "Select" -bc "samGetSelection 1" 
+									-cw3 60 100 40 -ct3 "left" "both" "right" -co3 0 5 0 -ad3 2 samSelectedField;
+				textFieldGrp -l "Name" -cw2 60 100 -ct2 "left" "left" -co2 0 5 -ad2 2 -cc "samCheckValidName samNameField" samNameField;
+				textFieldGrp -l "Description" -cw2 60 100 -ct2 "left" "left" -co2 0 5 -ad2 2 samDescriptionField;
+				optionMenuGrp -l "Type" -cl2 "left" "both" -cw2 65 100 samAssetTypeList;
+					for ($c in $categories)
+						menuItem -l $c;
+				
+				separator -h 10 -style "in";
+				
+				//-----------------------------------------------------
+				// build options
+				//-----------------------------------------------------
+				
+				optionMenuGrp -l "Build type" -cl2 "left" "both" -cw2 65 100 -cc "samBuildTypeDidChange" samBuildDefinitionOptions;
+					menuItem -l "Build assembly definition";
+					menuItem -l "Add to existing definition";
+					menuItem -l "Save representations only";
+					menuItem -l "Build reference hierarchy";
+			
+				//-----------------------------------------------------
+				// export options
+				//-----------------------------------------------------
+			
+				int $checkValue[] = {1,1,0,1,1};
+				int $repValue[] = {5,1,7,1,1};
+				int $exportValue[] = {4,4,1,1,2};
+			
+				string $checkBoxes[];
+				string $repOption[];
+				string $exportOption[];
+				for ($i = 0; $i < $count; $i ++)
+				{
+					rowColumnLayout -nc 2 -co 2 "both" 5 -cw 1 15;
+						$checkBoxes[size($checkBoxes)] = `checkBox -l "" ("samRepCheck" + $i)`; // -v $checkValue[$i]
+						text -l $repTypes[$i] -al "left" ("samRepType" + $i);
+					setParent ..;
+					rowColumnLayout -nc 2 -co 2 "left" 15;
+						$repOption[size($repOption)] = `optionMenu -cc ("samRepresentationOptionDidChange samRepOption " + $i) ("samRepOption" + $i)`;
+							menuItem -l "Current File";
+							menuItem -l "BBox|Single|Anim.";
+							menuItem -l "BBox|Shapes|Anim.";
+							menuItem -l "BBox|Single";
+							menuItem -l "BBox|Shapes";
+							menuItem -l "BBox|Combined";
+							menuItem -l "50% Reduction";
+							menuItem -l "75% Reduction";
+							menuItem -l "90% Reduction";
+							menuItem -l "Select File";
+						$exportOption[size($exportOption)] = `optionMenu -cc ("samExportOptionDidChange samExportOption " + $i) ("samExportOption" + $i)`;
+							menuItem -l "Save";
+							menuItem -l "Alembic|Static";
+							menuItem -l "Alembic|Animated";
+							menuItem -l "GPU|Static";
+							menuItem -l "GPU|Anim.";
+							menuItem -l "GPU|Anim.|MBlur";
+							if (`pluginInfo -q -l vrayformaya`)
+							{
+								menuItem -l "VRayProxy|Static";
+								menuItem -l "VRayProxy|Animated";
+							}
+							if (`pluginInfo -q -l Mayatomr`)
+							{
+								menuItem -l "miProxy|Static";
+							}
+					setParent ..;
+				
+					optionMenu -e -sl $repValue[$i] $repOption[$i];
+					optionMenu -e -sl $exportValue[$i] $exportOption[$i];
+				}
+			
+				separator -h 10 -style "in";
+			
+				//-----------------------------------------------------
+				// time settings
+				//-----------------------------------------------------
+			
+				radioButtonGrp -l "Range" -nrb 2 -l1 "Time Slider" -l2 "Start/End" -cc "samSetEnvDefault"
+								-cw3 60 100 100 -ct3 "left" "both" "right" -co3 0 5 0 samTimeRange;
+				rowColumnLayout -nc 3 -co 2 "both" 5 -co 3 "both" 10 -cw 1 60 -cw 2 77 -cw 3 87 ;
+					text -l "Start/End" -al "left";
+					floatField -pre 2 -v `playbackOptions -q -min` -en 0 samStartField;
+					floatField -pre 2 -v `playbackOptions -q -max` -en 0 samEndField;
+				setParent ..;
+				
+				separator -h 10 -style "in";
+				
+				rowColumnLayout -nc 2 -co 2 "both" 5 -cw 1 15;
+					checkBox -l "" -v 0 -cc "floatFieldGrp -e -en (1 - `floatFieldGrp -q -en samSampleOffset`) samSampleOffset" samRelativeSampleCheck;
+					text -l "Alembic/VRayMesh relative sampling" -al "left";
+				setParent ..;
+					string $ann = "Alembic sampling is centered at the frame. VRayMesh sampling starts at the frame and only a positive offset is defined.";
+					floatFieldGrp -l "Offset" -cw2 60 73 -ct2 "left" "both" -co2 0 3 -pre 2 -v1 0.12 -en 0 -ann $ann samSampleOffset;
+				
+			
+				radioButtonGrp -e -cc "samToggleExportTimeRange" samTimeRange;
+				
+				
+				button -l "Create and build" -h 30 -en 0 -c "samCreateRepresentations" samCreateButton;
+				
+			setParent ..;
+		
+			//-------------------
+			// library
+			//-------------------
+			
+			frameLayout -l "Assembly Library" -li 3 -cll 1 -cl 0 -mw 5 -mh 5 samLibFrame;
+		
+				optionMenu -w 150 -cc "samGetAssets" samRefTypeList;
+					menuItem -l "all";
+					for ($c in $categories)
+						menuItem -l $c;
+				rowLayout -nc 3 -co3 0 0 5 -cl3 "left" "left" "left" -ad3 3;
+					iconTextButton -w 20 -h 20 -i "retractInfluenceList.png" -c "samResizeScrollList 0";
+					iconTextButton -w 20 -h 20 -i "expandInfluenceList.png" -c "samResizeScrollList 1";
+					textField -tx "" -ed 0 samAssetDescription;
+				setParent ..;
+				textScrollList -ams 1 -h 300 -sc "samLibrarySelectionDidChange" -dcc "samCreateReference" samLibraryList;
+					popupMenu -pmc "samShowAssetInfo" samAssetInfoMenu;
+				
+				//button -l "Add reference" -h 30 -c "samCreateReference";
+	
+			setParent ..;
+			
+		setParent ..;
+		
+		// attach the collabse commands
+		//frameLayout -e -pec "frameLayout -e -cl 1 samLibFrame" samDefFrame;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// about window
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samOpenAboutWindow()
+{
+	string $aboutWin = "samAboutWin";
+	
+	if (`window -ex $aboutWin`) deleteUI($aboutWin);
+
+	window -t "About" -w 200 -h 130 $aboutWin;
+	if (`windowPref -ex $aboutWin`)
+		windowPref -e -wh 200 130 $aboutWin;
+
+	columnLayout -adj 1;
+	separator -h 15 -style "none";
+	text -l "Scene Assembly Manager" -fn boldLabelFont;
+	separator -h 15 -style "none";
+	text -l "1.2 (150528)";
+	separator -h 15 -style "none";
+	text -l "Creator: Ingo Clemens";
+	separator -h 5 -style "none";
+	text -l "brave rabbit 2011-2015";
+	setParent ..;
+
+	showWindow $aboutWin;
+}
+		
+//----------------------------------------------------------------------------------------------
+//
+// resize the library list
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samResizeScrollList( int $dir )
+{
+	int $height = `textScrollList -q -h samLibraryList`;
+	
+	if ($dir == 1)
+		$height += 20;
+	else
+		$height -= 20;
+	
+	if ($height <= 20 && $dir == 0)
+		$height = 20;
+	
+	textScrollList -e -h $height samLibraryList;
+	
+	samSetEnvDefault;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// build the representation type menu
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samBuildRepOptions()
+{
+	string $repTypes[] = samDataList( 0, 1, "");
+	
+	if (`optionMenu -q -ex samSwitchRepOption`)
+		deleteUI samSwitchRepOption;
+	
+	setParent samSwitchRepColumn;
+		optionMenu -cc "samRepresentationSelectionDidChange" samSwitchRepOption;
+			menuItem -l "Select";
+			menuItem -l "none";
+			menuItem -l "locator";
+					
+			for ($r in $repTypes)
+			{
+				$r = tolower($r);
+				menuItem -l $r;
+			}
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// changes the export time range options
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samToggleExportTimeRange()
+{
+	floatField -e -en (1 - (`radioButtonGrp -q -sl samTimeRange`)) samStartField;
+	floatField -e -en (1 - (`radioButtonGrp -q -sl samTimeRange`)) samEndField;
+	
+	if (`radioButtonGrp -q -sl samTimeRange` == 1)
+	{
+		floatField -e -v (`playbackOptions -q -min`) samStartField;
+		floatField -e -v (`playbackOptions -q -max`) samEndField;
+	}
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// check if the entered string is valid
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samCheckValidName( string $field )
+{
+	string $fieldString = `textFieldGrp -q -tx $field`;
+	$fieldString = `substituteAllString $fieldString " " "_"`;
+	textFieldGrp -e -tx $fieldString $field;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// show the info for the select asset
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samShowAssetInfo()
+{
+	global string $gSamRootDir;
+	global string $gAssets[];
+	global string $gRepList[];
+	
+	popupMenu -e -dai samAssetInfoMenu;
+	
+	int $selID[] = `textScrollList -q -sii samLibraryList`;
+	
+	if (size($selID) != 1)
+	{
+		if (`menuItem -q -cb samLoadSourceCheck` == 0)
+		{
+			menuItem -l "Switch multiple selection:" -en 0 -p samAssetInfoMenu;
+			string $labels[] = samDataList( 0, 1, "");
+			stringArrayInsertAtIndex(0, $labels, "none");
+			stringArrayInsertAtIndex(1, $labels, "locator");
+			for ($l in $labels)
+			{
+				$l = tolower($l);
+				menuItem -l $l -p samAssetInfoMenu -c ("samSwitchRepresentationFromMenu " + $l);
+			}
+		}
+		return;
+	}
+	
+	menuItem -l "Available representations:" -en 0 -p samAssetInfoMenu;
+	
+	string $repList[] = stringToStringArray($gRepList[$selID[0] - 1], ",");
+	int $noneItem = 0;
+	for ($i in $repList)
+	{
+		if (`menuItem -q -cb samLoadSourceCheck` == 0)
+		{
+			if ($noneItem == 0)
+			{
+				menuItem -l "none" -p samAssetInfoMenu -c ("samSwitchRepresentationFromMenu none");
+				menuItem -l "locator" -p samAssetInfoMenu -c ("samSwitchRepresentationFromMenu locator");
+				$noneItem = 1;
+			}
+			menuItem -l $i -p samAssetInfoMenu -c ("samSwitchRepresentationFromMenu " + $i);
+		}
+		else
+			menuItem -l $i -p samAssetInfoMenu -c ("samLoadRepresentationSourceFromMenu " + $i);
+	}
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// get the name for the new definition from the selected asset in the library
+//
+//----------------------------------------------------------------------------------------------
+
+global proc int samGetNameFromSelectedAsset()
+{
+	global string $gAssets[];
+	global string $gDescList[];
+	global string $gSettingsList[];
+	
+	global string $gSamExtFileList[];
+	clear $gSamExtFileList;
+	$gSamExtFileList = {"", "", "", "", ""};
+	
+	int $count = 5;
+	int $done = 0;
+	
+	int $selID[] = `textScrollList -q -sii samLibraryList`;
+	if (size($selID))
+	{
+		string $items[];
+		tokenize $gAssets[$selID[0] - 1] ":" $items;
+		
+		string $name;
+		string $type;
+		
+		if (size($items) == 1)
+		{
+			$name = $items[0];
+			$type = `optionMenu -q -v samRefTypeList`;
+		}
+		else
+		{
+			$name = substituteAllString( $items[1], "_AH", "" );
+			$type = $items[0];
+		}
+		textFieldGrp -e -tx $name samNameField;
+		textFieldGrp -e -tx $gDescList[$selID[0] - 1] samDescriptionField;
+		
+		if ($type != "")
+			optionMenuGrp -e -v $type samAssetTypeList;
+		
+		//------------------------------
+		// restore the build settings
+		//------------------------------
+		
+		if ($gSettingsList[$selID[0] - 1] == "none")
+			return 1;
+		
+		string $settingsString = substituteAllString( $gSettingsList[$selID[0] - 1], ",,", ", ," );
+		tokenize $settingsString "," $items;
+		
+		float $value;
+		int $step = 0;
+		for ($i = 0; $i < $count; $i ++)
+		{
+			eval("checkBox -e -v " + $items[$step] + " -en 1 samRepCheck" + $i);
+			eval("text -e -en 1 samRepType" + $i);
+			eval("optionMenu -e -sl " + $items[$step + 1] + " -en 1 samRepOption" + $i);
+			
+			$gSamExtFileList[$i] = $items[$step + 2];
+			int $enable = 1;
+			if ($gSamExtFileList[$i] != " ")
+			{
+				$enable = 0;
+				
+				string $repType = `text -q -l ("samRepType" + $i)`;
+				if (!`gmatch $repType "*(external)"`)
+					text -e -l ($repType + " (external)") ("samRepType" + $i);
+			}
+			
+			int $value = $items[$step + 3];
+			if ($value > `optionMenu -q -ni ("samExportOption" + $i)`)
+			{
+				string $temp[] = {"4","4","1","1","2"};
+				$value = $temp[$i];
+			}
+			eval("optionMenu -e -sl " + $value + " -en " + $enable + " samExportOption" + $i);
+			$step += 4;
+		}
+		
+		eval("radioButtonGrp -e -sl " + $items[20] + " samTimeRange");
+		eval("floatField -e -v " + $items[21] + " samStartField");
+		eval("floatField -e -v " + $items[22] + " samEndField");
+		eval("checkBox -e -v " + $items[23] + " samRelativeSampleCheck");
+		eval("floatFieldGrp -e -v1 " + $items[24] + " -en " + (`checkBox -q -v samRelativeSampleCheck`) + " samSampleOffset");
+		
+		
+		$done = 1;
+	}
+	
+	return $done;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// create the representations and definitions
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samCreateRepresentations()
+{
+	global string $gSamExtFileList[];
+	global string $gSamAssemblyNodes[];
+	global int $gSamBuildVariation;
+	
+	// save the current scene to a temp file in the project's root
+	string $tempPath = samSaveTempFile();
+	string $exportPath;
+	int $reloadTempScene = 0;
+	
+	// get the info from the UI
+	string $sel[] = samGetSelection( 0 );
+	string $hier = `textFieldButtonGrp -q -tx samSelectedField`;
+	string $name = `textFieldGrp -q -tx samNameField`;
+	string $type = `optionMenuGrp -q -v samAssetTypeList`;
+	
+	if ($name == "")
+		error "The assembly definition needs a name";
+
+	int $assembly = 0;
+	if ($hier == "<Assembly reference list>")
+	{
+		$assembly = 1;
+		$name += "_AH";
+	}
+	
+	int $range = `radioButtonGrp -q -sl samTimeRange`;
+	float $start = `floatField -q -v samStartField`;
+	float $end = `floatField -q -v samEndField`;
+	float $current = `currentTime -q`;
+	float $offsetVal = `floatFieldGrp -q -v1 samSampleOffset`;
+	
+	
+	// create the folder structure for the asset
+	samCreateLibFolders( $type, $name );
+	
+	// arrays for setting up the definition
+	string $repTypeString;
+	string $repTypeArray[];
+	string $repLabelArray[];
+	string $repPathArray[];
+	
+	string $buildSettings;
+	
+	// go through each representation
+	for ($i = 0; $i < 5; $i ++)
+	{
+		print ("//\n");
+		
+		// get the representation type from the checkbox label
+		string $repType = `text -q -l ("samRepType" + $i)`;
+		string $parts[];
+		tokenize $repType " " $parts;
+		$repType = tolower($parts[0]);
+		$exportPath = samAssembleLibFolderPath( $type, $name, $repType ) + "/";
+		
+		if (`checkBox -q -v ("samRepCheck" + $i)`)
+		{
+			$repLabelArray[size($repLabelArray)] = $repType;
+			
+			//------------------------------------------------------
+			// representation type
+			//------------------------------------------------------
+		
+		
+			//-----------------
+			// current File
+			//-----------------
+			// nothing to do here
+			if (`optionMenu -q -sl ("samRepOption" + $i)` == 1) {}
+			
+			//-----------------
+			// bounding boxes
+			//-----------------
+			else if (`optionMenu -q -sl ("samRepOption" + $i)` >= 2 && 
+						`optionMenu -q -sl ("samRepOption" + $i)` <=6)
+			{
+				string $flags;
+				
+				if (`optionMenu -q -sl ("samRepOption" + $i)` == 2)
+					$flags = "-ba -s"; // BBox|Single|Anim.: animated single
+				else if (`optionMenu -q -sl ("samRepOption" + $i)` == 3)	
+					$flags = "-ba"; // BBox|Shapes|Anim.:  animated per shape
+				else if (`optionMenu -q -sl ("samRepOption" + $i)` == 4)
+					$flags = "-s"; // BBox|Single: static single
+				// static per shape: doesn't require any flags
+				else if (`optionMenu -q -sl ("samRepOption" + $i)` == 6)
+					$flags = "-cm"; // BBox|Combined: static per shape combined
+					
+				if ($range == 2)
+					$flags += " -st " + $start + " -et " + $end;
+				
+				string $meshGrp[] = samFindLowestCommonMeshGroup();
+				string $cmd;
+				string $convertedString;
+				if ($assembly == 0)
+				{
+					$cmd = "geomToBBox " + $flags + " " + $meshGrp[0];
+					$convertedString = $meshGrp[0];
+				}
+				else
+				{
+					string $objectString = stringArrayToString( $meshGrp, " ");
+					$cmd = "geomToBBox " + $flags + " " + $objectString;
+					$convertedString = "selected assembly references";
+				}
+				//print ($cmd + "\n");
+				eval $cmd;
+				print ("// Converted " + $convertedString + " to bounding box //\n");
+				
+				$reloadTempScene = 1;
+			}
+			
+			//-----------------
+			// reduction
+			//-----------------
+			else if (`optionMenu -q -sl ("samRepOption" + $i)` >= 7 && 
+						`optionMenu -q -sl ("samRepOption" + $i)` <=9)
+			{
+				int $value;
+			
+				if (`optionMenu -q -sl ("samRepOption" + $i)` == 7)
+					$value = 50;
+				else if (`optionMenu -q -sl ("samRepOption" + $i)` == 8)
+					$value = 75;
+				else if (`optionMenu -q -sl ("samRepOption" + $i)` == 9)
+					$value = 90;
+			
+				for ($s in $sel)
+				{
+					string $cmd = "polyReduce -ver 1 -trm 0 -p " + $value  + " -kqw 1 -rpo 1 -cr 1 -ch 0 " + $s;
+					//print ($cmd + "\n");
+					eval $cmd;
+					print ("// Reduced " + $s + " to " + $value + " percent //\n");
+				}
+			
+				$reloadTempScene = 1;
+			}
+			
+			//-----------------
+			// external file
+			//-----------------
+			else if (`optionMenu -q -sl ("samRepOption" + $i)` == 10)
+			{
+				file -f -options "v=0;" -o $gSamExtFileList[$i];
+				print ("// Loaded external scene: " +  $gSamExtFileList[$i] + " //\n");
+				
+				$reloadTempScene = 1;
+			}
+			
+			
+			//------------------------------------------------------
+			// export type
+			//------------------------------------------------------
+			
+			string $optionString = `optionMenu -q -v ("samExportOption" + $i)`;
+			
+			//-----------------
+			// save
+			//-----------------
+			if (`gmatch $optionString "Save"`)
+			{
+				$exportPath += $name + ".ma";
+				
+				if (`menuItem -q -cb samKeepVersionsCheck`)
+					samCheckForRepresentationVersions( $exportPath );
+				
+				if ($assembly == 0)
+				{
+					select -r $hier;
+					
+					string $cmd = "file -f -op \"v=0;p=17\" -typ \"mayaAscii\" -pr -es \"" + $exportPath + "\"";
+					//print ($cmd + "\n");
+					eval $cmd;
+					
+					// only export shader if the representation type is not bbox
+					if (`optionMenu -q -sl ("samRepOption" + $i)` < 2 || 
+						`optionMenu -q -sl ("samRepOption" + $i)` > 6)
+					{
+						samExportShader( $sel, $type, $name, $exportPath, ($repType + "_attributes.mel"), 0 );
+						samApplyRepresentationScript( $type, $name, $exportPath, ($repType + "_attributes.mel"), "ma" );
+					
+						$reloadTempScene = 1;
+					}
+				}
+				else
+				{
+					samExportAssemblyReferenceNodes( $exportPath );
+					$reloadTempScene = 1;
+				}
+				
+				print ("// Exported scene for '" + $repType + "' to: " + $exportPath + " //\n");
+				
+				$repTypeString = "Scene";
+			}
+			
+			//-----------------
+			// alembic cache & VRayProxy (option 7/8)
+			//-----------------
+			else if (`gmatch $optionString "Alembic*"` || `gmatch $optionString "VRayProxy*"`)
+			{
+				string $exportRange;
+				
+				// static
+				if (`gmatch $optionString "*Static"`)
+				{
+					$exportRange = $current + " " + $current;
+					if (`menuItem -q -cb samUseVRayMeshCheck` && `gmatch $optionString "VRayProxy*"`)
+						$exportRange = "";
+				}
+				
+				// animated
+				else if (`gmatch $optionString "*Animated"`)
+				{
+					$exportRange = $start + " " + $end;
+					if (`menuItem -q -cb samUseVRayMeshCheck` && `gmatch $optionString "VRayProxy*"`)
+						$exportRange = " -animType 3 -animOn -startFrame " + $start + " -endFrame " + $end;
+				}
+				
+				string $meshGrp[] = samFindLowestCommonMeshGroup();
+				
+				string $typeString = "alembic";
+				string $cmd;
+				
+				if (`gmatch $optionString "Alembic*"` || (!`menuItem -q -cb samUseVRayMeshCheck` && `gmatch $optionString "VRayProxy*"`))
+				{
+					string $geoString = "-root " + $meshGrp[0] + " ";
+
+					$exportPath += $name + ".abc";
+				
+					if (`menuItem -q -cb samKeepVersionsCheck`)
+						samCheckForRepresentationVersions( $exportPath );
+					
+					string $offsetString;
+					if (`checkBox -q -v samRelativeSampleCheck`)
+						$offsetString = " -frameRelativeSample -" + $offsetVal + " -frameRelativeSample " + $offsetVal;
+					
+					$cmd = "AbcExport -j \"-frameRange " + $exportRange + $offsetString + " -uvWrite " + $geoString + "-file \\\"" + $exportPath + "\\\"\"";
+				}
+				else if (`menuItem -q -cb samUseVRayMeshCheck` && `gmatch $optionString "VRayProxy*"`)
+				{
+					select -r $hier;
+					
+					if (`menuItem -q -cb samKeepVersionsCheck`)
+						samCheckForRepresentationVersions( $exportPath + $name + ".vrmesh" );
+					
+					string $offsetString;
+					if (`checkBox -q -v samRelativeSampleCheck`)
+						$offsetString = " -velocityOn -velocityIntervalStart 0 -velocityIntervalEnd " + ($offsetVal * 2);
+					
+					$cmd = "vrayCreateProxy -exportType 1 -previewFaces 100 -dir \"" + $exportPath + "\" -fname " + $name + ".vrmesh -overwrite -ignoreHiddenObjects -vertexColorsOn" + $exportRange + $offsetString;
+					$typeString = "VRayMesh";
+					$exportPath += $name + ".vrmesh";
+				}
+				
+				//print ($cmd + "\n");
+				eval $cmd;
+				print ("// Exported " + $typeString + " for '" + $repType + "' to: " + $exportPath + " //\n");
+				
+				// undo the renaming done by the samFindLowestCommonMeshGroup procedure
+				// in case the bbox is not exported as alembic
+				if (`objExists ($hier + "_original")`)
+				{
+					rename $meshGrp[0] $meshGrp[1];
+					rename ($hier + "_original") $hier;
+				}
+				
+				// apply the shading to the alembic if needed or if exporting to VRay proxy
+				if (`menuItem -q -cb samApplyShadingCheck` || `gmatch $optionString "VRayProxy*"`)
+				{
+					// VRay proxy
+					if (`gmatch $optionString "VRayProxy*"`)
+					{
+						string $fileType = "abc";
+						if (`menuItem -q -cb samUseVRayMeshCheck`)
+							$fileType = "vrmesh";
+						samExportForVrayProxy( $sel, $type, $name, $exportPath, "VRay_proxy.mel" );
+						$exportPath = samApplyRepresentationScript( $type, $name, $exportPath, "VRay_proxy.mel", $fileType );
+					}
+					// alembic
+					else
+					{
+						samExportShader( $sel, $type, $name, $exportPath, "alembic_shader.mel", 1 );
+						$exportPath = samApplyRepresentationScript( $type, $name, $exportPath, "alembic_shader.mel", "abc" );
+					}
+					$reloadTempScene = 1;
+					$repTypeString = "Scene";
+				}
+				else
+					$repTypeString = "Cache";
+			}
+			
+			//-----------------
+			// gpu cache
+			//-----------------
+			else if (`gmatch $optionString "GPU*"`)
+			{
+				string $exportRange;
+				string $mBlur;
+				
+				// static
+				if (`gmatch $optionString "*Static"`)
+					$exportRange = "-st " + $current + " -et " + $current;
+				
+				// animated
+				else if (`gmatch $optionString "*Anim."`)
+					$exportRange = "-st " + $start + " -et " + $end;
+				
+				// animated motion blur optimized
+				else if (`gmatch $optionString "*MBlur"`)
+				{
+					$exportRange = "-st " + $start + " -et " + $end;
+					$mBlur = "-omb ";
+				}
+				
+				if (`menuItem -q -cb samKeepVersionsCheck`)
+					samCheckForRepresentationVersions( $exportPath + "/" + $name + ".abc" );
+				
+				if ($assembly == 0)
+					select -r $hier;
+				else
+				{
+					select -r $gSamAssemblyNodes;
+					
+					// temporarily group the assembly nodes to be able to export them as one selection;
+					// necessary, because gpu export can only save to individual files if multiple objects are selected;
+					// in order to export as one file we need only one selection
+					group -n "samAssetTempGroup";
+					xform -os -piv 0 0 0 samAssetTempGroup;
+				}
+				
+				string $cmd = "gpuCache " + $exportRange + " -o -ot 40000 " + $mBlur + "-dir \"" + $exportPath + "\" -f \"" + $name + "\"";
+				//print ($cmd + "\n");
+				eval $cmd;
+				
+				$repTypeString = "Cache";
+				$exportPath += $name + ".abc";
+				print ("// Exported gpuCache for '" + $repType + "' to: " + $exportPath + " //\n");
+				
+				// undo the grouping for assembly nodes
+				if ($assembly == 1)
+				{
+					parent -w $gSamAssemblyNodes;
+					delete samAssetTempGroup;
+				}
+			}
+			
+			//-----------------
+			// mental ray proxy
+			//-----------------
+			else if (`gmatch $optionString "miProxy*"`)
+			{
+				string $meshGrp[] = samFindLowestCommonMeshGroup();
+				select -r $meshGrp[0];
+
+				$exportPath += $name + ".mi";
+				
+				if (`menuItem -q -cb samKeepVersionsCheck`)
+					samCheckForRepresentationVersions( $exportPath );
+				
+				string $cmd = "Mayatomr -mi -xf 721600 -a -tab 4 -fe -fem -fma -fis -fcd -pcm -as -asn \"" + $name + "\" -xp \"3313333333\" -file \"" + $exportPath + "\"";
+				//print ($cmd + "\n");
+				print ("// Exported MentalRay proxy for '" + $repType + "' to: " + $exportPath + " //\n");
+				eval $cmd;
+				
+				// undo the renaming done by the samFindLowestCommonMeshGroup procedure
+				// in case the bbox is not exported as alembic
+				if (`objExists ($hier + "_original")`)
+				{
+					rename $meshGrp[0] $meshGrp[1];
+					rename ($hier + "_original") $hier;
+				}
+				
+				samExportScriptForMRProxy( $meshGrp[0], $type, $name, $exportPath, "miProxy.mel" );
+				$exportPath = samApplyRepresentationScript( $type, $name, $exportPath, "miProxy.mel", "mi" );
+				
+				$reloadTempScene = 1;
+				$repTypeString = "Scene";
+			}
+			
+			$repTypeArray[size($repTypeArray)] = $repTypeString;
+			$repPathArray[size($repPathArray)] = $exportPath;
+			
+			$buildSettings += "1,";
+		}
+		else
+		{
+			print ("// Skipping representation '" + $repType + "' //\n");
+			
+			$buildSettings += "0,";
+		}
+		
+		$buildSettings += (`optionMenu -q -sl ("samRepOption" + $i)`) + "," + $gSamExtFileList[$i] + "," + (`optionMenu -q -sl ("samExportOption" + $i)`) + ",";
+
+		if ($reloadTempScene)
+		{
+			file -f -options "v=0;" -typ "mayaAscii" -o $tempPath;
+			print ("// Reloaded scene: " + $tempPath + " //\n");
+			refresh;
+		}
+		
+		$reloadTempScene = 0;
+	}
+	
+	$buildSettings += $range + "," + $start + "," + $end + "," + (`checkBox -q -v samRelativeSampleCheck`) + "," + $offsetVal;
+	//print ($buildSettings + "\n");
+	
+	print ("//\n");
+	// delete the tempFile
+	sysFile -del $tempPath;
+	print ("// Deleted temporary scene: " + $tempPath + " //\n");
+	print ("//\n");
+	
+	// define, how to finalize the process
+	// 1 - build definition
+	// 2 - add to existing
+	// 3 - save representations only
+	int $buildAdd = `optionMenuGrp -q -sl samBuildDefinitionOptions`;
+	if ($buildAdd < 3 || $buildAdd == 4)
+	{
+		samCreateDefinition( $name, $type, $repTypeArray, $repLabelArray, $repPathArray, $buildAdd );
+		samAddToLibrary( $name, $type, $repLabelArray, $buildAdd, $buildSettings );
+		
+		print ("// -- Finished setting up assembly definition for '" + $name + "' //\n//\n");
+	}
+	else
+		print ("// -- Finished saving assembly representations for '" + $name + "' //\n//\n");
+	
+	// if regular assemblies are created store the settings afterwards
+	// if variations are created reset the ui to the last stored defaults
+	if ($gSamBuildVariation == 0)
+		samSetEnvDefault();
+	else
+	{
+		samBuildRepOptions();
+		samGetEnvDefault( 0 );
+		$gSamBuildVariation = 0;
+		samDataList( 2, 1, $repLabelArray[0] );
+	}
+	//frameLayout -e -cl 1 samDefFrame;
+	//frameLayout -e -cl 0 samLibFrame;
+	samGetAssets();
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// create the definitions and save as a reference
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samCreateDefinition( string $name, string $type, string $repType[], string $repLabel[], string $path[], int $buildAdd )
+{
+	global string $gSamRootDir;
+	global string $gSamDefDir;
+	//global string $gSamRefDir;
+	
+	string $nodeName = $name + "_AD";
+	string $defDir = samCheckLibDir( $gSamRootDir + $type + "/" + $name + "/" + $gSamDefDir );
+	$defDir += $nodeName + ".ma";
+	
+	if ($buildAdd == 1 || $buildAdd == 4)
+	{
+		file -f -new;
+		
+		assembly -n $nodeName;
+		assembly -e -cr "Locator" -repName "locator" -input $name $nodeName;
+		assembly -e -repLabel "locator" -newRepLabel "locator" $nodeName;
+	}
+	else
+	{
+		if (`filetest -e $defDir`)
+			file -f -options "v=0;" -typ "mayaAscii" -o $defDir;
+		else
+			error ("The assembly definition file: " + $defDir + " does not exist");
+	}
+	
+	for ($i = 0; $i < size($repType); $i ++)
+	{
+		assembly -e -cr $repType[$i] -repName $repLabel[$i] -input $path[$i] $nodeName;
+		assembly -e -repLabel $repLabel[$i] -newRepLabel $repLabel[$i] $nodeName;
+		print ("// Created representation: '" + $repLabel[$i] + "' in definition '" + $nodeName + "' //\n");
+	}
+	
+	if (`menuItem -q -cb samKeepVersionsCheck`)
+		samCheckForRepresentationVersions( $defDir );
+	
+	file -rename $defDir;
+	file -save -options "v=0;" -type "mayaAscii";
+	file -f -new;
+	
+	print ("// Saved assembly definition '" + $nodeName + "' to: " + $defDir + " //\n");
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// create a reference from the selected item in the asset list
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samCreateReference()
+{
+	global string $gAssets[];
+	global string $gDescList[];
+	global string $gSamRootDir;
+	global string $gSamDefDir;
+	
+	int $selID[] = `textScrollList -q -sii samLibraryList`;
+	string $type = `optionMenu -q -v samRefTypeList`;
+	
+	for ($s in $selID)
+	{
+		string $selParts[] = samGetRepresentationType( $type, $s );
+		string $typeString = $selParts[0];
+		string $name = $selParts[1];
+		
+		string $defDir = samCheckLibDir( $gSamRootDir + $typeString + "/" + $name + "/" + $gSamDefDir );
+		$defDir += $name + "_AD.ma";
+		if (`filetest -e $defDir`)
+		{
+			string $assNode = `assembly -n ($name + "_AR") -type "assemblyReference"`;
+			setAttr ($assNode + ".definition") -type "string" $defDir;
+		}
+		else
+			error ("// Assembly definition for '" + $name + "' does't exist at: " + $defDir);
+	}
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// get the representation type of the selection based on the library display
+//
+//----------------------------------------------------------------------------------------------
+
+global proc string[] samGetRepresentationType( string $type, int $id )
+{
+	global string $gAssets[];
+	
+	string $return[];
+	
+	if ($type == "all")
+	{
+		string $pathItems[];
+		tokenize $gAssets[$id - 1] ":" $pathItems;
+		$return[0] = $pathItems[0];
+		$return[1] = $pathItems[1];
+	}
+	else
+		$return = {$type, $gAssets[$id - 1]};
+	return $return;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// re-create the selected reference nodes in a new scene
+// because exporting assembly references currently causes a crash upon opening the exported scene
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samExportAssemblyReferenceNodes( string $exportPath )
+{
+	global string $gSamAssemblyNodes[];
+	
+	string $defPath[];
+	string $mString[];
+	string $mStringArray[];
+	
+	samManageGpuCaching( 0 );
+	
+	//----------------------
+	// get node information
+	//----------------------
+	for ($a = 0; $a < size($gSamAssemblyNodes); $a ++)
+	{
+		$defPath[size($defPath)] = `getAttr ($gSamAssemblyNodes[$a] + ".definition")`;
+		
+		// get the transformations of the reference nodes
+		// need to convert floats into a string which then can be stored in an array for all nodes
+		float $matrix[] = `xform -q -m $gSamAssemblyNodes[$a]`;
+		clear $mString;
+		for ($i in $matrix)
+			$mString[size($mString)] = $i;
+		string $matrixString = stringArrayToString( $mString, " ");
+		$mStringArray[size($mStringArray)] = $matrixString;
+	}
+	
+	//----------------------
+	// export the animation
+	//----------------------
+	string $atomPath = samCheckLibDir( "" );
+	$atomPath += "atom_temp.atom";
+	
+	select -r $gSamAssemblyNodes;
+	
+	string $optionsString = "\"precision=8;statics=1;baked=1;sdk=1;constraint=1;animLayers=1;selected=selectedOnly;whichRange=1;range=1:10;hierarchy=none;controlPoints=0;useChannelBox=1;options=keys;copyKeyCmd=-animation objects -option keys -hierarchy none -controlPoints 0 \"";
+	string $cmd = "file -force -options " + $optionsString + " -typ \"atomExport\" -es \"" + $atomPath + "\"";
+	//print($cmd + "\n");
+	eval($cmd);
+
+	//----------------------
+	// assemble nodes
+	//----------------------
+	file -f -new;
+	
+	for ($a = 0; $a < size($gSamAssemblyNodes); $a ++)
+	{
+		string $assNode = `assembly -n $gSamAssemblyNodes[$a] -type "assemblyReference"`;
+		setAttr ($assNode + ".definition") -type "string" $defPath[$a];
+		
+		string $cmd = ("xform -m " + $mStringArray[$a] + " " + $assNode);
+		//print($cmd + "\n");
+		eval($cmd);
+	}
+	
+	//----------------------
+	// import the animation
+	//----------------------
+	select -r $gSamAssemblyNodes;
+	
+	$optionsString = "\";;targetTime=3;option=insert;match=hierarchy;;selected=selectedOnly;search=;replace=;prefix=;suffix=;mapFile=/Volumes/iDataHD/_projects/assemblyReference_test/data/;\"";
+	string $cmd = "file -import -type \"atomImport\" -ra true -namespace \"\" -options " + $optionsString + " \"" + $atomPath + "\"";
+	//print($cmd + "\n");
+	eval($cmd);
+	
+	// delete the tempFile
+	sysFile -del $atomPath;
+	
+	//----------------------
+	// save the scene
+	//----------------------
+	file -rename $exportPath;
+	file -save -options "v=0;" -type "mayaAscii";
+	
+	samManageGpuCaching( 1 );
+}					
+
+//----------------------------------------------------------------------------------------------
+//
+// enable/disable the loading of gpu cache nodes in the background
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samManageGpuCaching( int $state )
+{
+	string $vars[] = {"gpuCacheAllAuto", "gpuCacheBackgroundReadingAuto", "gpuCacheBackgroundReading"};
+	for ($v in $vars)
+	{
+		string $cmd = ("optionVar -iv \"" + $v + "\" " + $state);
+		eval($cmd);
+	}
+	
+	gpuCache -e -refreshSettings;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// create a new variation for the selected asset and add it to the definition
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samCreateAssetVariation()
+{
+	global int $gSamBuildVariation;
+	
+	if ($gSamBuildVariation == 1)
+	{
+		$gSamBuildVariation = 0;
+		samGetEnvDefault( 0 );
+		return;
+	}
+	
+	int $count = 5;
+
+	int $selected = samGetNameFromSelectedAsset();
+	
+	if ($selected == 0)
+		print ("// Select an asset from the assemly library to add a variation to //\n");
+	
+	string $result = `promptDialog -t "New asset variation" -m "Name" -tx "Variation" -b "OK" -b "Cancel" -db "OK" -cb "Cancel" -ds "Cancel"`;
+    if ($result == "OK")
+    {
+    	string $name = `promptDialog -q -tx`;
+    	text -e -l $name samRepType0;
+    }
+    else
+    {
+    	return;
+    }
+	
+	frameLayout -e -cl 0 samDefFrame;
+	
+	optionMenuGrp -e -en 0 samAssetTypeList;
+	optionMenuGrp -e -sl 2 -en 0 samBuildDefinitionOptions;
+	checkBox -e -v 1 -en 0 samRepCheck0;
+	optionMenu -e -sl 1 samRepOption0;
+	optionMenu -e -sl 1 samExportOption0;
+	
+	for ($i = 1; $i < $count; $i ++)
+	{
+		checkBox -e -v 0 -en 0 ("samRepCheck" + $i);
+		text -e -en 0 ("samRepType" + $i);
+		optionMenu -e -en 0 ("samRepOption" + $i);
+		optionMenu -e -en 0 ("samExportOption" + $i);
+	}
+	
+	$gSamBuildVariation = 1;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// manage the available categories and representations
+//
+//----------------------------------------------------------------------------------------------
+
+global proc string[] samDataList( int $mode, int $list, string $new )
+{
+	// mode 0 = read
+	// mode 1 = write
+	// mode 2 = add
+	
+	// list 0 = category
+	// list 1 = representation
+	
+	global string $gSamRootDir;
+	
+	string $reps[] = {"BBox", "Cache", "LoRes", "Rig", "Render"};
+	string $categories[] = {"character", "environment", "hierarchy", "prop"};
+	string $itemsArray[];
+	string $fileLine;
+	string $fileName;
+	string $tag;
+	
+	if ($list == 0)
+	{
+		$itemsArray = $categories;
+		$fileName = "categories.txt";
+		$tag = "category";
+	}
+	else
+	{
+		$itemsArray = $reps;
+		$fileName = "representations.txt";
+		$tag = "representation";
+	}
+	
+	string $libDir = samCheckLibDir( $gSamRootDir + "var/" );
+	string $libFile = $libDir + $fileName;
+	
+	// if the file exists and the mode is set to write, redefine the mode to read,
+	// because write is only for creating the default files
+	if (`filetest -e $libFile` && $mode == 1)
+		$mode = 0;
+	
+	int $fileID;
+	
+	if ($mode == 0)
+	{
+		clear $itemsArray;
+	
+		$fileID = `fopen $libFile "r"`;
+		$fileLine = `fgetline $fileID`;
+
+		while (size($fileLine) > 0)
+		{
+			if (`gmatch $fileLine ("*<" + $tag + ">*")`)
+			{
+				string $temp = `substitute ("<" + $tag + ">") $fileLine ""`;
+				$temp = `substitute ("</" + $tag + ">\n") $temp ""`;
+
+				$itemsArray[size($itemsArray)] = $temp;
+			}
+			$fileLine = `fgetline $fileID`;
+		}
+	}
+	else if ($mode == 1 || $mode == 2)
+	{
+		string $modeString = "w";
+		if ($mode == 2)
+			$modeString = "a";
+		
+		$fileID = `fopen $libFile $modeString`;
+		
+		if ($mode == 1)
+		{
+			for ($c in $itemsArray)
+				$fileLine += ("<" + $tag + ">") + $c + ("</" + $tag + ">\n");
+		}
+		else
+		{
+			$fileLine += ("<" + $tag + ">") + $new + ("</" + $tag + ">\n");
+			$itemsArray[size($itemsArray)] = $new;
+		}
+			
+		fprint $fileID $fileLine;
+	}
+	
+	fclose $fileID;
+	
+	return $itemsArray;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// add the asset to the library
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samAddToLibrary( string $name, string $type, string $repLabel[], int $buildAdd, string $buildSettings )
+{
+	global string $gSamRootDir;
+	string $deletedLines;
+	string $fileLine;
+	
+	string $libDir = samCheckLibDir( $gSamRootDir + $type ) + "/";
+	string $libFile = $libDir + "assets.txt";
+	
+	// check if the asset exists
+	string $assetDir = samCheckLibDir( $gSamRootDir + $type + "/" + $name );
+	if (`filetest -e $assetDir`)
+		$deletedLines = samDeleteFromLibrary( $libFile, $name );
+
+	string $writeType = "a";
+	if (!`filetest -e $libFile`) $writeType = "w";
+			
+	int $fileID = `fopen $libFile $writeType`;
+	
+	if ($buildAdd == 1 || $buildAdd == 4)
+	{
+		$fileLine = "<name>" + $name + "</name>\n";
+		$fileLine += "\t<desc>" + (`textFieldGrp -q -tx samDescriptionField`) + "</desc>\n";
+	}
+	else
+		$fileLine += $deletedLines;
+	
+	for ($l in $repLabel)
+		$fileLine += "\t<label>" + $l + "</label>\n";
+	
+	$fileLine += "\t<values>" + $buildSettings + "</values>\n";
+	
+	fprint $fileID $fileLine;
+	fclose $fileID;
+	
+	print ("// Added asset '" + $name + "' to library file: " + $libFile + " //\n");
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// delete the asset from the library
+//
+//----------------------------------------------------------------------------------------------
+
+global proc string samDeleteFromLibrary( string $libFile, string $name )
+{
+	string $content;
+	string $deletedLines;
+	
+	int $skip = 0;
+	
+	if (`filetest -e $libFile`)
+	{
+		int $fileID = `fopen $libFile "r"`;
+		string $fileLine = `fgetline $fileID`;
+
+		// get all lines that don't belong to the selected asset
+		while (size($fileLine) > 0)
+		{
+			if ($skip && `gmatch $fileLine "*<name>*"`)
+				$skip = 0;
+			
+			if (`gmatch $fileLine ("*<name>" + $name + "</name>*")`)
+			{
+				$deletedLines += $fileLine;
+				$skip = 1;
+			}
+			else
+				if ($skip == 0)
+					$content += $fileLine;
+				else
+					$deletedLines += $fileLine;
+			
+			$fileLine = `fgetline $fileID`;
+		}
+		fclose $fileID;
+		
+		// clear the file and write the remaining assets back into it
+		$fileID = `fopen $libFile "w"`;
+		fprint $fileID $content;
+		fclose $fileID;
+	}
+	return $deletedLines;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// read the assets from the library
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samDeleteFromLibraryConfirm()
+{
+	global string $gSamRootDir;
+	global string $gAssets[];
+	
+	string $type = `optionMenu -q -v samRefTypeList`;
+	int $selID[] = `textScrollList -q -sii samLibraryList`;
+	
+	for ($i in $selID)
+	{
+		string $selParts[] = samGetRepresentationType( $type, $i );
+		string $typeString = $selParts[0];
+		string $name = $selParts[1];
+		
+		string $libDir = samCheckLibDir( $gSamRootDir + $typeString ) + "/";
+		string $libFile = $libDir + "assets.txt";
+		
+		// check if the asset exists
+		string $assetDir = samCheckLibDir( $gSamRootDir + $typeString + "/" + $name );
+		
+		if (`filetest -e $assetDir` && `filetest -e $libFile`)
+		{
+			string $result = `confirmDialog -t ("Delete the asset '" + $name + "'?") -m ("Deleting the asset can not be undone.\nThe action does not delete any related files.")
+								-b "OK" -b "Cancel" -db "Cancel" -cb "Cancel" -ds "Cancel"`;
+			if ($result == "OK")
+			{
+				samDeleteFromLibrary( $libFile, $name );
+				print ("// Deleted asset '" + $name + "' from library but no files have been deleted //\n");
+			}
+			else
+				print ("// Ignored delete action of asset '" + $name + "' //\n");
+		}
+	}
+	
+	// refresh the list
+	samGetAssets();
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// get to the library assets and populate the list
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samGetAssets()
+{
+	global string $gSamRootDir;
+	global string $gAssets[];
+	global string $gDescList[];
+	global string $gRepList[];
+	global string $gSettingsList[];
+	
+	// make sure we start fresh
+	clear $gAssets;
+	clear $gDescList;
+	clear $gRepList;
+	clear $gSettingsList;
+	
+	string $type = `optionMenu -q -v samRefTypeList`;
+	optionVar -iv "samRefTypeList" `optionMenu -q -sl samRefTypeList`;
+	
+	textScrollList -e -ra samLibraryList;
+	textField -e -tx "" samAssetDescription;
+	
+	string $category[] = samDataList( 0, 0, "");
+	int $all = 1;
+	
+	if ($type != "all")
+	{
+		$category = {$type};
+		$all = 0;
+	}
+	
+	string $repTempList[];
+	
+	for ($type in $category)
+	{
+		string $libDir = samCheckLibDir( $gSamRootDir + $type ) + "/";
+		string $libFile = $libDir + "assets.txt";
+	
+		if (!`filetest -e $libFile`)
+		{
+			if ($all == 0)
+				textScrollList -e -a "No assets available" -en 0 samLibraryList;
+		}
+		else
+		{
+			clear $repTempList;
+			string $temp;
+			int $collect = 0;
+			int $valueFlag = 0;
+		
+			int $fileID = `fopen $libFile "r"`;
+			string $fileLine = `fgetline $fileID`;
+
+			while (size($fileLine) > 0)
+			{
+				if ($collect && `gmatch $fileLine "*<name>*"`)
+				{
+					$gRepList[size($gRepList)] = stringArrayToString( $repTempList , ",");
+					$collect = 0;
+					clear $repTempList;
+					
+					if (!$valueFlag)
+						$gSettingsList[size($gSettingsList)] = "none";
+					else
+						$valueFlag = 0;
+				}
+			
+				if (`gmatch $fileLine "*<name>*"`)
+				{
+					$temp = `substitute "<name>" $fileLine ""`;
+					$temp = `substitute "</name>\n" $temp ""`;
+					if ($all == 1)
+						$temp = $type + ":" + $temp;
+					$gAssets[size($gAssets)] = $temp;
+					$collect = 1;
+				}
+				else
+				{
+					if ($collect == 1)
+					{
+						if (`gmatch $fileLine "*<desc>*"`)
+						{
+							$temp = `substitute "\t<desc>" $fileLine ""`;
+							$temp = `substitute "</desc>\n" $temp ""`;
+							$gDescList[size($gDescList)] = $temp;
+						}
+						else if (`gmatch $fileLine "*<label>*"`)
+						{
+							$temp = `substitute "\t<label>" $fileLine ""`;
+							$temp = `substitute "</label>\n" $temp ""`;
+							$repTempList[size($repTempList)] = $temp;
+						}
+						else if (`gmatch $fileLine "*<values>*"`)
+						{
+							$temp = `substitute "\t<values>" $fileLine ""`;
+							$temp = `substitute "</values>\n" $temp ""`;
+							$gSettingsList[size($gSettingsList)] = $temp;
+							$valueFlag = 1;
+						}
+					}
+				}
+			
+				$fileLine = `fgetline $fileID`;
+			}
+		
+			// collect the representations of the last asset in the library
+			// because the end of the file has been reached
+			$gRepList[size($gRepList)] = stringArrayToString( $repTempList , ",");
+			if (!$valueFlag)
+				$gSettingsList[size($gSettingsList)] = "none";
+		
+			fclose $fileID;
+		}
+	}
+	
+	textScrollList -e -en 1 samLibraryList;
+	//$gAssets = sort($gAssets);
+	for ($a in $gAssets)
+	{
+		textScrollList -e -a $a samLibraryList;
+	}
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// get to the library assets and populate the list
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samLibrarySelectionDidChange()
+{
+	global string $gAssets[];
+	global string $gDescList[];
+	
+	string $sel[] = `textScrollList -q -si samLibraryList`;
+	int $selID[] = `textScrollList -q -sii samLibraryList`;
+	
+	if (size($sel) == 1)
+		textField -e -tx $gDescList[$selID[0] - 1] samAssetDescription;
+	else
+		textField -e -tx "<multiple selection>" samAssetDescription;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// switch the selection to the selected represenation type
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samRepresentationSelectionDidChange()
+{
+	string $type = `optionMenu -q -v samSwitchRepOption`;
+		
+	string $assNodes[] = `ls -sl -type assemblyReference`;
+	if (size($assNodes) == 0)
+	{
+		$assNodes = `ls -sl -tr`;
+		if (size($assNodes) == 0)
+		{
+			int $selID[] = `textScrollList -q -sii samLibraryList`;
+			if (size($selID) != 0)
+				samSwitchRepresentationFromMenu( $type );
+		
+			optionMenu -e -sl 1 samSwitchRepOption;
+			return;
+		}
+		else
+		{
+			select -hi;
+			$assNodes = `ls -sl -type assemblyReference`;
+		}
+	}
+	
+	string $cmd;
+	for ($s in $assNodes)
+	{
+		string $reps[] = `assembly -q -lr $s`;
+		for ($r in $reps)
+		{
+			if ($r == $type)
+			{
+				if (`checkBox -q -v samIncludeHierarchyCheck` == 0)
+				{
+					$cmd = "assembly -e -a " + $type + " " + $s;
+					eval($cmd);
+				}
+				else
+					samGetAssetHierarchy( $s, $type );
+			}
+			else if ($type == "none")
+			{
+				$cmd = "assembly -e -a \"\" " + $s;
+				eval($cmd);
+			}
+		}
+	}
+	
+	optionMenu -e -sl 1 samSwitchRepOption;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// select a custom scene representation
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samRepresentationOptionDidChange( string $menu, int $id )
+{
+	global string $gSamExtFileList[];
+	
+	if (`optionMenu -q -sl ($menu + $id)` == 10)
+	{
+		string $root = `workspace -q -rd`;
+		string $filter = "Maya ASCII (*.ma);;Maya Binary (*.mb);;";
+		string $fileString[] = `fileDialog2 -dir ($root + "scenes/") -fm 1 -ff $filter 
+							-okc "Select" -cap "Select Maya Scene"`;
+		if(size($fileString) != 0)
+		{
+			string $repType = `text -q -l ("samRepType" + $id)`;
+			if (!`gmatch $repType "*(external)"`)
+				text -e -l ($repType + " (external)") ("samRepType" + $id);
+			
+			$fileString[0] = `substitute ($root + "scenes/") $fileString[0] ""`;
+			$gSamExtFileList[$id] = $fileString[0];
+			
+			// disable the export option
+			optionMenu -e -sl 1 -en 0 ("samExportOption" + $id);
+		}
+	}
+	else
+	{
+		string $repType = `text -q -l ("samRepType" + $id)`;
+		string $parts[];
+		tokenize $repType " " $parts;
+		text -e -l $parts[0] ("samRepType" + $id);
+		
+		$gSamExtFileList[$id] = "";
+		
+		// enable the export option
+		optionMenu -e -en 1 ("samExportOption" + $id);
+	}
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// restrict the export selection when building an assembly hierarchy
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samExportOptionDidChange( string $menu, int $id )
+{}
+
+//----------------------------------------------------------------------------------------------
+//
+// enable/disable the UI based on the selected build type
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samBuildTypeDidChange()
+{
+	int $count = 5;
+	
+	int $type = `optionMenuGrp -q -sl samBuildDefinitionOptions`;
+	
+	int $state[] = {1,1,1,1,1};
+	//int $valueType[] = {5,1,7,1,1};
+	//int $valueExport[] = {4,4,1,1,2};
+	if ($type == 4)
+		$state = {1,1,0,0,1};
+	
+	for ($i = 0; $i < $count; $i ++)
+	{
+		checkBox -e -en $state[$i] ("samRepCheck" + $i);
+		text -e -en $state[$i] ("samRepType" + $i);
+		optionMenu -e -en $state[$i] ("samRepOption" + $i); // -sl $valueType[$i]
+		optionMenu -e -en $state[$i] ("samExportOption" + $i); // -sl $valueExport[$i]
+		
+		int $enable = 1;
+		
+		if ($type == 4)
+		{
+			checkBox -e -v $state[$i] ("samRepCheck" + $i);
+			$enable = 0;
+		}
+		
+		string $menuItems[];
+			
+		$menuItems = `optionMenu -q -ill ("samRepOption" + $i)`;
+		menuItem -e -en $enable $menuItems[6];
+		menuItem -e -en $enable $menuItems[7];
+		menuItem -e -en $enable $menuItems[8];
+		
+		$menuItems = `optionMenu -q -ill ("samExportOption" + $i)`;
+		menuItem -e -en $enable $menuItems[1];
+		menuItem -e -en $enable $menuItems[2];
+		if (size($menuItems) > 6)
+		{
+			for ($j = 6; $j < size($menuItems); $j ++)
+				menuItem -e -en $enable $menuItems[$j];
+		}
+	}
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// switch the representation based on the selected option menu item
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samSwitchRepresentationFromMenu( string $rep )
+{
+	global string $gSamRootDir;
+	global string $gSamDefDir;
+	global string $gAssets[];
+	
+	int $selID[] = `textScrollList -q -sii samLibraryList`;
+	string $type = `optionMenu -q -v samRefTypeList`;
+	
+	string $cmd;
+	for ($i in $selID)
+	{
+		string $selParts[] = samGetRepresentationType( $type, $i );
+		string $typeString = $selParts[0];
+		string $name = $selParts[1];
+		
+		string $defDir = samCheckLibDir( $gSamRootDir + $typeString + "/" + $name + "/" + $gSamDefDir );
+		$defDir += $name + "_AD.ma";
+		//print $defDir;
+		string $assNodes[] = `ls -sl -type assemblyReference`;
+		if (!size($assNodes))
+			$assNodes = `ls -type assemblyReference`;
+		if (size($assNodes) != 0)
+		{
+			for ($s in $assNodes)
+			{
+				if (`objExists $s` && `getAttr ($s + ".definition")` == $defDir)
+				{
+					if ($rep == "none")
+					{
+						$cmd = "assembly -e -a \"\" " + $s;
+						eval($cmd);
+					}
+					else
+					{
+						if (`checkBox -q -v samIncludeHierarchyCheck` == 0)
+						{
+							$cmd = "assembly -e -a " + $rep + " " + $s;
+							eval($cmd);
+						}
+						else
+							samGetAssetHierarchy( $s, $rep );
+					}
+				}
+			}		
+		}
+	}
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// load the representation source file based on the selected option menu item
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samLoadRepresentationSourceFromMenu( string $rep )
+{
+	global string $gSamRootDir;
+	global string $gSamRepDir;
+	global string $gAssets[];
+	
+	int $selID[] = `textScrollList -q -sii samLibraryList`;
+	string $type = `optionMenu -q -v samRefTypeList`;
+	
+	string $selParts[] = samGetRepresentationType( $type, $selID[0] );
+	string $typeString = $selParts[0];
+	string $name = $selParts[1];
+	
+	string $repDir = samCheckLibDir( $gSamRootDir + $typeString + "/" + $name + "/" + $gSamRepDir + $rep );
+	$repDir += "/" + $name + ".ma";
+	
+	string $pathItems[] = stringToStringArray($repDir, "/");
+	$pathItems[size($pathItems) - 1] = `substitute "ma" $pathItems[size($pathItems) - 1] "abc"`;
+	string $cacheFile = stringArrayToString($pathItems, "/");
+	// in case of osx paths
+	if (`substring $repDir 1 1` == "/")
+		$cacheFile = "/" + $cacheFile;
+	
+	if (`filetest -e $repDir`)
+		file -f -options "v=0;" -typ "mayaAscii" -o $repDir;
+	else
+	{
+		if (`filetest -e $cacheFile`)
+			print "// The selected representation is a cache file and can not be loaded as a scene //\n";
+		else
+			print ("// The selected representation file '" + $cacheFile + "' is missing //\n");
+	}
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// import the representation source file based on the scene selection
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samImportAssetSource()
+{
+	string $sel[] = `ls -sl -type "assemblyReference"`;
+	if (size($sel) == 0)
+		error "Nothing selected";
+	
+	string $assets[];
+	for ($ass in $sel)
+	{
+		int $self = 0;
+		string $children[] = `listRelatives -ad`;
+		for ($c in $children)
+		{
+			if (`nodeType $c` == "assemblyReference")
+			{
+				$assets[size($assets)] = $c;
+				// if the current assembly node contains other assembly nodes
+				// it's an assembly hierarchy
+				// in this case don't add the top node to the list
+				$self = 1;
+			}
+		}
+		if ($self == 0)
+			$assets[size($assets)] = $ass;
+	}
+	
+	string $mString[];
+	for ($ass in $assets)
+	{
+		assembly -e -a "render" $ass;
+		string $def = `getAttr ($ass + ".definition")`;
+		$def = `substitute "/definitions/" $def "/representations/render/"`;
+		$def = `substitute "_AD.ma" $def ".ma"`;
+		
+		// get the transformations of the reference nodes
+		// need to convert floats into a string
+		float $matrix[] = `xform -q -ws -m $ass`;
+		clear $mString;
+		for ($i in $matrix)
+			$mString[size($mString)] = $i;
+		string $matrixString = stringArrayToString( $mString, " ");
+		
+		string $geo[] = `listRelatives -c -type "transform" $ass`;
+		string $items[];
+		tokenize $geo[0] ":" $items;
+		string $geoName = $items[size($items) - 1];
+		
+		string $nodes[] = `file -i -type "mayaAscii" -ns "render" -rnn -pr $def`;
+		
+		for ($n in $nodes)
+		{
+			if (`nodeType $n` == "transform")
+			{
+				tokenize $n ":" $items;
+				if ($items[size($items) - 1] == $geoName)
+				{
+					string $cmd = "xform -m " + $matrixString + " " + $n;
+					//print($cmd + "\n");
+					eval($cmd);
+				}
+			}
+		}
+	}
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// recoursively apply the representation type to all children of the assembly reference node
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samGetAssetHierarchy( string $assetNode, string $rep )
+{
+	assembly -e -a $rep $assetNode;
+	string $rel[] = `listRelatives -c -type "assemblyReference" $assetNode`;
+	
+	int $done = 0;
+	while ($done == 0)
+	{
+		if (size($rel) > 0)
+		{
+			for ($r in $rel)
+			{
+				assembly -e -a $rep $r;
+				samGetAssetHierarchy( $r, $rep );
+			}
+			$done = 1;
+		}
+		else
+			$done = 1;
+	}
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// set and read the last settings used
+//
+//----------------------------------------------------------------------------------------------
+
+global proc samSetEnvDefault()
+{
+	int $samLibraryListSize = `textScrollList -q -h samLibraryList`;
+	int $samRelativePathCheck = `menuItem -q -cb samRelativePathCheck`;
+	int $samKeepVersionsCheck = `menuItem -q -cb samKeepVersionsCheck`;
+	int $samApplyShadingCheck = `menuItem -q -cb samApplyShadingCheck`;
+	int $samUseVRayMeshCheck = `menuItem -q -cb samUseVRayMeshCheck`;
+	int $samLoadSourceCheck = `menuItem -q -cb samLoadSourceCheck`;
+	int $samAssetTypeList = `optionMenuGrp -q -sl samAssetTypeList`;
+	int $samIncludeHierarchyCheck = `checkBox -q -v samIncludeHierarchyCheck`;
+
+	int $count = 5;
+	string $temp1[];
+	string $temp2[];
+	string $temp3[];
+	for ($i = 0; $i < $count; $i ++)
+	{
+		$temp1[$i] = `checkBox -q -v ("samRepCheck" + $i)`;
+		$temp2[$i] = `optionMenu -q -sl ("samRepOption" + $i)`;
+		$temp3[$i] = `optionMenu -q -sl ("samExportOption" + $i)`;
+	}
+	string $samRepCheck = stringArrayToString( $temp1, "," );
+	string $samRepOption = stringArrayToString( $temp2, "," );
+	string $samExportOption = stringArrayToString( $temp3, "," );
+	
+	int $samRefTypeList = `optionMenu -q -sl samRefTypeList`;
+	int $samTimeRange = `radioButtonGrp -q -sl samTimeRange`;
+	int $samRelativeSampleCheck = `checkBox -q -v samRelativeSampleCheck`;
+	float $samSampleOffset = `floatFieldGrp -q -v1 samSampleOffset`;
+	int $samBuildDefinitionOptions = `optionMenuGrp -q -sl samBuildDefinitionOptions`;
+	
+	optionVar -iv "samLibraryListSize" $samLibraryListSize;
+	optionVar -iv "samRelativePathCheck" $samRelativePathCheck;
+	optionVar -iv "samKeepVersionsCheck" $samKeepVersionsCheck;
+	optionVar -iv "samApplyShadingCheck" $samApplyShadingCheck;
+	optionVar -iv "samUseVRayMeshCheck" $samUseVRayMeshCheck;
+	optionVar -iv "samLoadSourceCheck" $samLoadSourceCheck;
+	optionVar -iv "samAssetTypeList" $samAssetTypeList;
+	optionVar -iv "samIncludeHierarchyCheck" $samIncludeHierarchyCheck;
+	optionVar -sv "samRepCheck" $samRepCheck;
+	optionVar -sv "samRepOption" $samRepOption;
+	optionVar -sv "samExportOption" $samExportOption;
+	optionVar -iv "samRefTypeList" $samRefTypeList;
+	optionVar -iv "samTimeRange" $samTimeRange;
+	optionVar -iv "samRelativeSampleCheck" $samRelativeSampleCheck;
+	optionVar -fv "samSampleOffset" $samSampleOffset;
+	optionVar -iv "samBuildDefinitionOptions" $samBuildDefinitionOptions;
+}
+
+global proc samGetEnvDefault( int $default )
+{
+	int $count = 5;
+	
+	int $samLibraryListSize = 300;
+	int $samRelativePathCheck = 1;
+	int $samKeepVersionsCheck = 1;
+	int $samApplyShadingCheck = 1;
+	int $samUseVRayMeshCheck = 1;
+	int $samLoadSourceCheck = 0;
+	int $samAssetTypeList = 1;
+	int $samIncludeHierarchyCheck = 0;
+	string $samRepCheck = "1,1,0,1,1";
+	string $samRepOption = "5,1,7,1,1";
+	string $samExportOption = "4,4,1,1,2";
+	int $samRefTypeList = 1;
+	int $samTimeRange = 1;
+	int $samRelativeSampleCheck = 0;
+	float $samSampleOffset = 0.12;
+	int $samBuildDefinitionOptions = 1;
+		
+	if ($default == 0)
+	{
+		if (`optionVar -ex "samLibraryListSize"`)
+			$samLibraryListSize = `optionVar -q "samLibraryListSize"`;
+		else
+			$samLibraryListSize = 300;
+		$samRelativePathCheck = `optionVar -q "samRelativePathCheck"`;
+		$samKeepVersionsCheck = `optionVar -q "samKeepVersionsCheck"`;
+		$samApplyShadingCheck = `optionVar -q "samApplyShadingCheck"`;
+		$samUseVRayMeshCheck = `optionVar -q "samUseVRayMeshCheck"`;
+		$samLoadSourceCheck = `optionVar -q "samLoadSourceCheck"`;
+		$samAssetTypeList = `optionVar -q "samAssetTypeList"`;
+		$samIncludeHierarchyCheck = `optionVar -q "samIncludeHierarchyCheck"`;
+		$samRepCheck = `optionVar -q "samRepCheck"`;
+		$samRepOption = `optionVar -q "samRepOption"`;
+		$samExportOption = `optionVar -q "samExportOption"`;
+		$samRefTypeList = `optionVar -q "samRefTypeList"`;
+		$samTimeRange = `optionVar -q "samTimeRange"`;
+		$samRelativeSampleCheck = `optionVar -q "samRelativeSampleCheck"`;
+		$samSampleOffset = `optionVar -q "samSampleOffset"`;
+		$samBuildDefinitionOptions = `optionVar -q "samBuildDefinitionOptions"`;
+	}
+	
+	textScrollList -e -h $samLibraryListSize samLibraryList;
+	menuItem -e -cb $samRelativePathCheck samRelativePathCheck;
+	menuItem -e -cb $samKeepVersionsCheck samKeepVersionsCheck;
+	menuItem -e -cb $samApplyShadingCheck samApplyShadingCheck;
+	menuItem -e -cb $samUseVRayMeshCheck samUseVRayMeshCheck;
+	menuItem -e -cb $samLoadSourceCheck samLoadSourceCheck;
+	optionMenuGrp -e -en 1 -sl $samAssetTypeList samAssetTypeList;
+	checkBox -e -v $samIncludeHierarchyCheck samIncludeHierarchyCheck;
+	
+	string $label[] = samDataList( 0, 1, "");
+	for ($i = 0; $i < $count; $i ++)
+		text -e -l $label[$i] ("samRepType" + $i);
+	
+	string $temp[];
+	int $val;
+
+	$temp = stringToStringArray( $samRepCheck, "," );
+	for ($i = 0; $i < $count; $i ++)
+	{
+		$val = $temp[$i];
+		checkBox -e -v $val -en 1 ("samRepCheck" + $i);
+		text -e -en 1 ("samRepType" + $i);
+	}
+
+	$temp = stringToStringArray( $samRepOption, "," );
+	for ($i = 0; $i < $count; $i ++)
+	{
+		$val = $temp[$i];
+		optionMenu -e -sl $val -en 1 ("samRepOption" + $i);
+	}
+
+	$temp = stringToStringArray( $samExportOption, "," );
+	for ($i = 0; $i < $count; $i ++)
+	{
+		$val = $temp[$i];
+		if ($val > `optionMenu -q -ni ("samExportOption" + $i)`)
+		{
+			$temp = {"4","4","1","1","2"};
+			$val = $temp[$i];
+		}
+		optionMenu -e -sl $val -en 1 ("samExportOption" + $i);
+	}
+	
+	optionMenu -e -sl $samRefTypeList samRefTypeList;
+	radioButtonGrp -e -sl $samTimeRange samTimeRange;
+	checkBox -e -v $samRelativeSampleCheck samRelativeSampleCheck;
+	floatFieldGrp -e -v1 $samSampleOffset -en $samRelativeSampleCheck samSampleOffset;
+	optionMenuGrp -e -en 1 -sl $samBuildDefinitionOptions samBuildDefinitionOptions;
+	
+	// clear all external file links
+	global string $gSamExtFileList[];
+	clear $gSamExtFileList;
+	$gSamExtFileList = {"", "", "", "", ""};
+}
+
+//----------------------------------------------------------------------------------------------
+//
+// initialize
+//
+//----------------------------------------------------------------------------------------------
+
+global proc sceneAssemblyManager()
+{
+	if (getApplicationVersionAsFloat() < 2014)
+		error "Scene Assembly Manager only works with Maya 2014 and higher";
+	
+	if (!(`pluginInfo -q -l AbcExport`)) loadPlugin AbcExport;
+	if (!(`pluginInfo -q -l AbcImport`)) loadPlugin AbcImport;
+	if (!(`pluginInfo -q -l gpuCache`)) loadPlugin gpuCache;
+	if (!(`pluginInfo -q -l sceneAssembly`)) loadPlugin sceneAssembly;
+	if (!(`pluginInfo -q -l atomImportExport`)) loadPlugin atomImportExport;
+	
+	global string $gSamRootDir = "assemblies/";
+	global string $gSamRepDir = "representations/";
+	global string $gSamDefDir = "definitions/";
+	//global string $gSamRefDir = "references/";
+	global string $gSamExtFileList[];
+	clear $gSamExtFileList;
+	$gSamExtFileList = {"", "", "", "", ""};
+	
+	samVerifyLibPath;
+	
+	// create the categories and representation lists
+	string $list[] = samDataList( 1, 0, "" );
+	if (size($list) == 0)
+		error "Unable to create the categories list";
+	$list = samDataList( 1, 1, "" );
+	if (size($list) == 0)
+		error "Unable to create the representations list";
+	
+	// set the dock position and remember it
+	string $dockArea = "right";
+	if (`optionVar -ex samCurrentDockPosition`)
+		$dockArea = `optionVar -q samCurrentDockPosition`;
+	optionVar -sv samCurrentDockPosition $dockArea;
+
+	string $win = "samDockWin";
+	string $dock = "samDock";
+
+	if (`dockControl -exists $dock`) deleteUI $dock;
+	else if (`window -exists $win`) deleteUI $win;
+
+	samBuildDock( $win );
+	samBuildRepOptions();
+	
+	dockControl -w 325 -allowedArea "all" -area $dockArea -l "Scene Assembly Manager" -fcc ("optionVar -sv samCurrentDockPosition (`dockControl -q -area " + $dock + "`)") -content $win $dock;
+	
+	if (!`optionVar -ex "samKeepVersionsCheck"`)
+		samSetEnvDefault;
+		
+	samGetEnvDefault( 0 );
+	samBuildTypeDidChange();
+	samGetAssets();
+}

@@ -1,0 +1,279 @@
+global proc shelf_PyDev () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Hard Reload" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "Hard Reload" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "HReload" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.8 
+        -image "pythonFamily.png" 
+        -image1 "pythonFamily.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import hard_reload\nhard_reload.show()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Quick Launcher" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "Quick Launcher" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "QLaunch" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.8 
+        -image "pythonFamily.png" 
+        -image1 "pythonFamily.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import quicklauncher\nquicklauncher.show()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 19
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "sep" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "sep" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "/home/italic/maya/icons/separator.png" 
+        -image1 "/home/italic/maya/icons/separator.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "ViewportSetup" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ViewportSetup" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "VP" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "commandButton.png" 
+        -image1 "commandButton.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "print \"Select an operation from the menu\";" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "" ( "" )
+        -mi "Use OSD" ( "import ita_snippet_collection\nita_snippet_collection.useOSD()\n" )
+        -mip 1
+        -mi "cycleCheckOff" ( "cycleCheck -e off" )
+        -mi "SkinClusters" ( "import ita_snippet_collection\nita_snippet_collection.skCluster()\n" )
+        -mip 3
+        -mi "V2.0" ( "ActivateViewport20;\ncreateViewport20OptionsUI;\n\nsetAttr \"hardwareRenderingGlobals.consolidateWorld\" 1;\nsetAttr \"hardwareRenderingGlobals.vertexAnimationCache\" 2;\nhwInstancingCheckBoxOnCommand;\nsetAttr \"hardwareRenderingGlobals.maxHardwareLights\" 2;\nsetAttr \"hardwareRenderingGlobals.transparencyAlgorithm\" 0;\nsetAttr \"hardwareRenderingGlobals.enableTextureMaxRes\" 1;\nsetAttr \"hardwareRenderingGlobals.textureMaxResolution\" 1024;\n\nsetAttr \"hardwareRenderingGlobals.ssaoEnable\" 0;\nsetAttr \"hardwareRenderingGlobals.motionBlurEnable\" 0;\nsetAttr \"hardwareRenderingGlobals.lineAAEnable\" 0;\nsetAttr \"hardwareRenderingGlobals.multiSampleEnable\" 1;\nsetAttr \"hardwareRenderingGlobals.gammaCorrectionEnable\" 0;\nsetAttr \"hardwareRenderingGlobals.floatingPointRTEnable\" 0;\nsetAttr \"hardwareRenderingGlobals.caching\" 1;\n" )
+        -mi "Cache" ( "import ita_snippet_collection\nita_snippet_collection.cacheVP()\n" )
+        -mip 5
+        -mi "Reset display" ( "import ita_snippet_collection\nita_snippet_collection.resetVP()\n" )
+        -mip 6
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "ConstraintTools" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ConstraintTools" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "Const" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "parentConstraint.png" 
+        -image1 "parentConstraint.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ita_ConMan\nreload(ita_ConMan)" 
+        -sourceType "python" 
+        -doubleClickCommand "doRemoveConstraintTarget 1  { \"all\",\"1\"};" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "" ( "" )
+        -mi "ParentConst" ( "ParentConstraintOptions" )
+        -mi "RemoveTarget" ( "doRemoveConstraintTarget 1  { \"all\",\"1\"};" )
+        -mi "LWS Const Tool" ( "import lws_parentConstraint\nlws_parentConstraint.UI()\n" )
+        -mip 3
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "conman module" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "conman_module" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "cman" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.8 
+        -image "pythonFamily.png" 
+        -image1 "pythonFamily.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ita_ConMan2\nita_ConMan2.show()" 
+        -sourceType "python" 
+        -doubleClickCommand "import ita_ConMan2\nita_ConMan2.unregister_cb()\n\nimport hard_reload\nhard_reload.hard_reload(\"ita_ConMan2\")\n" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Circle" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "Circle" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "circle.png" 
+        -image1 "circle.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "circle -c 0 0 0 -nr 0 1 0 -sw 360 -r 1 -d 3 -ut 0 -tol 0.01 -s 8 -ch 1; objectMoveCommand" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreateNURBSCircleOptions" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Locator" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "Locator" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "locator.png" 
+        -image1 "locator.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreateLocator" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+
+} 

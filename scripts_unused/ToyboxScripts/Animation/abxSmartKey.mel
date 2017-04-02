@@ -1,0 +1,169 @@
+//abxSmartKey v2.5 by J.Adam Burke
+//mod. Jan 29, 2006 
+//J. Adam Burke ©2006
+//http://www.adamburke.net
+
+// Smart Key auto detects if you have a channel item selected, if so the 's' key
+// will set keys only on selected channels and only the selected channels keyticks 
+// are displayed on the timeline. If no channels are selected, maya switches back to
+// setting all keyable attributes when pressing the 's' key and displaying all
+// keys on the selected object on the timeline.
+
+// New in 2.5
+// Added automatic highlighting of selectd channels in the graph editor
+// Fixed bug that ignored channels selected before activating smart key
+
+// TO INSTALL
+// Copy file to any script folder such as .../UserFolder/maya/5.0/scripts/
+// type "abxSmartKey" in the script editor to enable dynamic keys
+
+
+global proc string abxSmartKey () {
+	string $smartKeyJobNum;
+	int $i;
+	int $foundJob = 0;
+	int $jobNum = 0;
+	string $smartKeyStatus="Unknown";
+	string $listArray[] = `scriptJob -lj`;
+	string $tokenBuffer[];
+	string $selectedChnl[];
+	$selectedChnl = `channelBox -q -sma mainChannelBox`;
+	
+
+
+	for ($i=0;$i<size($listArray);$i++){
+		// if the script jobs are found Kill them
+		if (`gmatch $listArray[$i] "*dispTimeKey*"`){
+			tokenize $listArray[$i] ":" $tokenBuffer;
+			$smartKeyJobNum = $tokenBuffer[0];
+			scriptJob -k (int($smartKeyJobNum));
+			$foundJob = 1;
+		}
+	}
+	// if no script jobs were found then start new ones
+	if ($foundJob == 0) {
+		// if the channelbox has selections set keyframes to key only channels
+		if ($selectedChnl[0] != "") {
+			timeControl -e -sk "mainChannelBox" timeControl1;
+			optionVar -intValue setKeyframeWhich 1; //all keyable
+			optionVar -intValue keyUseChannelBox 1;
+		}
+
+		// if the channelbox has no selections set the keyframes to key all keyable
+		else {
+			timeControl -e -sk "active" timeControl1;
+			optionVar -intValue keyUseChannelBox 0;
+			optionVar -intValue setKeyframeWhich 4; //everything
+  		}
+
+		$jobNum = `scriptJob -e "ToolChanged" "dispTimeKey"`;
+		$jobNum = `scriptJob -e "SelectionChanged" "dispTimeKey"`;
+		$jobNum = `scriptJob -e "quitApplication" "exitSmartKey"`;
+		$smartKeyStatus = "Smart Key Enabled";	
+
+		// add menuItem to Shelf
+		setParent "MayaWindow|mayaMainWindowForm|formLayout3|formLayout11|formLayout32|formLayout33|ChannelsLayersPaneLayout|formLayout36|menuBarLayout1";
+		menu -label "SmartKey" abxSmartKeyMenu;
+		menuItem -label "Sync GraphEditor" -cb true -c "dispTimeKey" abxSmartKeySyncGE;
+		menuItem -label "Sync Timeline" -cb true -c "dispTimeKey" abxSmartKeySyncTL;
+		menuItem -d true;
+		menuItem -label "Disable SmartKey" -c "abxSmartKey";
+	}
+	// reset setKey and timleline options to default before exiting
+	else {
+		timeControl -e -sk "active" timeControl1;
+		optionVar -intValue keyUseChannelBox 0;
+		optionVar -intValue setKeyframeWhich 4; //everything
+		$smartKeyStatus = "Smart Key Disabled";
+		deleteUI -menu abxSmartKeyMenu;
+		menuBarLayout -e -vis false "MayaWindow|mayaMainWindowForm|formLayout3|formLayout11|formLayout32|formLayout33|ChannelsLayersPaneLayout|formLayout36|menuBarLayout1";
+		menuBarLayout -e -vis true "MayaWindow|mayaMainWindowForm|formLayout3|formLayout11|formLayout32|formLayout33|ChannelsLayersPaneLayout|formLayout36|menuBarLayout1";
+
+	}
+  	return $smartKeyStatus;
+}
+
+global proc dispTimeKey () {
+
+	//$windowWithFocus = `window -q -fw $gMainWindow`;
+	$selNodes = `ls -sl`;
+	global string $lastSelectedChannels[];
+
+	// get the list of selected channels from the mainChannelBox
+	string $selectedChnl[];
+	$selectedChnl = `channelBox -q -sma mainChannelBox`;
+	$selSSAChnl = `channelBox -q -ssa mainChannelBox`;
+	$selectedChnl = stringArrayCatenate($selectedChnl,$selSSAChnl);
+	$selSHAChnl = `channelBox -q -sha mainChannelBox`;
+	$selectedChnl = stringArrayCatenate($selectedChnl,$selSHAChnl);
+	$selSOAChnl = `channelBox -q -soa mainChannelBox`;
+	$selectedChnl = stringArrayCatenate($selectedChnl,$selSOAChnl);
+	
+	
+
+		
+
+	// if the channelbox has selections set keyframes to key only channels
+	if ($selectedChnl[0] != "") {
+		if (`menuItem -q -cb abxSmartKeySyncTL`)
+			timeControl -e -sk "mainChannelBox" timeControl1;
+		else
+			timeControl -e -sk "active" timeControl1;
+		optionVar -intValue setKeyframeWhich 1; //all keyable
+		optionVar -intValue keyUseChannelBox 1;
+		// edit the selection connection of the graph editor and dopesheet to match
+		if (`menuItem -q -cb abxSmartKeySyncGE`){
+			for ($i=0;$i < size($lastSelectedChannels);$i++){
+				if (size($selectedChnl) == size($lastSelectedChannels)){
+					if ($selectedChnl[$i] == $lastSelectedChannels[$i]){
+						$lastSelectedChannels = $selectedChnl;
+						return;
+					}
+				}
+			}
+			selectionConnection -e -clear graphEditor1FromOutliner;
+			for ($currentNode in $selNodes){
+				for ($channelItm in $selectedChnl){
+					string $channelFullName = $currentNode + "." + $channelItm;
+					if ( `objExists $channelFullName` ) {
+						selectionConnection -e -select $channelFullName graphEditor1FromOutliner;
+					}
+				}
+			}
+		}
+		$lastSelectedChannels = $selectedChnl;
+	}
+
+	// if the channelbox has no selections set the keyframes to key all keyable
+	else {
+		timeControl -e -sk "active" timeControl1;
+		optionVar -intValue keyUseChannelBox 0;
+		optionVar -intValue setKeyframeWhich 4; //everything
+  	}
+}
+
+global proc exitSmartKey () {
+	string $tokenBuffer[];
+	string $listArray[] = `scriptJob -lj`;
+	for ($i=0;$i<size($listArray);$i++){
+		// if the script jobs are found Kill them
+		if (`gmatch $listArray[$i] "*dispTimeKey*"`){
+			tokenize $listArray[$i] ":" $tokenBuffer;
+			string $smartKeyJobNum = $tokenBuffer[0];
+			scriptJob -k (int($smartKeyJobNum));
+			$foundJob = 1;
+		}
+	}
+	
+	timeControl -e -sk "active" timeControl1;
+	optionVar -intValue keyUseChannelBox 0;
+	optionVar -intValue setKeyframeWhich 4; //everything
+}
+
+
+
+
+
+
+
+

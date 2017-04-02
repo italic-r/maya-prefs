@@ -1,0 +1,547 @@
+//////////////////////////////////////////////////////////////////////////////
+// FX TOOLS BUBBLES SCRIPT
+//////////////////////////////////////////////////////////////////////////////
+//
+//	Copyright ©2013 Iskander Cathal Mellakh Comet All Rights Reserved
+//
+//	website: http://www.icmstudios.co.uk/
+//
+//	LICENCE DETAILS:
+//	This tool is free to use on private and commercial projects. 
+//	If used on a commercial project please credit ICM Studios for the tool.
+//	
+//	Enjoy :) 
+//	Iskander Mellakh
+//
+//////////////////////////////////////////////////////////////////////////////
+
+$text = "";
+
+global proc string[] createBubbles(int $number) {
+   $bubExists = `objExists "Bubbles"`;
+   string $bubName    = ($bubExists == false) ? "Bubbles" : "Bubbles01";
+   int $i;
+   string $cmd = ("nParticle -n "+$bubName);
+   for ($i=0; $i<$number; $i++) {
+      $cmd += "-p 0 0 0 ";
+				  spaceLocator -p 0 0 0 -n ("bubble_"+$i);
+				  circle -ch on -o on -nr 0 1 0 -r 1 -n ("bubble_"+$i+"_ctrl");
+				      print "\/\/ Making Circle";
+				  circle -ch on -o on -nr 0 1 0 -r 1 -n ("bubble_"+$i+"_ctrl_0");
+				      select -r ("bubble_"+$i+"_ctrl_0.cv[0:7]") ;
+                      rotate -r -p 0cm 0cm 0cm -os -90 0 0 ;
+				      print "\/\/ Making Circle 02";
+				      select -r ("bubble_"+$i+"_ctrl_0Shape") ("bubble_"+$i+"_ctrlShape") ("bubble_"+$i+"_ctrl");
+                      parent -r -s;
+                      delete ("bubble_"+$i+"_ctrl_0");
+				  addAttr -ln "radius"  -at double  ("bubble_"+$i+"_ctrl");
+				  setAttr -e-keyable true ("bubble_"+$i+"_ctrl.radius");
+				   setAttr ("bubble_"+$i+"_ctrl.radius") 0.28;
+				  select -r ("bubble_"+$i) ("bubble_"+$i+"_ctrl") ;parent;
+				  select -r ("bubble_"+$i+"_ctrl"); move -r -os -wd 0 0 $i ;
+				  setAttr ("bubble_"+$i+".visibility") 0;
+				  DeleteHistory;
+   }
+   $cmd += "-c 1";
+   return eval($cmd);
+}
+
+global proc string[] createRandBubbles(int $number) {
+   $bubExists = `objExists "Bubbles"`;
+   string $bubName    = ($bubExists == false) ? "Bubbles" : "Bubbles01";
+   int $i;
+   int $randomVal = `intFieldGrp -q -value1 randRad`;
+   string $cmd = ("nParticle -n "+$bubName);
+   for ($i=0; $i<$number; $i++) {
+   $randPlacement  = sphrand($randomVal);
+   string $move = ("move -r -os -wd "+$randPlacement);
+      $cmd += ("-p "+$randPlacement);
+				  spaceLocator -p 0 0 0 -n ("bubble_"+$i);
+				  circle -ch on -o on -nr 0 1 0 -r 1 -n ("bubble_"+$i+"_ctrl");
+				      print "\/\/ Making Circle";
+				  circle -ch on -o on -nr 0 1 0 -r 1 -n ("bubble_"+$i+"_ctrl_0");
+				      select -r ("bubble_"+$i+"_ctrl_0.cv[0:7]") ;
+                      rotate -r -p 0cm 0cm 0cm -os -90 0 0 ;
+				      print "\/\/ Making Circle 02";
+				      select -r ("bubble_"+$i+"_ctrl_0Shape") ("bubble_"+$i+"_ctrlShape") ("bubble_"+$i+"_ctrl");
+                      parent -r -s;
+                      delete ("bubble_"+$i+"_ctrl_0");
+				  addAttr -ln "radius"  -at double  ("bubble_"+$i+"_ctrl");
+				  setAttr -e-keyable true ("bubble_"+$i+"_ctrl.radius");
+				   setAttr ("bubble_"+$i+"_ctrl.radius") 0.28;
+				  select -r ("bubble_"+$i) ("bubble_"+$i+"_ctrl") ;parent;
+				  select -r ("bubble_"+$i+"_ctrl"); 
+				  eval($move);
+				  setAttr ("bubble_"+$i+".visibility") 0;
+				  DeleteHistory;
+   }
+   $cmd += "-c 1";
+   return eval($cmd);
+}
+global proc connectBubbles(){
+	int $i;
+	int $num = `nParticle -q -count Bubbles`;
+		for ($i=0; $i<$num; $i++) {
+				select -r Bubbles ("bubble_"+$i) ;
+				goal -w 0.5 -utr 0   -g ("bubble_"+$i) Bubbles;
+				addAttr -ln ("goalWeight"+$i+"PP0") -dt doubleArray BubblesShape;
+				addAttr -ln ("goalWeight"+$i+"PP") -dt doubleArray BubblesShape;
+				setAttr -e-keyable true ("BubblesShape.goalWeight"+$i+"PP");
+				particle -e -or $i -at ("goalWeight"+$i+"PP") -fv 1 BubblesShape ;
+					print ("\/\/ attached bubble "+$i+" \n");
+		}
+	rename nucleus1 "BubblesNucleus" ;
+}
+
+global proc buildMesh(){
+	int $i;
+	int $num = `nParticle -q -count Bubbles`;
+	string $bubbleShader = `sets -renderable true -noSurfaceShader true -empty -name "bubbleMaterialSG"`;
+	select -r Bubbles ; 
+	particleToPoly;
+	addAttr -is true -ln "betterIllumination" -at bool -dv false Bubbles;
+	addAttr -is true -ln "surfaceShading" -at "float" -min 0 -max 1 -dv 0 Bubbles;
+	setAttr "BubblesShape.blobbyRadiusScale" 5.7844;
+	setAttr "BubblesShape.blobbyRadiusScale" 5;
+	setAttr "BubblesShape.meshSmoothingIterations" 10;
+	setAttr BubblesShape.meshMethod 3;
+	setAttr "BubblesShape.threshold" 0.31372;
+	rename "polySurface1" "bubblesMesh";
+	select -r bubblesMesh;
+	displaySmoothness -divisionsU 3 -divisionsV 3 -pointsWire 16 -pointsShaded 4 -polygonObject 3;
+	subdivDisplaySmoothness -smoothness 3;
+	select bubble_0_ctrl Bubbles bubblesMesh ; group -n "Bubbles_grp"; xform -os -piv 0 0 0;
+	addAttr -ln radiusPP -dt doubleArray BubblesShape;
+	addAttr -ln radiusPP0 -dt doubleArray BubblesShape;
+	string $radExpr = "dynExpression -s \"";
+	for ($i = 0; $i < $num; $i++){
+	$radExpr += "$bub"+$i+" = bubble_"+$i+"_ctrl.radius; nParticle -e -or "+$i+" -at radiusPP -fv $bub"+$i+" BubblesShape ;";
+	}
+	$radExpr += "\" -rad BubblesShape;";
+    eval($radExpr);
+	string $cExpr = "dynExpression -s \"";
+	for ($i = 0; $i < $num; $i++){
+	$cExpr += "$bub"+$i+" = bubble_"+$i+"_ctrl.radius; nParticle -e -or "+$i+" -at radiusPP -fv $bub"+$i+" BubblesShape ;";
+	}
+	$cExpr += "\" -c BubblesShape;";
+    eval($cExpr);
+	//for ($i = 0; $i < $num; $i++){
+	//dynExpression -e ("$bub"+$i+" = bubble_"+$i+"_ctrl.radius; \n\n nParticle -e -or "+$i+" -at radiusPP -fv $bub"+$i+" BubblesShape ;") -rad BubblesShape;}
+	//----- BUILDS THE SHADER
+		shadingNode -asTexture ramp -n "bubbleColourRamp";
+		shadingNode -asUtility place2dTexture -n "bubbleColourRamp2d";
+		removeMultiInstance -break true bubbleColourRamp.colorEntryList[1];
+		setAttr "bubbleColourRamp.colorEntryList[0].color" -type double3 0.451 0.57 1 ;
+		setAttr "bubbleColourRamp.colorEntryList[2].color" -type double3 0.066 0.066 0.421 ;
+		shadingNode -asTexture ramp -n "bubbleTransparencyRamp";
+		shadingNode -asUtility place2dTexture -n "bubbleTransparencyRamp2d";
+		removeMultiInstance -break true bubbleTransparencyRamp.colorEntryList[1];
+		setAttr "bubbleTransparencyRamp.colorEntryList[0].color" -type double3 0 0 0 ;
+		setAttr "bubbleTransparencyRamp.colorEntryList[0].position" 0.360;
+		setAttr "bubbleTransparencyRamp.colorEntryList[2].color" -type double3 1 1 1 ;
+		setAttr "bubbleTransparencyRamp.colorEntryList[2].position" 0.780;
+		shadingNode -asUtility samplerInfo -n "bubbleInfoNode";
+		connectAttr -f "bubbleInfoNode.facingRatio" "bubbleTransparencyRamp.vCoord";
+		connectAttr -f "bubbleInfoNode.facingRatio" "bubbleColourRamp.vCoord";
+		shadingNode -asShader blinn -n "bubbleMaterial";
+		connectAttr -f "bubbleColourRamp.outColor" "bubbleMaterial.color";
+		connectAttr -f "bubbleTransparencyRamp.outColor" "bubbleMaterial.transparency";
+		setAttr "bubbleMaterial.diffuse" 1;
+		setAttr "bubbleMaterial.translucenceDepth" 5;
+		setAttr "bubbleMaterial.translucenceFocus" 1;
+		setAttr "bubbleMaterial.eccentricity" 0.106;
+		setAttr "bubbleMaterial.specularRollOff" 1.5;
+		setAttr "bubbleMaterial.reflectivity" 0.22;
+		setAttr "bubbleMaterial.specularColor" -type double3 1 1 1 ;
+		setAttr "bubbleMaterial.refractions" 1;
+		setAttr "bubbleMaterial.refractiveIndex" 1.4;
+		setAttr "bubbleMaterial.lightAbsorbance" 0.345;
+		setAttr "bubbleMaterial.surfaceThickness" 0.117;
+		setAttr "bubbleMaterial.shadowAttenuation" 0.345;
+		//setAttr "bubbleMaterial.miScatterRadius" 1.049;
+		//setAttr "bubbleMaterial.miIrradiance" -type double3 1 0 2 ;
+		//setAttr "bubbleMaterial.miScatterColor" -type double3 1 0 2 ;
+		//setAttr "bubbleMaterial.miReflectionBlur" 0.2;
+		sets -e -forceElement bubbleMaterialSG bubblesMesh;
+		connectAttr -f bubbleMaterial.outColor bubbleMaterialSG.surfaceShader;
+		//defaultDirectionalLight(0.4, 0.6862745285,0.3271842897,0.2018454373, "0", 0,0,0, 0);
+		//rename "directionalLight1" "rimLight";
+		//setAttr "rimLight.useRayTraceShadows" 1;
+		//disconnectAttr rimLight.instObjGroups[0] defaultLightSet.dagSetMembers[0];
+		//select "rimLight"; rotate -0.0226552 -19.438097 -7.023128;
+		//defaultDirectionalLight(0.3, 0.2941176891,0.349019587,0.6862745285, "0", 0,0,0, 0);
+		//rename "directionalLight1" "leftLight";
+		//setAttr "leftLight.useRayTraceShadows" 1;
+		//setAttr "leftLight.lightRadius" 15;
+		//setAttr "leftLight.shadowRays" 5;
+		//setAttr "leftLight.shadowRays" 5;
+		//select "leftLight"; rotate -42.950722 -26.727356 13.537773;
+		//disconnectAttr leftLight.instObjGroups[0] defaultLightSet.dagSetMembers[0];
+		//defaultDirectionalLight(0.6, 0.5686274767,0.6196078658,0.7058823705, "0", 0,0,0, 0);
+		//rename "directionalLight1" "rightLight";
+		//setAttr "rightLight.useRayTraceShadows" 1;
+		//setAttr "rightLight.lightRadius" 15;
+		//setAttr "rightLight.shadowRays" 5;
+		//setAttr "rightLight.shadowRays" 5;
+		//select "rightLight"; rotate -47.42523 35.066624 -6.554622;
+		//disconnectAttr rightLight.instObjGroups[0] defaultLightSet.dagSetMembers[0];
+		//select "rimLight" "leftLight" "rightLight" "bubblesMesh"; MakeLightLinks;
+		//lightlink -make -useActiveLights -useActiveObjects;
+		//select rimLight leftLight rightLight; group -n "BubblesLights"; xform -os -piv 0 0 0;
+		//parent BubblesLights Bubbles_grp ;
+		//createRenderLayer -name "BubbleLayer" -number 1 -noRecurse;
+		//editRenderLayerMembers -noRecurse "BubbleLayer" bubblesMesh;
+		//editRenderLayerMembers -noRecurse "BubbleLayer" rimLight;
+		//editRenderLayerMembers -noRecurse "BubbleLayer" leftLight;
+		//editRenderLayerMembers -noRecurse "BubbleLayer" rightLight;
+		//createRenderLayer -name "BubbleLayer_B" -number 1 -noRecurse;
+		//editRenderLayerMembers -noRecurse "BubbleLayer_B" bubblesMesh;
+		//editRenderLayerMembers -noRecurse "BubbleLayer_B" rimLight;
+		//editRenderLayerMembers -noRecurse "BubbleLayer_B" leftLight;
+		//editRenderLayerMembers -noRecurse "BubbleLayer_B" rightLight;
+		//select rimLight leftLight rightLight ; group -n "Bubbles_lights";
+		//select Bubbles_lights Bubbles_grp; parent;
+		//createNode renderPass;
+		//applyAttrPreset "renderPass1" "C:/Program Files/Autodesk/Maya2011/presets/attrPresets/renderPass/beauty.mel" 1;
+		//rename "renderPass1" "beauty";
+		//setAttr "beauty.reflectHidden" 1;
+		//setAttr "beauty.refractHidden" 1;
+		//setAttr "beauty.hiddenReflect" 1;
+		//setAttr "beauty.hiddenRefract" 1;
+		//setAttr "beauty.minReflectionLevel" 0;
+		//setAttr "beauty.maxReflectionLevel" 1;
+		//setAttr "beauty.minRefractionLevel" 0;
+		//setAttr "beauty.maxRefractionLevel" 1;
+		//connectAttr -nextAvailable bubbleLayer.renderPass specular.owner;
+		//connectAttr -nextAvailable bubbleLayer.renderPass beauty.owner;
+		//connectAttr -nextAvailable bubbleLayer_2.renderPass specular.owner;
+		//connectAttr -nextAvailable bubbleLayer_2.renderPass beauty.owner;
+		//setAttr miDefaultOptions.filter 2;
+		//editRenderLayerAdjustment  -layer "bubbleLayer" "miDefaultOptions.filter";
+		string $locNm = "windDirection_Loc";
+		spaceLocator -p 0 0 0 -n $locNm;
+		connectAttr -f ($locNm+".translateX") "BubblesNucleus.windDirectionX";
+		connectAttr -f ($locNm+".translateY") "BubblesNucleus.windDirectionY";
+		connectAttr -f ($locNm+".translateZ") "BubblesNucleus.windDirectionZ";
+		if (`window -exists blobbyDynamics`) 
+		deleteUI blobbyDynamics;
+		bubbles();
+}
+
+global proc setLoc(){
+    select BubblesShape;
+    setNClothStartState;
+    select -cl;
+}
+
+global proc int getBubbles(){
+    $bubblesExist = `objExists Bubbles`;
+    return $bubblesExist;          
+}
+
+global proc autoRand(){
+	string $ctrl[] = `ls "bubble_*_ctrl"`;
+    for ($each in $ctrl) {
+        $rand = rand(-0.2, 0.6);
+			expression -s ($each+".radius = rand(0.2,0.7);")  -o $each -ae 1 -uc all ; 
+    }
+}
+
+global proc playNow(){
+    InteractivePlayback;          
+}
+
+global proc bubbles(){
+$bubblesExist = `objExists Bubbles`;
+if($bubblesExist){
+int $count= `getAttr BubblesShape.count`;}
+//----------------------------------------------
+// checks to see if the window exists
+//----------------------------------------------
+if (`window -exists blobbyDynamics`) 
+deleteUI blobbyDynamics; 
+
+//----------------------------------------------
+// Creates the window
+//----------------------------------------------
+
+window 
+	-title "FX TOOLS ALPHA"
+	-wh 400 500
+	-mxb off
+	-resizeToFitChildren on
+	-sizeable on
+	-retain
+blobbyDynamics;
+
+
+string $form = `formLayout`;
+string $tabs = `tabLayout -innerMarginWidth 5 -innerMarginHeight 5`;
+formLayout -edit
+    -attachForm $tabs "top"    0
+     -attachForm $tabs "left"   0
+     -attachForm $tabs "bottom" 0
+     -attachForm $tabs "right"  0
+     $form;
+	
+	string $child0 = `columnLayout -adjustableColumn true -cal "left" dynaCol`;
+			
+			string $column          = `columnLayout -adjustableColumn true`; 
+			string $frame2          = `frameLayout -cll true -label "Quick Links"`; 	
+			string $formb           = `formLayout -numberOfDivisions 100`;
+			string $b1              = `iconTextButton -style "iconAndTextVertical" -image1 "circle.png" -command "CreateNURBSCircle"`;
+	        string $b2              = `iconTextButton -style "iconAndTextVertical" -image1 "curveEP.png" -command "EPCurveTool"`;
+            string $b3              = `iconTextButton -style "iconAndTextVertical" -image1 "pencil.png" -command "PencilCurveTool"`;
+			int $stFrame			= `playbackOptions -q -minTime`;
+	   
+	
+	formLayout -edit
+    -attachForm     $b1     "top"    0
+    -attachForm     $b1     "left"   0
+    
+    -attachControl   $b2    "left"   5 $b1
+    -attachControl   $b3    "left"   5 $b2
+       
+	$formb;
+	setParent ..;
+
+
+string $frame        = `frameLayout -cll true -label "Emitter Options"`; 
+
+	optionMenu 		-label "Emitter Type" 
+					-changeCommand "print #1" 
+					OPTemitterType;
+					
+	menuItem 		-label "Curve";
+	menuItem 		-label "Omni";
+	menuItem 		-label "Surface";
+	
+	optionMenu 		-label "Particle Type" 
+					-changeCommand "print #1" 
+					OPTparticleType;
+					
+	menuItem 		-label "Normal";
+	menuItem 		-label "nParticle";
+
+	textFieldGrp	-label "Dynmaics Prefix"
+					-text  ""
+					-w 300
+					-annotation "Enter in a prefix for the dynamics"
+					TFGDynamicsName;
+	
+	intFieldGrp		-label "Sequence amount"
+					-value1 10
+					-w 300
+					-annotation "Enter in the number of frames in the sequence"
+					IFGseqAmt;
+					
+	rowLayout  -numberOfColumns 4 -width 350;	
+					textField -w 200 
+							  -tx "" 
+							  myTextField;
+					button -label "Browse" 
+								-w 50 
+								-command "browseFiles()";
+									
+	setParent ..;
+	
+	intFieldGrp		-label "Start Frame"
+					-value1 $stFrame
+					-w 300
+					-annotation "Enter in a start frame - default is the start frame in Maya."
+					IFGstTime;	
+			
+	button 			-label "Make Me"
+					-c ("createDynamics")
+					-ann "select the type of emiiter first then press the button"
+					BTNmkDynamics;
+			
+	button 			-label "Dynamics UI"
+					-c ("FXDynamics")
+					-ann "launches the dynamics UI"
+					BTNlaunchDynamics;
+	text -label "NOTE: Connect the particles to the fluid shape and emitter";
+	
+	button 			-label "Fluids controlled Particles"
+					-c ("mkFluidbox")
+					-ann ""
+					BTNmkFluids;		
+	
+	
+	setParent ..;
+	setParent ..;
+	setParent ..;
+	setParent ..;
+
+	string $child1 = `columnLayout -adjustableColumn true -cal "left" mainCol`;
+
+frameLayout -l "Default Bubbles" -cll true -cl false;
+	intFieldGrp 	-label "Number of Bubbles"
+					-value1 1
+					stT;
+
+button    -l "Make Bubbles"
+	      -c "createBubbles(`intFieldGrp -q -v1 stT`)";
+
+button    -l "Make Random Bubbles"
+	          -c "createRandBubbles(`intFieldGrp -q -v1 stT`)";
+setParent ..;
+	frameLayout -l "Random Bubbles" -cll true -cl false;			  
+	intFieldGrp 	-label "Random Radius"
+					-value1 5
+					randRad;
+setParent ..;
+	
+	frameLayout -l "Make Connections" -cll true -cl false;
+	
+        button    -l "Connect Bubbles"
+        	      -c "connectBubbles";
+        
+        button    -l "Build Mesh"
+        	      -c "buildMesh";
+        		  
+        button    -l "Random Bubble Size"
+        	      -c "randSize";		  
+    setParent ..;
+
+    frameLayout -l "Extras" -cll true -cl false;
+        button    -l "Random Radius Auto keyer"
+        	      -c "autoRand"; 
+        	      
+        button    -l "Interactive Play"
+        	      -c "playNow";    
+    setParent ..;     
+setParent ..;	
+	string $child2 = `columnLayout -adjustableColumn true -cal "left" secCol`;
+		 	button 		-label "Set Bubbles" 
+						-c ("setLoc") 
+						setPos;
+						
+					 	button 		-label "Auto Bubble Raduis" 
+						-c ("ani_randSize") 
+						animate_bubbles;			
+
+	if($bubblesExist == false){
+	text -label "There is no active Bubbles in the scene";
+	}
+	else{
+		
+	int $state		=	`getAttr BubblesShape.goalActive[0]`;
+	checkBox 		-label ("Dynamics") 
+					-v $state
+					-onCommand ("dynAttrsOn") 
+					-offCommand ("dynAttrsOff") dynamicState;
+	
+	attrControlGrp     -attribute "BubblesNucleus.gravity" 
+    	                    gravityCtrl; 
+	
+	attrFieldSliderGrp	-attribute "BubblesShape.threshold" 
+						threshold;				
+						
+	attrFieldSliderGrp	-attribute "BubblesShape.motionStreak" 
+						motionStreak;
+	
+	attrControlGrp		-attribute "BubblesNucleus.startFrame" 
+						startFrame;
+	
+	
+	attrFieldSliderGrp	-attribute "BubblesShape.radius"
+						overallRadius;	
+				
+	attrFieldSliderGrp	-attribute "BubblesShape.blobbyRadiusScale" 
+						radius;
+	
+	frameLayout -l "Ground Plane Options" -cll true -cl false;
+    	 	                    
+    	attrControlGrp     -attribute "BubblesNucleus.usePlane"	
+    	                    groundPlaneCtrl;
+    
+        attrControlGrp     -attribute"BubblesNucleus.planeOrigin" 
+    	                   originCtrl;	
+    	
+    	attrControlGrp     -attribute"BubblesNucleus.planeNormal" 
+    	                   normalCtrl;
+    	
+    	attrControlGrp     -attribute "BubblesNucleus.planeBounce"
+    	                   bounceCtrl;
+    	                   
+    	attrControlGrp     -attribute "BubblesNucleus.planeFriction"
+    	                   frictionCtrl; 
+    	                   
+    setParent..;
+	
+	frameLayout -l "Wind Options" -cll true -cl false;
+    	
+    	attrFieldSliderGrp 	-attribute "BubblesNucleus.windSpeed" 
+    						windSpeed;
+    	
+    	attrFieldSliderGrp 	-attribute "BubblesNucleus.windNoise"
+    						windNoise;
+    
+    	attrFieldSliderGrp 	-attribute "BubblesNucleus.airDensity"
+    						airDensity;
+	
+	setParent..;			
+	
+	frameLayout -l "Mesh Options" -cll true -cl false;
+    	
+    	attrControlGrp		-attribute "BubblesShape.meshMethod" 
+						    meshMeth;
+						
+    	attrFieldSliderGrp	-attribute "BubblesShape.meshTriangleSize" 
+    						meshTriangleSize;
+	
+    	attrFieldSliderGrp	-attribute "BubblesShape.meshSmoothingIterations" 
+    						meshSmoothingIterations;	
+    	
+    	attrFieldSliderGrp	-attribute "BubblesShape.maxTriangleResolution" 
+    						maxTriangleResolution;	    
+    setParent..;	
+
+		}
+		 setParent ..; 
+
+tabLayout -edit
+         -tabLabel $child0 "Create Dynamics"
+         -tabLabel $child1 "Create Bubbles" 
+		 -tabLabel $child2 "Edit Bubbles"
+         $tabs;				
+
+
+showWindow blobbyDynamics;
+}
+
+global proc dynAttrsOn(){
+int $nmPts =  `getAttr BubblesShape.count`;
+
+    for($i = 0; $i < $nmPts; $i++){
+        setAttr ("BubblesShape.goalActive["+$i+"]") 0;
+    }
+    setAttr "BubblesShape.ignoreSolverGravity" 0;
+}
+
+global proc dynAttrsOff(){
+int $nmPts =  `getAttr BubblesShape.count`;
+
+    for($i = 0; $i < $nmPts; $i++){
+        setAttr ("BubblesShape.goalActive["+$i+"]") 1;
+    }
+    setAttr "BubblesShape.ignoreSolverGravity" 1;
+}
+
+global proc randSize(){
+	string $ctrl[] = `ls "bubble_*_ctrl"`;
+    for ($each in $ctrl) {
+        $rand = rand(0.2, 0.6);
+        setAttr ($each+".radius") $rand;   
+    }
+}
+
+global proc ani_randSize(){
+		string $ctrl[] = `ls "bubble_*_ctrl"`;
+    for ($each in $ctrl) {
+        $rand = rand(0.2, 0.6);
+			expression -s ($each+".radius = rand(0.2,0.7);")  -o $each -ae 1 -uc all ; 
+    }
+}
+

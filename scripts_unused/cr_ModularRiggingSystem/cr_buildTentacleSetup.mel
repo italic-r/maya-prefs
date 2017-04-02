@@ -1,0 +1,277 @@
+//---------------------------------------------------------------------------
+// cr_buildTentacleSetup.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION: 
+//      build tentacle setup (tail, ears etc...)
+//
+// REQUIRES:
+//      cr_buildWorld.mel
+//      cr_jointStretchNetworkLib.mel
+//      cr_curveUtilitiesLib.mel
+//      cr_charUtilsLib.mel
+//      libString.mel
+//      snaps.mel
+//
+// AUTHOR:
+//      Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+eval("source \"cr_buildWorld.mel\";");
+source "snaps.mel";
+cr_charUtilsLib;
+cr_curveUtilitiesLib;
+cr_jointStretchNetworkLib;
+libString;
+
+global proc cr_buildTentacleSetup(string $name, string $startJoint, string $endJoint, string $controlType, int $offsetControls, string $offControlType, int $dynamics, string $type, string $stretchType, int $stretch, int $numJoints,  int $volume, int $cr_buildWorld, float $scale)
+{
+string $cleanGrp[];
+
+string $nonScaleGrp = ($name+"non_scale_grp");
+string $scaleNode = ($name+"worldScaleCon_grp");
+
+string $partGrp = `group -em -n ($name + $startJoint + "Parts_grp")`;
+cr_lockAndHide $partGrp cr_locknHide "trans rot scale";
+
+if($cr_buildWorld)
+	{
+	$cleanGrp = cr_buildWorld ($name, $scale);
+	parent $partGrp $cleanGrp[0];
+	}
+else
+	$scaleNode = cr_createScaleGrp($name);
+
+string $list[] = `cr_findJointArrey $startJoint $endJoint`;
+int $size = `size $list`;
+    select -r $startJoint;
+    string $tempControl[] = `cr_curveControl $controlType joint`;
+    $tempControl[0] = `rename ($name + $startJoint + "_ctrl")`;
+    parentConstraint -mo -w 1 $tempControl $startJoint;
+select -cl;
+string $allControls[];
+    for ($i=1;$i<($size-1);$i++)
+    {
+    $allControls[$i-1] = $tempControl[0];
+    select -r $list[$i];
+    $tempControl = `cr_curveControl $controlType joint`;
+    $tempControl[0] = `rename ($name + $list[$i] + "_ctrl")`;
+    parentConstraint -mo -w 1 $tempControl $list[$i];
+    select -cl;
+    parent $tempControl[0] $allControls[$i-1];
+    }
+$allControls[$size-2] = $tempControl[0];//add last created control in the array
+select -r $allControls;
+string $controlGrp[] = `cr_quickZeroOut ""`;
+select -r $allControls;
+cr_lockAndHide "" cr_locknHide "trans scale vis";
+
+//int $numJoints = `getAttr ($startJoint + ".twistJoints")`;
+
+$curve = cr_jointCurve ($startJoint,$endJoint);
+$curve = `rename $curve ($name + $startJoint + "_crv")`;
+setAttr ($curve + ".visibility") 0;
+cr_lockAndHide $curve lock "trans rot scale vis";
+
+string $stretchAxis[] = `cr_getStretchAxis $endJoint translate`;
+string $orientAxis ;
+if ($stretchAxis[0] == "tx") {$orientAxis = "xyz"; $facingAxis = "X"; $scaleCmd = ("cr_resizeCurves {} 0 1 1 2.5");}
+else if ($stretchAxis[0] == "ty") {$orientAxis = "yzx"; $facingAxis = "Y"; $scaleCmd = ("cr_resizeCurves {} 1 0 1 2.5");}
+else if ($stretchAxis[0] == "tz") {$orientAxis = "zxy"; $facingAxis = "Z"; $scaleCmd = ("cr_resizeCurves {} 1 1 0 2.5");}
+
+$curveJoints = cr_jointsOnCurve($curve, $orientAxis, "zup", $numJoints,($name+$type+"Def"));
+
+string $ikHandle[];
+$ikHandle = ikHandle ("-name", ($name + $startJoint + "_ikh"), "-startJoint", $curveJoints[0], "-endEffector", $curveJoints[$numJoints], "-solver", "ikSplineSolver", "-curve", $curve, "-createCurve", 0, "-parentCurve", 0);
+setAttr ($ikHandle[0] + ".visibility") 0;
+cr_lockAndHide $ikHandle[0] lock "trans rot scale vis";
+parent $ikHandle[0] $nonScaleGrp;
+
+// create two locator for twist distribution
+    select -r $curveJoints[0];
+    string $startTwistLoc[0] = `cr_curveControl locator curve`;
+    $startTwistLoc[0] = `rename ($name + "startTwist_loc")`;
+    hide $startTwistLoc[0];
+    cr_lockAndHide $startTwistLoc[0] cr_locknHide "scale vis";
+    select -cl;
+  
+    select -r $curveJoints[$numJoints-1];
+    string $endTwistLoc[0] = `cr_curveControl locator curve`;
+    $endTwistLoc[0] = `rename ($name + "endTwist_loc")`;
+    hide $endTwistLoc[0];
+    cr_lockAndHide $endTwistLoc[0] cr_locknHide "scale vis";
+    select -cl;
+
+//connect ik handle twist
+setAttr ($ikHandle[0] + ".dTwistControlEnable") 1;
+setAttr ($ikHandle[0] + ".dWorldUpType") 4;
+
+connectAttr -f ($startTwistLoc[0] + ".worldMatrix[0]") ($ikHandle[0] + ".dWorldUpMatrix");
+connectAttr -f ($endTwistLoc[0] + ".worldMatrix[0]") ($ikHandle[0] + ".dWorldUpMatrixEnd");
+
+parent $startTwistLoc[0] $allControls[0];
+parent $endTwistLoc[0] $allControls[$size-2];
+parent $curveJoints[0] $startJoint;
+
+  string $parentJoint = `cr_getParent $startJoint`;
+  if($parentJoint != "")
+      parentConstraint -mo -weight 1 $parentJoint $controlGrp[0];
+      
+      if($offsetControls)
+      {
+      select -r $startJoint;
+      $tempControl = `cr_curveControl $offControlType joint`;
+      $tempControl[0] = `rename ($name + $startJoint + "Offset_ctrl")`;    
+      parent $tempControl[0] $allControls[0];
+      select -cl;
+      string $allOffControls[];
+      for ($i=1;$i<($size-1);$i++)
+        {
+        $allOffControls[$i-1] = $tempControl[0];
+        select -r $list[$i];
+        $tempControl = `cr_curveControl $offControlType joint`;
+        $tempControl[0] = `rename ($name + $list[$i] + "Offset_ctrl")`;
+        select -cl;
+        parent $tempControl[0] $allControls[$i];
+        }
+      $allOffControls[$size-2] = $tempControl[0];//add last created control offset in the array    
+      select -r $endJoint;
+      $tempControl = `cr_curveControl $offControlType joint`;
+      $tempControl[0] = `rename ($name + $endJoint + "Offset_ctrl")`;    
+      string $endOffGrp[0] = `cr_quickZeroOut $tempControl[0]`;
+      select -cl;
+      $allOffControls[$size-1] = $tempControl[0];
+      parent $endOffGrp[0] $allControls[$size-2];
+      select -r $allOffControls;
+      cr_lockAndHide "" cr_locknHide "rot scale vis";
+      cr_lockAndHide $endOffGrp[0] lock "trans rot scale vis";
+      skinCluster -tsb -mi 4 -dr 7 $allOffControls $curve;
+
+      select -r $allOffControls;
+			cr_resizeCurves {} 1 1 1 $scale;
+			select -cl;
+      }
+      else
+      skinCluster -tsb -mi 4 -dr 7 $list $curve;
+
+if($stretch)
+cr_stretchySpline ($name, "", $allControls[0], $stretchType, $curve, 1, $volume, $scaleNode);
+
+if($dynamics)
+	{
+	select -r $curve;
+	string $dynamicCurve[] = cr_makeDynamicCurve($name, $type, `ls -sl`, $allControls[0]);
+	delete $ikHandle;
+	$ikHandle = ikHandle ("-name", ($name + $startJoint + "_ikh"), "-startJoint", $curveJoints[0], "-endEffector", $curveJoints[$numJoints], "-solver", "ikSplineSolver", "-curve", $dynamicCurve[0], "-createCurve", 0, "-parentCurve", 0);
+	setAttr ($ikHandle[0] + ".visibility") 0;
+	cr_lockAndHide $ikHandle[0] lock "trans rot scale vis";
+	parent $ikHandle[0] $nonScaleGrp;
+	}
+else
+	parent $curve $nonScaleGrp;
+
+parent $controlGrp[0] $partGrp;
+
+//lock all tentacle control zeroOut grps
+for ($x=0;$x<size($controlGrp);$x++) cr_lockAndHide $controlGrp[$x] lock "trans rot scale vis";
+
+//add tentacle rig info for future update...
+string $charRigInfo = cr_getcharRigInfoNode($name);
+	addAttr -ln $type -dt "string" $charRigInfo; 
+	setAttr -type "string" ($charRigInfo + "." + $type) ($allControls[0]);
+
+//parent skeleton 
+select -cl;
+cr_parentSkeletonTo($startJoint, $cleanGrp[1]);
+
+//scale controls to global value
+select -r $allControls;
+cr_resizeCurves {} 1 1 1 $scale;
+select -cl;
+}
+
+
+global proc string[] cr_makeDynamicCurve(string $name, string $type, string $curves[], string $controller)
+{
+/*
+string $name = "";
+string $curves[] = `ls -sl`;
+string $controller = "locator1";
+*/
+
+string $parentFollicle;
+string $newCurve[];
+string $connections[0];
+string $nonScaleGrp = ($name+"non_scale_grp");
+
+$nonScaleGrp = cr_createNonScaleGrp($name);
+
+select -r $curves;
+makeCurvesDynamicHairs 0 0 1;
+
+for ($i=0;$i<size($curves);$i++)
+{
+//first find parent follicle
+$parentFollicle = `cr_getParent $curves[$i]`;
+//now find shape node 
+string $follicleShape[] = `listRelatives -shapes $parentFollicle`;
+$connections = `listConnections -d on -s off $follicleShape[0]`;
+$newCurve[$i] = $connections[1];
+//ok now we found all information lets create dynamic setup..
+setAttr ($follicleShape[0] + ".pointLock") 1;
+}
+
+//get which hairSystem is created  
+
+addAttr -ln ($type + "Dynamics")  -at "enum" -en "+++++++:" -keyable true $controller;
+	setAttr -lock true ($controller + "." + ($type + "Dynamics"));
+addAttr -ln ($type + "DynamicsSwitch")  -at "enum" -en "off:on:" -keyable true $controller;
+addAttr -ln ($type + "DynamicAttract")  -at double  -min 0 -max 1 -dv 0.5 -keyable true $controller;
+addAttr -ln ($type + "AttractionDamp")  -at double  -min 0 -max 1 -dv 0 -keyable true $controller;
+
+string $dynOnCondition = `createNode condition -n "dynamicState_cnd"`;
+setAttr ($dynOnCondition + ".colorIfTrueR") 1;
+setAttr ($dynOnCondition + ".colorIfFalseR") 4;
+
+string $dynRev = `createNode reverse -n "dynamicAttract_rev"`;
+
+connectAttr ($controller + "." + ($type + "DynamicsSwitch")) ($dynOnCondition + ".firstTerm");
+connectAttr ($controller + "." + ($type + "DynamicAttract")) ($dynRev + ".inputX");
+
+connectAttr ($dynOnCondition + ".outColorR") ($connections[0] + ".simulationMethod");
+connectAttr ($dynRev + ".outputX") ($connections[0] + ".startCurveAttract");
+connectAttr ($controller + "." + ($type + "AttractionDamp")) ($connections[0] + ".attractionDamp");
+
+string $follicleParent = `cr_getParent $parentFollicle`;
+string $dynCurveParent = `cr_getParent $connections[1]`;
+hide $follicleParent $dynCurveParent $connections[0];
+select -r $follicleParent $dynCurveParent $connections[0];
+cr_lockAndHide "" lock "trans rot scale vis";
+
+
+string $partGrp = `group -em -n ($type + "DynamicsParts_grp")`;
+parent $partGrp $nonScaleGrp;
+
+parent $follicleParent $partGrp;
+parent $dynCurveParent $partGrp;
+parent $connections[0] $partGrp;
+return $newCurve;
+}

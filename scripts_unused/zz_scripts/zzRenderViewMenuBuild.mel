@@ -1,0 +1,22 @@
+global proc zzRenderViewMenuBuild ( string $renderMode, string $editor ) {
+	string $perspCameras[] = `listCameras -p`;
+	string $orthoCameras[] = `listCameras -o`;
+	string $menuName = "zzRenderViewPopupMenu";
+
+	if ( $renderMode == "iprRender" ) { $menuName = "zzIprRenderViewPopupMenu"; }  //set the popupMenu name variable
+	if ( $renderMode == "snapshot" ) { $menuName = "zzSnapRenderViewPopupMenu"; }
+	if ( `popupMenu -exists zzRenderViewPopupMenu` ) { popupMenu -e -deleteAllItems $menuName; }
+
+	for ( $camera in $perspCameras ) {
+		string $command = ( "renderWindowRenderCamera " + $renderMode + " " + $editor + " " + $camera );
+		if ( $renderMode == "" ) { $command = ( "renderWindowRenderCamera \"\" " + $editor + " " + $camera ); }
+		menuItem -label $camera -c $command -p $menuName;
+		}
+	menuItem -divider 1 -p $menuName;
+	for ( $camera in $orthoCameras ) {
+		string $command = ( "renderWindowRenderCamera " + $renderMode + " " + $editor + " " + $camera );
+		if ( $renderMode == "" ) { $command = ( "renderWindowRenderCamera \"\" " + $editor + " " + $camera ); }
+		menuItem -label $camera -c $command -p $menuName;
+		}
+	setParent..;
+	}

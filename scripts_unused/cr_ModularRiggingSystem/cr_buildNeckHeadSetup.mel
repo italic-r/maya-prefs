@@ -1,0 +1,433 @@
+//---------------------------------------------------------------------------
+// cr_buildNeckHeadSetup.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:	
+//		build neck and head setup
+//
+// REQUIRES:
+//		cr_buildWorld.mel
+//		cr_curveUtilitiesLib.mel
+//		cr_jointStretchNetworkLib.mel
+//		cr_charUtilsLib.mel
+//		libString.mel
+//		snaps.mel
+//
+// AUTHOR:
+//		Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+eval("source \"cr_buildWorld.mel\";");
+source "snaps.mel";
+cr_charUtilsLib;
+cr_curveUtilitiesLib;
+cr_jointStretchNetworkLib;
+libString;
+
+global proc cr_buildNeckHeadSetup(string $name, string $side, string $neckJoint, string $headJoint, string $stretchType, int $stretch, int $numJoints, int $volume, int $cr_buildWorld, float $scale)
+{
+string $list[] = cr_findJointArrey ($neckJoint,$headJoint);
+int $size = size($list);
+	if($size>2)
+	cr_multiBoneHeadNeckSetup($name,$side,$neckJoint,$headJoint,$stretchType,$numJoints,$stretch,$volume,$cr_buildWorld,$scale);
+	else
+	cr_headNeckSetup($name,$side,$neckJoint,$headJoint,$stretchType,$numJoints,$stretch,$volume,$cr_buildWorld,$scale);
+}
+
+//multiBoneNeckHeadSetup "" "" joint1 joint4 scale 7 1 1 1;
+global proc cr_multiBoneHeadNeckSetup(string $name, string $side, string $neckJoint, string $headJoint, string $stretchType, int $numJoints, int $stretch, int $volume, int $cr_buildWorld, float $scale)
+{
+
+string $stretchAxis[];
+string $curveJoints[];
+string $ikHandle[];
+string $list[];
+string $orientAxis;
+string $facingAxis;
+string $curve;
+string $scaleCmd;
+string $nonScaleGrp = ($name+"non_scale_grp");
+string $scaleNode = ($name+"worldScaleCon_grp");
+string $cleanGrp[];
+
+string $partGrp = `group -em -n ($name + $side + "neckParts_grp")`;
+cr_lockAndHide $partGrp cr_locknHide "trans rot scale";
+
+if($cr_buildWorld)
+	{
+	$cleanGrp = cr_buildWorld ($name, $scale);
+	parent $partGrp $cleanGrp[0];
+	}
+else
+	$scaleNode = cr_createScaleGrp($name);
+
+//get no neck joints btween first neck joint to head joint
+$list = cr_findJointArrey ($neckJoint,$headJoint);
+$curve = cr_jointCurve ($neckJoint,$headJoint);
+//rebuildCurve -ch 0 -rpo 1 -rt 0 -end 1 -kr 0 -kcp 0 -kep 1 -kt 0 -s 2 -d 3 -tol 0.001 $curve;
+$curve = `rename $curve ($name + $side + "neck_crv")`; //remember to change the name of curve
+setAttr ($curve + ".visibility") 0;
+cr_lockAndHide $curve lock "trans rot scale vis";
+
+$stretchAxis = `cr_getStretchAxis $headJoint translate`;
+
+if ($stretchAxis[0] == "tx") {$orientAxis = "xyz"; $facingAxis = "X"; $scaleCmd = ("cr_resizeCurves {} 0 1 1 2.5");}
+else if ($stretchAxis[0] == "ty") {$orientAxis = "yzx"; $facingAxis = "Y"; $scaleCmd = ("cr_resizeCurves {} 1 0 1 2.5");}
+else if ($stretchAxis[0] == "tz") {$orientAxis = "zxy"; $facingAxis = "Z"; $scaleCmd = ("cr_resizeCurves {} 1 1 0 2.5");}
+
+$curveJoints = cr_jointsOnCurve ($curve, $orientAxis, "zup", $numJoints,($name+$side+"neckDef"));
+$ikHandle = ikHandle ("-name", ($headJoint + "_ikh"), "-startJoint", $curveJoints[0], "-endEffector", $curveJoints[$numJoints], "-solver", "ikSplineSolver", "-curve", $curve, "-createCurve", 0);
+setAttr ($ikHandle[0] + ".visibility") 0;
+cr_lockAndHide $ikHandle[0] lock "trans rot scale vis";
+parent $curveJoints[0] $neckJoint;
+
+parent $ikHandle[0] $nonScaleGrp;
+parent $curve $nonScaleGrp;
+select -cl;
+
+// create two locator for twist distribution
+    select -r $curveJoints[0];
+    string $startTwistLoc[0] = `cr_curveControl locator curve`;
+    $startTwistLoc[0] = `rename ($name + $side + "startTwist_loc")`;
+    hide $startTwistLoc[0];
+    cr_lockAndHide $startTwistLoc[0] cr_locknHide "scale vis";
+    select -cl;
+  
+    select -r $curveJoints[$numJoints-1];
+    string $endTwistLoc[0] = `cr_curveControl locator curve`;
+    $endTwistLoc[0] = `rename ($name + $side + "endTwist_loc")`;
+    hide $endTwistLoc[0];
+    cr_lockAndHide $endTwistLoc[0] cr_locknHide "scale vis";
+    select -cl;
+
+//connect ik handle twist
+setAttr ($ikHandle[0] + ".dTwistControlEnable") 1;
+setAttr ($ikHandle[0] + ".dWorldUpType") 4;
+
+connectAttr -f ($startTwistLoc[0] + ".worldMatrix[0]") ($ikHandle[0] + ".dWorldUpMatrix");
+connectAttr -f ($endTwistLoc[0] + ".worldMatrix[0]") ($ikHandle[0] + ".dWorldUpMatrixEnd");
+
+//create controls	
+		select -r $headJoint;
+		string $headControl[0] = `cr_curveControl cube1 joint`;
+			cr_resizeCurves {} 1 1 1 2.5;
+		$headControl[0] = `rename ($name + $side + "head_ctrl")`;
+		string $headGrp[0] = `cr_quickZeroOut $headControl[0]`;
+		cr_lockAndHide $headControl[0] cr_locknHide "scale vis";
+		parentConstraint -mo -w 1 $headControl[0] $headJoint;
+		select -cl;
+		
+		string $child = `cr_getChildJoint $headJoint`;
+		if($child != "")
+		{
+		string $tempSpaceGrp = `group -em`;
+		pointConstraint -offset 0 0 0 -weight 1 $headJoint $child $tempSpaceGrp;
+		select -r ($headControl[0] + ".cv[*]");
+		string $tempClts[] = `cluster`;
+			pointConstraint -offset 0 0 0 -weight 1 $tempSpaceGrp $tempClts[1];
+		scale $scale $scale $scale $tempClts[1];
+		select -r $headControl[0];
+		DeleteHistory;
+		delete $tempSpaceGrp;
+		}
+//creating neck control....
+    select -r $neckJoint;
+    string $tempControl[] = `cr_curveControl square joint`;
+    $tempControl[0] = `rename ($name + $side + "neck_ctrl")`;
+    parentConstraint -mo -w 1 $tempControl $neckJoint;
+select -cl;
+string $allControls[];
+
+int $size = `size $list`;
+    for ($i=1;$i<($size-1);$i++)
+    {
+    $allControls[$i-1] = $tempControl[0];
+    select -r $list[$i];
+    $tempControl = `cr_curveControl square joint`;
+    $tempControl[0] = `rename ($name + $side + $list[$i] + "_ctrl")`;
+    parentConstraint -mo -w 1 $tempControl $list[$i];
+    select -cl;
+    parent $tempControl[0] $allControls[$i-1];
+    }
+$allControls[$size-2] = $tempControl[0];//add last created control in the array
+select -r $allControls;
+string $controlGrp[] = `cr_quickZeroOut ""`;
+
+select -r $allControls;
+cr_lockAndHide "" cr_locknHide "trans scale vis";
+
+//parent Twiat locators
+parent $startTwistLoc[0] $allControls[0];
+parent $endTwistLoc[0] $headControl[0];
+parent $headGrp[0] $allControls[$size-2];
+cr_lockAndHide $headGrp[0] lock "trans rot scale vis";
+
+skinCluster -tsb -mi 4 -dr 7 $allControls $headControl[0] $curve;
+
+if($stretch)
+cr_stretchySpline ($name, $side, $headControl[0], $stretchType, $curve, 1, $volume, $scaleNode);
+
+	string $parentJoint[] = `listRelatives -parent $neckJoint`;
+	if($parentJoint[0] != "")
+		parentConstraint -mo -weight 1 $parentJoint[0] $controlGrp[0];
+
+parent $controlGrp[0] $partGrp;
+//lock all neck control zeroOut grps
+for ($x=0;$x<size($controlGrp);$x++) cr_lockAndHide $controlGrp[$x] lock "trans rot scale vis";
+
+//add neckHead rig info for future update...
+string $charRigInfo = cr_getcharRigInfoNode($name);
+	addAttr -ln ($side+"neckHeadRig") -dt "string" $charRigInfo; 
+	setAttr -type "string" ($charRigInfo + "." + ($side+"neckHeadRig")) ($headControl[0]+" "+$allControls[0]);
+
+//create space switch
+if($cr_buildWorld)
+	{
+	if(`attributeExists "spineRig" $charRigInfo`)
+		{
+		string $spineRigPart = getAttr($charRigInfo+".spineRig");
+		string $spineRigArray[] = stringToStringArray($spineRigPart," ");
+		cr_buildSpaceSwitchSetup($headControl[0], $headGrp[0],{$allControls[$size-2],$spineRigArray[1],($name+"worldB_ctrl")}, {"neck","chest","world"}, 2);
+		setAttr($headControl[0]+".rotateLock") 2;
+		}
+	}
+//parent skeleton 
+select -cl;
+cr_parentSkeletonTo($neckJoint, $cleanGrp[1]);
+
+//scale controls to global value
+select -r $allControls;
+cr_resizeCurves {} 1 1 1 $scale;
+select -cl;
+}
+
+//cr_headNeckSetup "" "" joint1 joint2 scale 3 0 0 1
+global proc cr_headNeckSetup(string $name, string $side, string $neckJoint, string $headJoint, string $stretchType, int $numJoints, int $stretch, int $volume, int $cr_buildWorld, float $scale)
+{
+
+string $stretchAxis[];
+string $orientAxis;
+string $facingAxis;
+string $curve;
+string $scaleCmd;
+string $nonScaleGrp = ($name+"non_scale_grp");
+string $scaleNode = ($name+"worldScaleCon_grp");
+string $cleanGrp[];
+
+string $partGrp = `group -em -n ($name + $side + "headParts_grp")`;
+cr_lockAndHide $partGrp cr_locknHide "trans rot scale";
+
+if($cr_buildWorld)
+	{
+	$cleanGrp = cr_buildWorld ($name, $scale);
+	parent $partGrp $cleanGrp[0];
+	}
+else
+	$scaleNode = cr_createScaleGrp($name);
+	
+$stretchAxis = `cr_getStretchAxis $headJoint translate`;	
+
+	select -r $neckJoint;
+	string $neckControl[0] = `cr_curveControl square joint`;
+	$neckControl[0] = `rename ($name + $side + "neck_ctrl")`;
+	string $neckGrp[0] = `cr_quickZeroOut $neckControl[0]`;
+	cr_lockAndHide $neckControl[0] cr_locknHide "scale vis";
+	select -cl;
+	
+	select -r $headJoint;
+	string $headControl[0] = `cr_curveControl cube1 joint`;
+		cr_resizeCurves {} 1 1 1 2.5;
+	$headControl[0] = `rename ($name + $side + "head_ctrl")`;
+	string $headGrp[0] = `cr_quickZeroOut $headControl[0]`;
+	cr_lockAndHide $headControl[0] cr_locknHide "scale vis";
+	select -cl;
+	
+	string $child = `cr_getChildJoint $headJoint`;
+	if($child != "")
+	{
+	string $tempSpaceGrp = `group -em`;
+	pointConstraint -offset 0 0 0 -weight 1 $headJoint $child $tempSpaceGrp;
+	select -r ($headControl[0] + ".cv[*]");
+	string $tempClts[] = `cluster`;
+		pointConstraint -offset 0 0 0 -weight 1 $tempSpaceGrp $tempClts[1];
+	scale $scale $scale $scale $tempClts[1];
+	select -r $headControl[0];
+	DeleteHistory;
+	delete $tempSpaceGrp;
+	}
+		
+	parent $headGrp[0] $neckControl[0];
+
+	if($numJoints>1)
+	{
+	$curve = cr_jointCurve ($neckJoint,$headJoint);
+	$curve = `rename $curve ($name + $side + "neck_crv")`; //remember to change the name of curve
+	setAttr ($curve + ".visibility") 0;
+	cr_lockAndHide $curve lock "trans rot scale vis";
+	
+	if ($stretchAxis[0] == "tx") {$orientAxis = "xyz"; $facingAxis = "X"; $scaleCmd = ("cr_resizeCurves {} 0 1 1 2.5");}
+	else if ($stretchAxis[0] == "ty") {$orientAxis = "yzx"; $facingAxis = "Y"; $scaleCmd = ("cr_resizeCurves {} 1 0 1 2.5");}
+	else if ($stretchAxis[0] == "tz") {$orientAxis = "zxy"; $facingAxis = "Z"; $scaleCmd = ("cr_resizeCurves {} 1 1 0 2.5");}
+	
+	$curveJoints = cr_jointsOnCurve ($curve, $orientAxis, "zup", $numJoints,($name+$side+"neckDef"));
+	$ikHandle = ikHandle ("-name", ($headJoint + "_ikh"), "-startJoint", $curveJoints[0], "-endEffector", $curveJoints[$numJoints], "-solver", "ikSplineSolver", "-curve", $curve, "-createCurve", 0);
+	setAttr ($ikHandle[0] + ".visibility") 0;
+	cr_lockAndHide $ikHandle[0] lock "trans rot scale vis";
+	parent $curveJoints[0] $neckJoint;
+	
+	parent $ikHandle[0] $nonScaleGrp;
+	parent $curve $nonScaleGrp;
+	select -cl;
+	  
+    select -r $curveJoints[0];
+    string $startTwistLoc[0] = `cr_curveControl locator curve`;
+    $startTwistLoc[0] = `rename ($name + $side + "startTwist_loc")`;
+    hide $startTwistLoc[0];
+    cr_lockAndHide $startTwistLoc[0] cr_locknHide "scale vis";
+    select -cl;
+  
+    select -r $curveJoints[$numJoints-1];
+    string $endTwistLoc[0] = `cr_curveControl locator curve`;
+    $endTwistLoc[0] = `rename ($name + $side + "endTwist_loc")`;
+    hide $endTwistLoc[0];
+    cr_lockAndHide $endTwistLoc[0] cr_locknHide "scale vis";
+    select -cl;
+	
+	setAttr ($ikHandle[0] + ".dTwistControlEnable") 1;
+	setAttr ($ikHandle[0] + ".dWorldUpType") 4;
+	
+	connectAttr -f ($startTwistLoc[0] + ".worldMatrix[0]") ($ikHandle[0] + ".dWorldUpMatrix");
+	connectAttr -f ($endTwistLoc[0] + ".worldMatrix[0]") ($ikHandle[0] + ".dWorldUpMatrixEnd");
+	
+		parent $startTwistLoc[0] $neckControl[0];
+		parent $endTwistLoc[0] $headControl[0];
+	}
+		
+	if($stretch)
+	{	
+	string $ikNeckJoint[0] = `cr_curveControl joint curve`;
+	$ikNeckJoint[0] = `rename ($name + $side + "_ik_" + $neckJoint)`;
+	snap $neckJoint $ikNeckJoint[0];
+	makeIdentity -apply true -t 1 -r 1 -s 1 $ikNeckJoint[0];
+	select -cl;
+	
+	string $ikHeadJoint[0] = `cr_curveControl joint curve`;
+	$ikHeadJoint[0] = `rename ($name + $side + "_ik_" + $headJoint)`;
+	snap $headJoint $ikHeadJoint[0];
+	makeIdentity -apply true -t 1 -r 1 -s 1 $ikHeadJoint[0];
+	select -cl;
+	
+	string $ikHeadEndJoint[0] = `cr_curveControl joint curve`;
+	$ikHeadEndJoint[0] = `rename ($name + $side + "_ik_" + $headJoint + "End")`;
+	snap $headJoint $ikHeadEndJoint[0];
+	makeIdentity -apply true -t 1 -r 1 -s 1 $ikHeadEndJoint[0];
+	select -cl;
+	
+	parent $ikHeadEndJoint[0] $ikHeadJoint[0];
+	parent $ikHeadJoint[0] $ikNeckJoint[0];
+	parent $ikNeckJoint $neckControl[0];
+	
+	float $rad = `getAttr ($headJoint + ".radius")`;
+	float $val = `getAttr ($headJoint + "." + $stretchAxis[0])`;
+	setAttr ($ikNeckJoint[0] + ".radius") $rad;
+	setAttr ($ikHeadJoint[0] + ".radius") $rad;
+	setAttr ($ikHeadEndJoint[0] + ".radius") $rad;
+	
+	if($val < 0.00001)
+		{
+		if($stretchAxis[0] == "tx")
+			move -r -ls -wd -0.7 0 0 $ikHeadEndJoint[0];
+		else if($stretchAxis[0] == "ty")
+			move -r -ls -wd 0 -0.7 0 $ikHeadEndJoint[0];
+		else if($stretchAxis[0] == "tz")
+			move -r -ls -wd 0 0 -0.7 $ikHeadEndJoint[0];
+		}
+	else
+		{
+		if($stretchAxis[0] == "tx")
+			move -r -ls -wd 0.7 0 0 $ikHeadEndJoint[0];
+		else if($stretchAxis[0] == "ty")
+			move -r -ls -wd 0 0.7 0 $ikHeadEndJoint[0];
+		else if($stretchAxis[0] == "tz")
+			move -r -ls -wd 0 0 0.7 $ikHeadEndJoint[0];
+		}
+	
+	string $ikHandle[] = ikHandle ("-name", ($name + $side + $headJoint + "_ikhandle"), "-startJoint", $ikHeadJoint, "-endEffector", $ikHeadEndJoint, "-solver", "ikSCsolver");
+	parent $ikHandle[0] $headControl[0];
+	setAttr ($ikHandle[0] + ".visibility") 0;
+	cr_lockAndHide $ikHandle[0] lock "trans rot scale vis";
+	setAttr ($ikNeckJoint[0] + ".visibility") 0;
+	cr_lockAndHide $ikNeckJoint[0] lock "vis";
+	
+	string $sScmd[] = cr_buildIkStretch($name,$side,$ikNeckJoint[0], $ikHeadJoint[0], $headControl[0], $stretchType);
+	parent $sScmd[0] $neckControl[0]; 
+		
+	string $parentJoint[] = `listRelatives -parent $neckJoint`;
+	if($parentJoint[0] != "")
+		parentConstraint -mo -weight 1 $parentJoint[0] $neckGrp[0];
+	
+	parentConstraint -mo -w 1 $neckControl[0] $neckJoint;
+	parentConstraint -mo -w 1 $headControl[0] $headJoint;
+	if($numJoints>1)
+		{
+		cr_stretchySpline ($name, $side, $headControl[0], $stretchType, $curve, 1, $volume, $scaleNode);
+		skinCluster -tsb -mi 4 -dr 7 $ikNeckJoint[0] $ikHeadJoint[0] $curve;
+		}
+	}
+	else
+	{
+	parentConstraint -mo -skipTranslate x -skipTranslate y -skipTranslate z -weight 1 $headControl[0] $headJoint;
+	parentConstraint -mo  -weight 1 $neckControl[0] $neckJoint;	
+	cr_lockAndHide $headControl[0] cr_locknHide "trans";	
+	if($numJoints>1)
+		skinCluster -mi 4 -dr 7 $neckControl[0] $headControl[0] $curve;
+	}
+parent $neckGrp[0] $partGrp;
+
+//lock all neck control zeroOut grps
+cr_lockAndHide $headGrp[0] lock "trans rot scale vis";
+cr_lockAndHide $neckGrp[0] lock "trans rot scale vis";
+
+//add neckHead rig info for future update...
+string $charRigInfo = cr_getcharRigInfoNode($name);
+	addAttr -ln ($side+"neckHeadRig") -dt "string" $charRigInfo; 
+	setAttr -type "string" ($charRigInfo + "." + ($side+"neckHeadRig")) ($headControl[0]+" "+$neckControl[0]);
+
+//create space switch
+if($cr_buildWorld)
+	{
+	if(`attributeExists "spineRig" $charRigInfo`)
+		{
+		string $spineRigPart = getAttr($charRigInfo+".spineRig");
+		string $spineRigArray[] = stringToStringArray($spineRigPart," ");
+		cr_buildSpaceSwitchSetup($headControl[0], $headGrp[0],{$neckControl[0],$spineRigArray[1],($name+"worldB_ctrl")}, {"neck","chest","world"}, 2);
+		setAttr($headControl[0]+".rotateLock") 2;
+		}
+	}
+//parent skeleton 
+select -cl;
+cr_parentSkeletonTo($neckJoint, $cleanGrp[1]);
+
+//scale controls to global value
+select -r $neckControl;
+cr_resizeCurves {} 1 1 1 $scale;
+select -cl;
+}

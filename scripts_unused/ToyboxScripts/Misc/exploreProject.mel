@@ -1,0 +1,6 @@
+// exploreProject
+
+global proc exploreProject () {
+	$projPath = toNativePath(`workspace -q -rd`); 
+	system(("explorer "+$projPath));
+}

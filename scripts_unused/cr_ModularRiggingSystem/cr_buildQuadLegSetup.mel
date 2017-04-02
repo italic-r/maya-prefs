@@ -1,0 +1,526 @@
+//---------------------------------------------------------------------------
+// cr_buildQuadLegSetup.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:	
+//		build quad leg setup
+//
+// REQUIRES:
+//		cr_buildWorld.mel
+//		cr_buildTwistJointSetup.mel
+//		cr_jointStretchNetworkLib.mel
+//		cr_curveUtilitiesLib.mel
+//		cr_charUtilsLib.mel
+//		libString.mel
+//		snaps.mel
+//
+// AUTHOR:
+//		Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+eval("source \"cr_buildWorld.mel\";");
+eval("source \"cr_buildTwistJointSetup.mel\";");
+source "snaps.mel";
+cr_charUtilsLib;
+cr_curveUtilitiesLib;
+cr_jointStretchNetworkLib;
+libString;
+
+global proc cr_buildQuadLegSetup(string $name, string $side, string $hipJoint, string $hockJoint, string $ankleJoint, string $ballJoint, string $stretchType, string $ikFkType, int $stretch, int $midLock, int $volume, int $cr_buildWorld, float $scale)
+{
+
+string $FK[];  				//array to hold fk joint chain
+string $IK[];				//array to hold fk joint chain
+string $list[];				//array to hold actual joint chain
+string $temp;				//hold name unused joint to delete
+int $middleIndex;			//hold middle index of ik joint chain
+float $modPos[];			//hold mid postion for pole vectoe control
+string $hockIkHandle[];
+string $ankleIkHandle[];	//hold all created ik handle
+string $ballIkHandle[];
+string $toeIkHandle[];
+string $fkContrlList[];		//array to hold fk control joint chain
+string $fkCon[];			//array to hold newly creted fk control
+string $ikSpaceGrp;
+string $parentGrp[];		//holds name of parent grp of given object
+string $allChild[];
+string $ballJointChild[];
+string $childTemp[];
+string $cleanGrp[];
+
+string $partGrp = `group -em -n ($name + $side + "legParts_grp")`;
+cr_lockAndHide $partGrp cr_locknHide "trans rot scale";
+
+if($cr_buildWorld)
+	{
+	$cleanGrp = cr_buildWorld ($name, $scale);
+	parent $partGrp $cleanGrp[0];
+	}
+
+//get child joint of ball joint
+string $endJoint = `cr_getChildJoint $ballJoint`;
+
+//checking fingers if its there then upparent for creating ik fk joints....
+$allChild = `listRelatives -c $ankleJoint`;
+for($i=0;$i<size($allChild);$i++)
+	{
+		if($allChild[$i]!=$ballJoint)
+		{
+			$childTemp = `parent -w $allChild[$i]`;
+			$ballJointChild[$i] = $childTemp[0];
+		}
+	}
+
+//duplicate joint chain twice in order to create ik fk switch
+$FK = `cr_dupId $hipJoint prefix fk`;
+$IK = `cr_dupId $hipJoint prefix ik`;
+
+//parent back fingers joint if its there
+if(size ($allChild)>1)
+	{
+	for($i=1;$i<size($allChild);$i++)
+		parent $ballJointChild[$i] $ankleJoint;
+	}
+
+for($x=0;$x<size($FK);$x++)
+{
+if (`attributeExists "twistJoints" $FK[$x]`)//delete twistAttr if exists.....
+	{
+	catch (`deleteAttr -attribute "twistJoints" $FK[$x]`);
+	catch (`deleteAttr -attribute "twistJoints" $IK[$x]`);
+	}
+}
+
+//hold all joint chain in array
+$IK 	= `cr_findJointArrey ("ik_" + $hipJoint) ("ik_" + $ballJoint)`;
+$FK 	= `cr_findJointArrey ("fk_" + $hipJoint) ("fk_" + $ballJoint)`;
+$list = `cr_findJointArrey $hipJoint $ballJoint`;
+
+select -cl;
+
+//create controls
+string $ankleCtrl[0] = `cr_curveControl cube1 joint`;
+$ankleCtrl[0] = `rename ($name + $side + "foot_ctrl")`;
+	cr_resizeCurves {} 0 0 1 2;
+string $flexCtrl[0] = `cr_curveControl sphere joint`;
+$flexCtrl[0] = `rename ($name + $side + "flex_ctrl")`;
+	cr_resizeCurves {} 1 1 1 0.7;
+string $kneeCtrl[0] = `cr_curveControl cone curve`;
+$kneeCtrl[0] = `rename ($name + $side + "knee_ctrl")`;
+string $switchCtrl[0] = `cr_curveControl pin1 curve`;
+$switchCtrl[0] = `rename ($name + $side + "legSwitches_ctrl")`;
+cr_fixFacingAxis("Z", 0);
+
+//snap controls to to respective joints
+float $anklePos[] = `xform -q -ws -rp $ankleJoint`;
+setAttr ($ankleCtrl[0] + ".t") $anklePos[0] $anklePos[1] $anklePos[2];
+string $tempCon[] = `aimConstraint -offset 0 0 0 -weight 1 -aimVector 0 0 1 -upVector 0 1 0 -worldUpType "vector" -worldUpVector 0 1 0 -skip x -skip z $ballJoint $ankleCtrl[0]`;
+delete $tempCon;
+string $tempLoc[0] = `spaceLocator`;
+setAttr ($tempLoc[0] + ".t") $anklePos[0] $anklePos[1] $anklePos[2];
+string $tempClt[] = `cluster $ankleCtrl[0]`;
+parent $tempClt[1] $tempLoc[0];
+pointConstraint -w 1 $ballJoint $tempLoc[0];
+scale $scale $scale $scale $tempLoc[0];
+select -r $ankleCtrl[0];
+DeleteHistory;
+delete $tempLoc;
+
+//snap $flexCtrl[0]
+snap $ankleJoint $flexCtrl[0];
+makeIdentity -apply true -t 0 -r 1 -s 0 $flexCtrl[0];
+parent $flexCtrl[0] $ankleCtrl[0];
+string $flexCtrlZero[] = cr_quickZeroOut ($flexCtrl[0]);
+
+snap $ballJoint $switchCtrl[0];
+setAttr($switchCtrl[0]+".r") 0 0 0;
+select -cl  ;
+
+parent $ankleCtrl[0] $partGrp;
+parent $kneeCtrl[0] $partGrp;
+parent $switchCtrl[0] $partGrp;
+
+parentConstraint -mo -weight 1 $ballJoint $switchCtrl[0];
+cr_lockAndHide $switchCtrl[0] cr_locknHide "trans rot scale vis";
+
+//get middle index of ik joint for pole control placement
+string $tempIK[] = `cr_findJointArrey ("ik_" + $hipJoint) ("ik_" + $hockJoint)`;
+$middleIndex = ((`size $tempIK`)/2);
+$modPos = `zoofindPolePosition $hipJoint $IK[$middleIndex] $hockJoint 0.7`;
+select -r $kneeCtrl[0];
+setAttr ($kneeCtrl[0]+".t")$modPos[0] $modPos[1] $modPos[2];
+	cr_fixFacingAxis("Z", 1);
+select -cl;
+//create ik fk connections from given arrey
+cr_fkIkConnect $list $IK $FK $ikFkType $switchCtrl[0];
+select -cl;
+
+//fk controllers and rename them respectively
+$fkCon = `cr_fkControl $FK[0] circleCross 1`;
+$fkContrlList = `cr_listHierarchy $fkCon[0]`;
+	for ($i=0;$i<size($fkContrlList);$i++)
+	$fkContrlList[$i] = `rename $fkContrlList[$i] ($name + $side + $fkContrlList[$i])`;
+
+//check stretch condition and create connections
+float $hockJointPos[] = `xform -q -worldSpace -rotatePivot $hockJoint`;
+if($stretch == 1)
+	{
+	cr_stretchNetwork ($name, $side, ("ik_" + $hipJoint),("ik_" + $hockJoint), $ankleCtrl[0], $stretchType, $midLock, $kneeCtrl[0]);
+	cr_stretchTypeConnect $list $IK $FK $stretchType $switchCtrl[0];
+	}
+
+//some stretch corrrection purely name specific might not run on different case remember that..
+if($stretch == 1)
+	{
+	//select -r ($name + $side + "ik_" + $hipJoint + "End_loc");
+	//select -tgl ($name + $side + "ik_" + $ankleJoint + "End_loc");
+	string $tempSel[] = {($name + $side + "ik_" + $hipJoint + "End_loc"),($name + $side + "ik_" + $hockJoint + "End_loc")};
+	cr_lockAndHide $tempSel[0] unLock "trans";
+	cr_lockAndHide $tempSel[1] unLock "trans";
+	
+	string $transConnection[] =`listConnections -d off -s on -plugs on -skipConversionNodes on ($tempSel[0] + ".tx")`;
+	string $transNodePath = $transConnection[0];
+	string $transNode = `match "[^.]*" $transNodePath`;
+	delete $transNode;
+	
+	string $transConnection[] =`listConnections -d off -s on -plugs on -skipConversionNodes on ($tempSel[1] + ".tx")`;
+	string $transNodePath = $transConnection[0];
+	string $transNode = `match "[^.]*" $transNodePath`;
+	delete $transNode;	
+	
+	$ikSpaceGrp = `group -em -n ($name + $side + "stretchLocCon_grp")`;
+	setAttr ($ikSpaceGrp+".t") $hockJointPos[0] $hockJointPos[1] $hockJointPos[2];
+	select -cl;
+	
+	string $pointConA[] = `pointConstraint -offset 0 0 0 -weight 1 $ikSpaceGrp $tempSel[0]`;
+	string $pointConA[] = `pointConstraint -offset 0 0 0 -weight 1 $ikSpaceGrp $tempSel[1]`;
+	}
+
+//creating twist joint setup if attribute exists on given joint
+int $size = (`size($list)`)-1;
+string $ankleRots[] = `listRelatives -parent $ankleJoint`;
+for($i=0;$i<$size;$i++)
+	{
+	if($list[$i] == $ankleRots[0])
+		cr_buildTwistJointSetup($name,$side,$list[$i],$stretchType,$ikFkType,"child",$ankleJoint,$switchCtrl[0], $stretch, $volume, $scale);
+	else
+		cr_buildTwistJointSetup($name,$side,$list[$i],$stretchType,$ikFkType,"parent",$ankleJoint,$switchCtrl[0], $stretch, $volume, $scale);
+	}
+
+//createik handle for ik joint chain
+$hockIkHandle = ikHandle ("-name", ($name + $side + "hock_ikhandle"), "-startJoint", ("ik_" + $hipJoint), "-endEffector", ("ik_" + $hockJoint), "-solver", "ikRPsolver");
+$ankleIkHandle = ikHandle ("-name", ($name + $side + "ankle_ikhandle"), "-startJoint", ("ik_" + $hockJoint), "-endEffector", ("ik_" + $ankleJoint), "-solver", "ikRPsolver");
+$ballIkHandle = ikHandle ("-name", ($name + $side + "ball_ikhandle"), "-startJoint", ("ik_" + $ankleJoint), "-endEffector", ("ik_" + $ballJoint), "-solver", "ikRPsolver");
+$toeIkHandle = ikHandle ("-name", ($name + $side + "toe_ikhandle"), "-startJoint", ("ik_" + $ballJoint), "-endEffector", ("ik_" + $endJoint), "-solver", "ikRPsolver");
+
+//add attribute to ankle control and create reverse foot setup for leg
+addAttr -ln "FOOT" -at bool -keyable true $ankleCtrl[0];
+	setAttr -keyable false -channelBox true ($ankleCtrl[0] + ".FOOT");
+addAttr -ln "roll" -at double -min -10 -max 10 -keyable true $ankleCtrl[0];
+addAttr -ln "rollAngle" -at double -dv 50 -keyable true $ankleCtrl[0];
+	setAttr -keyable false -channelBox true ($ankleCtrl[0] + ".rollAngle");
+addAttr -ln "tap" -at double  -keyable true $ankleCtrl[0];
+addAttr -ln "clawRoll" -at double  -keyable true $ankleCtrl[0];
+addAttr -ln "bank" -at double  -keyable true $ankleCtrl[0];
+addAttr -ln "ballTwist" -at double  -keyable true $ankleCtrl[0];
+addAttr -ln "toePivot" -at double  -keyable true $ankleCtrl[0];
+addAttr -ln "toePivotSide" -at double  -keyable true $ankleCtrl[0];
+addAttr -ln "heelPivot" -at double  -keyable true $ankleCtrl[0];
+addAttr -ln "heelPivotSide" -at double  -keyable true $ankleCtrl[0];
+
+
+string $rollBallGrp = `group -em -n ($name + $side + "clawRoll_grp")`;
+string $tapGrp = `group -em -n ($name + $side + "tap_grp")`;
+string $toePivotGrp = `group -em -n ($name + $side + "toePivot_grp")`;
+string $ballPivotGrp = `group -em -n ($name + $side + "ballPivot_grp")`;
+string $heelPivotGrp = `group -em -n ($name + $side + "heelPivot_grp")`;
+string $inPivotBankGrp = `group -em -n ($name + $side + "inPivotBank_grp")`;
+string $outPivotBankGrp = `group -em -n ($name + $side + "outPivotBank_grp")`;
+
+//snapping to right postion
+float $heelPos[];
+float $bankInPos[];
+float $bankOutPos[];
+
+float $anklePos[] = `xform -q -ws -rp $ankleJoint`;
+float $ballPos[] = `xform -q -ws -rp $ballJoint`;
+float $endPos[] = `xform -q -ws -rp $endJoint`;
+
+string $tempPivots;
+
+if(!`attributeExists "heelPos" $ankleJoint`)
+	{
+	$tempPivots = cr_makeFootHeelPivots($ankleJoint,$ballJoint);
+	string $heel = `getAttr ($ankleJoint+".heelPos")`;
+	string $bankIn = `getAttr ($ballJoint + ".bankInPos")`;
+	string $bankOut = `getAttr ($ballJoint + ".bankOutPos")`;
+	$heelPos = `xform -q -ws -rp $heel`;
+	$bankInPos = `xform -q -ws -rp $bankIn`;
+	$bankOutPos = `xform -q -ws -rp $bankOut`;	
+	}
+else
+	{
+	string $heel = `getAttr ($ankleJoint+".heelPos")`;
+	string $bankIn = `getAttr ($ballJoint + ".bankInPos")`;
+	string $bankOut = `getAttr ($ballJoint + ".bankOutPos")`;
+	$heelPos = `xform -q -ws -rp $heel`;
+	$bankInPos = `xform -q -ws -rp $bankIn`;
+	$bankOutPos = `xform -q -ws -rp $bankOut`;
+	}	
+
+catchQuiet(`delete $tempPivots`);
+
+setAttr ($rollBallGrp + ".t") $ballPos[0] $ballPos[1] $ballPos[2];
+setAttr ($tapGrp + ".t") $ballPos[0] $ballPos[1] $ballPos[2];
+setAttr ($toePivotGrp + ".t") $endPos[0] $endPos[1] $endPos[2];
+setAttr ($ballPivotGrp + ".t") $ballPos[0] $ballPos[1] $ballPos[2];
+setAttr ($heelPivotGrp + ".t") $heelPos[0] $heelPos[1] $heelPos[2];
+setAttr ($inPivotBankGrp + ".t") $bankInPos[0] $bankInPos[1] $bankInPos[2];
+setAttr ($outPivotBankGrp + ".t") $bankOutPos[0] $bankOutPos[1] $bankOutPos[2];
+
+//parent to the respective grp and zeroout the grp if it has any rotation value
+parent $heelPivotGrp $ankleCtrl[0];
+	setAttr ($heelPivotGrp + ".r") 0 0 0;
+parent $toePivotGrp $heelPivotGrp;
+	setAttr ($toePivotGrp + ".r") 0 0 0;
+parent $ballPivotGrp $toePivotGrp;
+	setAttr ($ballPivotGrp + ".r") 0 0 0;
+parent $inPivotBankGrp $ballPivotGrp;
+	setAttr ($inPivotBankGrp + ".r") 0 0 0;
+parent $outPivotBankGrp $inPivotBankGrp;
+	setAttr ($outPivotBankGrp + ".r") 0 0 0;
+parent $tapGrp $outPivotBankGrp;
+	setAttr ($tapGrp + ".r") 0 0 0;
+parent $rollBallGrp $outPivotBankGrp;
+	setAttr ($rollBallGrp + ".r") 0 0 0;
+parent $flexCtrlZero[0] $rollBallGrp;
+	setAttr ($flexCtrlZero[0] + ".r") 0 0 0;
+
+//connnecting foot attribute
+string $footRollRange = `createNode setRange -n ($name + $side + "heelRoll_range")`;
+	setAttr ($footRollRange + ".oldMinX") -10;
+
+string $rollBallRMV = `createNode remapValue -n ($name + $side + "clawRoll_rmv")`;
+	setAttr ($rollBallRMV + ".value[1].value_FloatValue") 0;
+	setAttr ($rollBallRMV + ".value[2].value_Position") 0.5;
+	setAttr ($rollBallRMV + ".value[2].value_FloatValue") 1;
+	setAttr ($rollBallRMV + ".value[2].value_Interp") 1;
+	setAttr ($rollBallRMV + ".inputMax") 10;
+
+string $rollToeRMV = `createNode remapValue -n ($name + $side + "toeRoll_rmv")`;
+	setAttr ($rollToeRMV + ".value[2].value_Position") 0.5;
+	setAttr ($rollToeRMV + ".value[2].value_Interp") 1;
+	setAttr ($rollToeRMV + ".inputMax") 10;
+
+string $hellRollMDL = `createNode multDoubleLinear -n ($name + $side + "hellRoll_mdl")`;
+	setAttr ($hellRollMDL + ".input2") -1;
+
+string $rollBallAdl = `createNode addDoubleLinear -n ($name + $side + "clawRoll_adl")`;
+string $toeRollAdl = `createNode addDoubleLinear -n ($name + $side + "toeRoll_adl")`;
+string $heelRollAdl = `createNode addDoubleLinear -n ($name + $side + "heelRoll_adl")`;
+
+connectAttr ($ankleCtrl[0] + ".rollAngle") ($hellRollMDL + ".input1");
+connectAttr ($hellRollMDL + ".output") ($footRollRange + ".minX");
+connectAttr ($ankleCtrl[0] +".roll") ($footRollRange + ".valueX");
+
+connectAttr ($ankleCtrl[0] + ".roll") ($rollBallRMV + ".inputValue");
+connectAttr ($ankleCtrl[0] + ".rollAngle") ($rollBallRMV + ".outputMax");
+
+connectAttr ($ankleCtrl[0] +".roll") ($rollToeRMV + ".inputValue");
+connectAttr ($ankleCtrl[0] +".rollAngle") ($rollToeRMV + ".outputMax");
+
+connectAttr ($footRollRange + ".outValueX") ($heelRollAdl + ".input1");
+connectAttr ($rollBallRMV + ".outValue") ($rollBallAdl + ".input1");
+connectAttr ($rollToeRMV + ".outValue") ($toeRollAdl + ".input1");
+
+connectAttr ($ankleCtrl[0] + ".clawRoll") ($rollBallAdl + ".input2");
+connectAttr ($ankleCtrl[0] + ".toePivot") ($toeRollAdl + ".input2");
+connectAttr ($ankleCtrl[0] + ".heelPivot") ($heelRollAdl + ".input2");
+
+
+connectAttr ($ankleCtrl[0] + ".tap") ($tapGrp + ".rx");
+connectAttr ($rollBallAdl + ".output") ($rollBallGrp + ".rx");
+connectAttr ($ankleCtrl[0] + ".bank") ($inPivotBankGrp + ".rz");
+	transformLimits -rz 0 45 -erz 1 0 $inPivotBankGrp;
+connectAttr ($ankleCtrl[0] + ".bank") ($outPivotBankGrp + ".rz");
+	transformLimits -rz -45 0 -erz 0 1 $outPivotBankGrp;
+connectAttr ($ankleCtrl[0] + ".ballTwist") ($ballPivotGrp + ".ry");
+connectAttr ($toeRollAdl + ".output") ($toePivotGrp + ".rx");
+connectAttr ($ankleCtrl[0] + ".toePivotSide") ($toePivotGrp + ".ry");
+connectAttr ($heelRollAdl + ".output") ($heelPivotGrp + ".rx");
+connectAttr ($ankleCtrl[0] + ".heelPivotSide") ($heelPivotGrp + ".ry");
+
+//now create flex leg setup..
+vector $legFlexJointsPos[] = cr_getQuadFlexLegJointPos($hipJoint, $ankleJoint);
+string $flexJnt[];
+
+//creating spring joints
+for ($i=0;$i<4;$i++)
+	{
+	vector $tempPos = $legFlexJointsPos[$i];	
+	$flexJnt[$i] = `joint -p ($tempPos.x) ($tempPos.y) ($tempPos.z) -n($name+$side+"legFlex"+($i+1)+"_jnt")`;
+	}
+
+//orienting joints and parent..
+cr_orientJoints ($flexJnt, "xyz", "zdown");
+string $hipParentJoint = cr_getParent($hipJoint);
+catchQuiet(`parent $flexJnt[0] $hipParentJoint`);
+setAttr ($flexJnt[0] + ".visibility") 0;
+cr_lockAndHide $flexJnt[0] lock "vis";
+
+//creating leg offset cntrl setup
+select-cl;
+string $legOffsetCtrl[0] = `cr_curveControl cube1 joint`;
+$legOffsetCtrl[0] = `rename ($name + $side + "legOffset_ctrl")`;
+
+snap $hipJoint $legOffsetCtrl[0];
+	setAttr($legOffsetCtrl[0]+".r") 0 0 0;
+
+parent $legOffsetCtrl[0] $partGrp;
+cr_lockAndHide $legOffsetCtrl[0] cr_locknHide "rot scale vis";
+
+//looking for first fk control unlock trans create point cons with offset control and lock it again 
+string $fkConParent = cr_getParent($fkContrlList[0]);
+cr_lockAndHide $fkConParent unLock "trans";
+parentConstraint -mo -skipRotate x -skipRotate y -skipRotate z -weight 1 $legOffsetCtrl[0] $flexJnt[0];
+parentConstraint -mo -skipRotate x -skipRotate y -skipRotate z -weight 1 $legOffsetCtrl[0] $IK[0];
+parentConstraint -mo -skipRotate x -skipRotate y -skipRotate z -weight 1 $legOffsetCtrl[0] $fkConParent;
+parentConstraint -mo -skipRotate x -skipRotate y -skipRotate z -weight 1 $legOffsetCtrl[0] $hipJoint;
+cr_lockAndHide $fkConParent lock "trans";
+
+//create flex ik handle
+string $flexIkHandle[] = ikHandle ("-name", ($name + $side + "flex_ikhandle"), "-startJoint", $flexJnt[0], "-endEffector", $flexJnt[3], "-solver", "ikRPsolver");
+parent $flexIkHandle[0] $rollBallGrp;
+setAttr ($flexIkHandle[0] + ".visibility") 0;
+cr_lockAndHide $flexIkHandle[0] lock "trans rot scale vis";
+poleVectorConstraint  $kneeCtrl[0] $flexIkHandle[0];
+parentConstraint -mo -skipTranslate x -skipTranslate y -skipTranslate z -weight 1 $flexJnt[3] $flexCtrlZero[0];
+
+//parent ik handle into foot control and lock the transforms
+parent $hockIkHandle[0] $flexCtrl[0];
+if($stretch == 1) parent $ikSpaceGrp $flexCtrl[0];
+setAttr ($hockIkHandle[0] + ".visibility") 0;
+cr_lockAndHide $hockIkHandle[0] lock "trans rot scale vis";
+
+parent $ankleIkHandle[0] $rollBallGrp;
+setAttr ($ankleIkHandle[0] + ".visibility") 0;
+cr_lockAndHide $ankleIkHandle[0] lock "trans rot scale vis";
+
+parent $toeIkHandle[0] $tapGrp;
+setAttr ($toeIkHandle[0] + ".visibility") 0;
+cr_lockAndHide $toeIkHandle[0] lock "trans rot scale vis";
+
+parent $ballIkHandle[0] $outPivotBankGrp;
+setAttr ($ballIkHandle[0] + ".visibility") 0;
+cr_lockAndHide $ballIkHandle[0] lock "trans rot scale vis";
+
+//create pole vector constraint for ikhandle
+poleVectorConstraint  $kneeCtrl[0] $hockIkHandle[0];
+
+//create ikfk visibility connections
+addAttr -ln "autoVis"  -at bool  -keyable true $switchCtrl[0];
+setAttr ($switchCtrl[0] + ".autoVis") 1;
+addAttr -ln "fkVis"  -at bool  -keyable true $switchCtrl[0];
+addAttr -ln "ikVis"  -at bool  -keyable true $switchCtrl[0];
+setAttr -keyable false -channelBox true ($switchCtrl[0] + ".autoVis");
+
+string $fkIkCnd = `createNode condition -n($name + $side + "fkIkVis_cnd")`;
+string $fkIkRev = `createNode reverse -n($name + $side + "fkIkVis_rev")`;
+connectAttr ($switchCtrl[0] + ".FK_IK") ($fkIkRev + ".inputX");
+connectAttr ($fkIkRev + ".outputX")  ($fkIkCnd + ".colorIfFalseR");
+connectAttr ($switchCtrl[0] + ".FK_IK") ($fkIkCnd + ".colorIfFalseG");
+connectAttr ($switchCtrl[0] + ".autoVis") ($fkIkCnd + ".firstTerm");
+connectAttr ($switchCtrl[0] + ".fkVis") ($fkIkCnd + ".colorIfTrueG");
+connectAttr ($switchCtrl[0] + ".ikVis") ($fkIkCnd + ".colorIfTrueR");
+
+connectAttr ($fkIkCnd + ".outColorR") ($fkContrlList[0] + ".visibility");
+connectAttr ($fkIkCnd + ".outColorR") ($FK[0] + ".visibility");
+connectAttr ($fkIkCnd + ".outColorG") ($ankleCtrl[0] + ".visibility");
+connectAttr ($fkIkCnd + ".outColorG") ($kneeCtrl[0] + ".visibility");
+connectAttr ($fkIkCnd + ".outColorG") ($IK[0] + ".visibility");
+
+//zero out all controllers and cleanup animation controller
+string $ankleConGrp[] = cr_quickZeroOut ($ankleCtrl[0]);
+string $kneeConGrp[] = cr_quickZeroOut ($kneeCtrl[0]);
+string $legOffsetConGrp[] = cr_quickZeroOut ($legOffsetCtrl[0]);
+select -cl;
+
+//create guide curve
+string $guideCurve = `cr_curveGuide $IK[$middleIndex] $kneeCtrl[0]`;
+connectAttr ($fkIkCnd + ".outColorG") ($guideCurve + ".visibility");
+
+cr_lockAndHide $ankleCtrl[0] cr_locknHide "scale vis";
+cr_lockAndHide $kneeCtrl[0] cr_locknHide "rot scale vis";
+
+if ($stretchType == "translate")
+		for ($j=0;$j<size($fkContrlList);$j++) cr_lockAndHide $fkContrlList[$j] cr_locknHide "scale vis";
+
+if ($stretchType == "scale")
+		for ($j=0;$j<size($fkContrlList);$j++) cr_lockAndHide $fkContrlList[$j] cr_locknHide "trans vis";
+
+string $parentJoint[] = `listRelatives -parent $hipJoint`;
+$parentGrp = `listRelatives -parent $fkContrlList[0]`;
+cr_lockAndHide $parentGrp[0] unLock "trans rot";
+parent $parentGrp[0] $partGrp;
+
+//add leg rig info for future update...
+string $charRigInfo = cr_getcharRigInfoNode($name);
+	addAttr -ln ($side+"legRig") -dt "string" $charRigInfo; 
+	setAttr -type "string" ($charRigInfo + "." + ($side+"legRig")) ($ankleCtrl[0]+" "+$kneeCtrl[0]+" "+$switchCtrl[0]+" "+$fkContrlList[0]);
+
+//create space switch
+if($cr_buildWorld)
+	{
+	if(`attributeExists "spineRig" $charRigInfo`)
+		{
+		string $spineRigPart = getAttr($charRigInfo+".spineRig");
+		string $spineRigArray[] = stringToStringArray($spineRigPart," ");
+		cr_buildSpaceSwitchSetup($ankleCtrl[0], $ankleConGrp[0],{$spineRigArray[2],$spineRigArray[0],($name+"worldB_ctrl")}, {"hip","root","world"}, 1);
+		cr_buildSpaceSwitchSetup($kneeCtrl[0], $kneeConGrp[0],{$ankleCtrl[0],$spineRigArray[0],($name+"worldB_ctrl")}, {"foot","root","world"}, 1);
+		setAttr($ankleCtrl[0]+".parent") 2;
+		}
+	}
+//parent skeleton 
+select -cl;
+cr_parentSkeletonTo($hipJoint, $cleanGrp[1]);
+
+//scale controls to global value
+select -r $kneeCtrl $flexCtrl $legOffsetCtrl $switchCtrl $fkContrlList;
+cr_resizeCurves {} 1 1 1 $scale;
+select -cl;
+
+	if($parentJoint[0] != "")
+		{
+		parentConstraint -mo -weight 1 $parentJoint[0] $parentGrp[0];
+		parentConstraint -mo -weight 1 $parentJoint[0] $legOffsetConGrp[0];
+		}
+//anim control cleanup
+	cr_lockAndHide $parentGrp[0] lock "trans rot";
+	cr_lockAndHide $ankleConGrp[0] lock "trans rot scale vis";		
+	cr_lockAndHide $kneeConGrp[0] lock "trans rot scale vis";		
+	cr_lockAndHide $legOffsetCtrl[0] cr_locknHide "rot scale vis";		
+	cr_lockAndHide $legOffsetConGrp[0] lock "trans rot scale vis";
+	cr_lockAndHide $flexCtrl[0] cr_locknHide "trans scale vis";
+	cr_lockAndHide $flexCtrlZero[0] lock "trans rot scale vis";		
+	delete $fkContrlList[`size $fkContrlList`-1]; //deleting end fk control see line no.138 for detail
+}
+
+

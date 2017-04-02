@@ -1,0 +1,338 @@
+//---------------------------------------------------------------------------
+// cr_buildArmSetup.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:	
+//		biped arm setup
+//
+// REQUIRES:
+//		cr_buildWorld.mel
+//		cr_buildTwistJointSetup.mel
+//		cr_curveUtilitiesLib.mel
+//		cr_jointStretchNetworkLib.mel
+//		cr_charUtilsLib.mel
+//		libString.mel
+//		snaps.mel
+//
+// AUTHOR:
+//		Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+eval("source \"cr_buildWorld.mel\";");
+eval("source \"cr_buildTwistJointSetup.mel\";");
+source "snaps.mel";
+cr_charUtilsLib;
+cr_curveUtilitiesLib;
+cr_jointStretchNetworkLib;
+libString;
+
+global proc cr_buildArmSetup(string $name, string $side, string $shoulderJoint, string $wristJoint, string $stretchType, string $ikFkType, int $stretch, int $midLock, int $volume, int $cr_buildWorld, float $scale)
+{
+
+string $FK[];  			//array to hold fk joint chain
+string $IK[];			//array to hold fk joint chain
+string $list[];			//array to hold actual joint chain
+string $temp[];			//hold name unused joint to delete
+int $middleIndex;		//hold middle index of ik joint chain
+float $modPos[];		//hold mid postion for pole vectoe control
+string $ikHandle[];		//hold all created ik handle
+string $fkContrlList[];	//array to hold fk control joint chain
+string $fkCon[];		//array to hold newly creted fk control
+string $tempJoint[];	//array to hold temp created joint
+string $stretchAxis[];	//array to stretch axis info
+string $parentGrp[];	//holds name of parent grp of given object
+string $cleanGrp[];
+
+string $partGrp = `group -em -n ($name + $side + "armParts_grp")`;
+cr_lockAndHide $partGrp cr_locknHide "trans rot scale";
+
+if($cr_buildWorld)
+	{
+	$cleanGrp = cr_buildWorld ($name, $scale);
+	parent $partGrp $cleanGrp[0];
+	}
+
+//duplicate joint chain twice in order to create ik fk switch
+$FK = `cr_dupId $shoulderJoint prefix fk`;
+$IK = `cr_dupId $shoulderJoint prefix ik`;
+
+for($x=0;$x<size($FK);$x++)//delete twistAttr if exists..... 
+{
+if (`attributeExists "twistJoints" $FK[$x]`)
+	{
+	setAttr -type "string" ($FK[$x]+".twistJointGrp") " ";
+	setAttr -type "string" ($IK[$x]+".twistJointGrp") " ";
+	select -r $FK[$x];
+	cr_removeTwistJointsAttr("twistJoints");
+	select -r $IK[$x];
+	cr_removeTwistJointsAttr("twistJoints");
+	}
+}
+
+//check if duplicated joint will have any child joints and delete them
+$temp = `listRelatives -allDescendents ("ik_" + $wristJoint)`;
+if ($temp[0] !="") delete $temp;
+
+//check if duplicated joint will have any child joints and delete them
+$temp = `listRelatives -allDescendents ("fk_" + $wristJoint)`;
+if ($temp[0] !="") delete $temp;
+
+//hold all joint chain in array
+$IK = `cr_listHierarchy $IK[0]`;
+$FK = `cr_listHierarchy $FK[0]`;
+$list = `cr_findJointArrey $shoulderJoint $wristJoint`;
+
+select -cl;
+
+//create controls
+string $wristCtrl[0] = `cr_curveControl cube1 joint`;
+$wristCtrl[0] = `rename ($name + $side + "ik_wrist_ctrl")`;
+string $elbowCtrl[0] = `cr_curveControl cone curve`;
+$elbowCtrl[0] = `rename ($name + $side + "ik_elbow_ctrl")`;
+string $switchCtrl[0] = `cr_curveControl pin1 curve`;
+$switchCtrl[0] = `rename ($name + $side + "armSwitches_ctrl")`;
+
+//snap controls to to respective joints
+snap $wristJoint $wristCtrl[0];
+makeIdentity -apply true -t 1 -r 1 -s 1 $wristCtrl[0];
+snap $wristJoint $switchCtrl[0];
+setAttr($switchCtrl[0]+".r") 0 0 0;
+select -cl  ;
+
+parent $wristCtrl[0] $partGrp;
+parent $elbowCtrl[0] $partGrp;
+parent $switchCtrl[0] $partGrp;
+
+parentConstraint -mo -weight 1 $wristJoint $switchCtrl[0];
+cr_lockAndHide $switchCtrl[0] cr_locknHide "trans rot scale vis";
+
+//get middle index of ik joint for pole control placement
+$middleIndex = ((`size $IK`)/2);
+$modPos = `zoofindPolePosition $shoulderJoint $IK[$middleIndex] $wristJoint 0.7`;
+select -r $elbowCtrl[0];
+setAttr ($elbowCtrl[0]+".t")$modPos[0] $modPos[1] $modPos[2];
+		cr_fixFacingAxis("Z", 0);
+select -cl;
+
+//create ik fk connections from given arrey
+cr_fkIkConnect $list $IK $FK $ikFkType $switchCtrl[0];
+select -cl;
+
+//fk controllers and rename them respectively
+$fkCon = `cr_fkControl $FK[0] circleCross 1`;
+$fkContrlList = `cr_listHierarchy $fkCon[0]`;
+	for ($i=0;$i<size($fkContrlList);$i++)
+	$fkContrlList[$i] = `rename $fkContrlList[$i] ($name + $side + $fkContrlList[$i])`;
+
+//check stretch condition and create connections
+if($stretch == 1)
+	{
+	cr_stretchNetwork ($name, $side, ("ik_" + $shoulderJoint),("ik_" + $wristJoint), $wristCtrl[0], $stretchType, $midLock, $elbowCtrl[0]);
+	cr_stretchTypeConnect $list $IK $FK $stretchType $switchCtrl[0];
+	}
+
+//creating twist joint setup if attribute exists on given joint
+int $size = (`size($list)`)-1;
+string $wristRots[] = `listRelatives -parent $wristJoint`;
+for($i=0;$i<$size;$i++)
+	{
+	if($list[$i] == $wristRots[0])
+		cr_buildTwistJointSetup($name,$side,$list[$i],$stretchType,$ikFkType,"child",$wristJoint,$switchCtrl[0], $stretch, $volume, $scale);
+	else
+		cr_buildTwistJointSetup($name,$side,$list[$i],$stretchType,$ikFkType,"parent",$wristJoint,$switchCtrl[0], $stretch, $volume, $scale);
+	}
+
+
+//createik handle for ik joint chain
+$ikHandle = ikHandle ("-name", ($name + $side + "_arm_ikhandle"), "-startJoint", $IK[0], "-endEffector", $IK[`size $IK`-1], "-solver", "ikRPsolver");
+//parent ik handle into wrist control and lock the transforms
+parent $ikHandle[0] $wristCtrl[0];
+setAttr ($ikHandle[0] + ".visibility") 0;
+cr_lockAndHide $ikHandle[0] lock "trans rot scale vis";
+
+//create pole vector constraint for ikhandle
+poleVectorConstraint  $elbowCtrl[0] $ikHandle[0];
+//parentConstraint -mo -skipTranslate x -skipTranslate y -skipTranslate z -weight 1 $wristCtrl[0] ("ik_" + $wristJoint);
+		$stretchAxis = `cr_getStretchAxis $wristJoint translate`;
+		select -cl;
+		$tempJoint = `cr_curveControl joint curve`;
+		$tempJoint[0] = `rename ("ik_" + $wristJoint + "RotHelp")`;
+		snap ("ik_" + $wristJoint) $tempJoint[0];
+		makeIdentity -apply true -t 1 -r 1 -s 1 $tempJoint[0];
+		float $rad = `getAttr ($wristJoint + ".radius")`;
+		float $val = `getAttr ($wristJoint + "." + $stretchAxis[0])`;
+		setAttr ($tempJoint[0] + ".radius") $rad;
+		parent $tempJoint[0] ("ik_" + $wristJoint);
+		if($val < 0.00001)
+			{
+			if($stretchAxis[0] == "tx")
+				move -r -ls -wd -0.7 0 0 $tempJoint[0];
+			else if($stretchAxis[0] == "ty")
+				move -r -ls -wd 0 -0.7 0 $tempJoint[0];
+			else if($stretchAxis[0] == "tz")
+				move -r -ls -wd 0 0 -0.7 $tempJoint[0];
+			}
+		else
+			{
+			if($stretchAxis[0] == "tx")
+				move -r -ls -wd 0.7 0 0 $tempJoint[0];
+			else if($stretchAxis[0] == "ty")
+				move -r -ls -wd 0 0.7 0 $tempJoint[0];
+			else if($stretchAxis[0] == "tz")
+				move -r -ls -wd 0 0 0.7 $tempJoint[0];
+			}
+//createik handle for ik joint chain
+string $ikHandleA[] = ikHandle ("-name", ($name + $side + "_wristRot_ikhandle"), "-startJoint", $IK[`size $IK`-1], "-endEffector", $tempJoint[0], "-solver", "ikSCsolver");
+//parent ik handle into wrist control and lock the transforms
+parent $ikHandleA[0] $wristCtrl[0];
+setAttr ($ikHandleA[0] + ".visibility") 0;
+cr_lockAndHide $ikHandleA[0] lock "trans rot scale vis";
+
+//create ikfk visibility connections
+addAttr -ln "autoVis"  -at bool  -keyable true $switchCtrl[0];
+setAttr ($switchCtrl[0] + ".autoVis") 1;
+addAttr -ln "fkVis"  -at bool  -keyable true $switchCtrl[0];
+addAttr -ln "ikVis"  -at bool  -keyable true $switchCtrl[0];
+setAttr -keyable false -channelBox true ($switchCtrl[0] + ".autoVis");
+
+string $fkIkCnd = `createNode condition -n($name + $side + "fkIkVis_cnd")`;
+string $fkIkRev = `createNode reverse -n($name + $side + "fkIkVis_rev")`;
+connectAttr ($switchCtrl[0] + ".FK_IK") ($fkIkRev + ".inputX");
+connectAttr ($fkIkRev + ".outputX")  ($fkIkCnd + ".colorIfFalseR");
+connectAttr ($switchCtrl[0] + ".FK_IK") ($fkIkCnd + ".colorIfFalseG");
+connectAttr ($switchCtrl[0] + ".autoVis") ($fkIkCnd + ".firstTerm");
+connectAttr ($switchCtrl[0] + ".fkVis") ($fkIkCnd + ".colorIfTrueG");
+connectAttr ($switchCtrl[0] + ".ikVis") ($fkIkCnd + ".colorIfTrueR");
+
+connectAttr ($fkIkCnd + ".outColorR") ($fkContrlList[0] + ".visibility");
+connectAttr ($fkIkCnd + ".outColorR") ($FK[0] + ".visibility");
+connectAttr ($fkIkCnd + ".outColorG") ($wristCtrl[0] + ".visibility");
+connectAttr ($fkIkCnd + ".outColorG") ($elbowCtrl[0] + ".visibility");
+connectAttr ($fkIkCnd + ".outColorG") ($IK[0] + ".visibility");
+
+//zero out all controllers and cleanup animation controller
+string $wristConGrp[] = cr_quickZeroOut ($wristCtrl[0]);
+string $elbowConGrp[] = cr_quickZeroOut ($elbowCtrl[0]);
+select -cl;
+
+//create guide curve
+string $guideCurve = `cr_curveGuide $IK[$middleIndex] $elbowCtrl[0]`;
+connectAttr ($fkIkCnd + ".outColorG") ($guideCurve + ".visibility");
+
+cr_lockAndHide $wristCtrl[0] cr_locknHide "scale vis";
+cr_lockAndHide $elbowCtrl[0] cr_locknHide "rot scale vis";
+
+if ($stretchType == "translate")
+		for ($j=0;$j<size($fkContrlList);$j++) cr_lockAndHide $fkContrlList[$j] cr_locknHide "scale vis";
+
+if ($stretchType == "scale")
+		for ($j=0;$j<size($fkContrlList);$j++) cr_lockAndHide $fkContrlList[$j] cr_locknHide "trans vis";
+
+//building clavicle setup
+string $parentJoint[] = `listRelatives -parent $shoulderJoint`;
+	if($parentJoint[0] != "")
+		cr_buildClavSetup ($name, $side, $parentJoint[0], $shoulderJoint, $stretch, $scale);
+
+$parentGrp = `listRelatives -parent $fkContrlList[0]`;
+cr_lockAndHide $parentGrp[0] unLock "trans rot";
+parent $parentGrp[0] $partGrp;
+ 
+	if($parentJoint[0] != "")
+		parentConstraint -mo -weight 1 $parentJoint[0] $parentGrp[0];
+		cr_lockAndHide $parentGrp[0] lock "trans rot";
+
+//add arm rig info for future update...
+string $charRigInfo = cr_getcharRigInfoNode($name);
+	addAttr -ln ($side+"armRig") -dt "string" $charRigInfo; 
+	setAttr -type "string" ($charRigInfo + "." + ($side+"armRig")) ($wristCtrl[0]+" "+$elbowCtrl[0]+" "+$switchCtrl[0]+" "+$fkContrlList[0]);
+
+//create space switch
+if($cr_buildWorld)
+	{
+	if(`attributeExists "spineRig" $charRigInfo`)
+		{
+		string $fkShoulderParent[] = cr_quickZeroOut ($fkContrlList[0]);
+		string $spineRigPart = getAttr($charRigInfo+".spineRig");
+		string $spineRigArray[] = stringToStringArray($spineRigPart," ");
+		cr_buildSpaceSwitchSetup($wristCtrl[0], $wristConGrp[0],{$spineRigArray[1],$spineRigArray[0],($name+"worldB_ctrl")}, {"chest","root","world"}, 1);
+		cr_buildSpaceSwitchSetup($elbowCtrl[0], $elbowConGrp[0],{$spineRigArray[1],$spineRigArray[0],($name+"worldB_ctrl")}, {"chest","root","world"}, 1);
+		cr_buildSpaceSwitchSetup($fkContrlList[0], $fkShoulderParent[0],{$parentJoint[0],$spineRigArray[1],($name+"worldB_ctrl")}, {"clav","chest","world"}, 2);
+		setAttr($fkContrlList[0]+".rotateLock") 2;
+		}
+	}
+//parent skeleton 
+select -cl;
+cr_parentSkeletonTo($parentJoint[0], $cleanGrp[1]);
+
+//scale controls to global value
+select -r $wristCtrl $elbowCtrl $switchCtrl $fkContrlList;
+cr_resizeCurves {} 1 1 1 $scale;
+select -cl;
+}
+
+//cr_buildClavSetup "arm_" "l" "joint1" "joint2" 1
+global proc cr_buildClavSetup(string $name, string $side, string $clavJoint, string $shoulderJoint, int $stretch, float $scale)
+{
+/*
+string $clavJoint = "joint1";
+string $shoulderJoint = "joint2";
+string $name = "arm_";
+string $side = "l";
+int $stretch = 0;
+*/
+string $partGrp = ($name + $side + "armParts_grp");
+string $grp[];
+string $offControl[];
+
+if (!`objExists $partGrp`)
+$partGrp = `group -em -n ($name + $side + "armParts_grp")`;
+string $control[0] = `cr_curveControl rotArrow curve`;
+$control[0] = `rename ($name + $side + "clav_ctrl")`;
+snap $clavJoint $control[0];
+$grp = `cr_quickZeroOut $control[0]`;
+cr_lockAndHide $control[0] cr_locknHide "trans scale vis";
+
+if($stretch)
+	{
+	$offControl = `cr_curveControl cube1 curve`;
+	$offControl[0] = `rename ($name + $side + "shoulderOffset_ctrl")`;
+	snap $shoulderJoint $offControl[0];
+	makeIdentity -apply true -t 1 -r 1 -s 1 $offControl[0];
+	string $offGrp[0] = `cr_quickZeroOut $offControl[0]`;
+	cr_lockAndHide $offControl[0] cr_locknHide "rot scale vis";
+	string $sScmd[] = cr_buildIkStretch($name,$side,$clavJoint, $shoulderJoint, $offControl[0], "scale");
+	parent $offGrp[0] $control[0];
+	parent $sScmd[0] $control[0];
+	cr_lockAndHide $offGrp[0] lock "trans rot scale vis";
+	}
+else
+	parentConstraint -skipTranslate x -skipTranslate y -skipTranslate z -weight 1 $control[0] $clavJoint;
+
+string $parentJoint[] = `listRelatives -parent $clavJoint`;
+	if($parentJoint[0] != "")
+		parentConstraint -mo  -weight 1 $parentJoint $grp[0];
+parent $grp[0] $partGrp;
+cr_lockAndHide $grp[0] lock "trans rot scale vis";
+
+select -r $control $offControl;
+cr_resizeCurves {} 1 1 1 $scale;
+select -cl;
+}

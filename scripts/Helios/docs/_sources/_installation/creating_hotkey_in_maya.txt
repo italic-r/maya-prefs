@@ -1,0 +1,23 @@
+Creating Hotkey in Maya
+=======================
+
+First open up the Hotkey Editor (Go to Windows > Settings/Preferences > Hotkey Editor).
+
+.. thumbnail:: img/Hotkey_Editor_01.jpg
+
+Then choose the Custom Scripts category from the dropdown menu.
+
+.. thumbnail:: img/Hotkey_Editor_02.jpg
+
+Next, go to the Runtime Command Editor tab and click on New. Enter a Name and Description for the script and make sure the Language is set to Python.
+
+Then simply paste the script you got from the installer into the field.
+
+.. thumbnail:: img/Hotkey_Editor_03.jpg
+
+Finally, just assign any Hotkey you want to the command you created to make Helios pop-up.
+
+.. thumbnail:: img/Hotkey_Editor_04.jpg
+
+And you're done! Now everytime you hit Shift + C (or any hotkey you assigned to the script)
+Helios will pop-up.

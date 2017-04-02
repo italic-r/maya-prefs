@@ -1,0 +1,57 @@
+/*
+/////////////////////////////////////////////////////////
+
+ackToggleSound 1.1				
+2/9/07						
+Aaron Koressel				
+
+Toggles the current sound clip in the timeline (for
+muting purposes).  The first time it's used in a
+session with a sound clip active will determine which
+sound clip to toggle.
+
+CHANGELOG:
+2/9/07		1.1
+More robust: checks for a current sound before
+writing to global variable
+
+9/9/05		1.0
+First Version
+
+/////////////////////////////////////////////////////////
+*/
+
+global proc ackToggleSound() {
+	//to get access to setSoundDisplay function
+	source updateSoundMenu;
+	//holds toggled sound
+	global string $gackSound;
+	//handle to maya's slider
+	global string $gPlayBackSlider;
+	
+	string $cur = `timeControl -q -sound $gPlayBackSlider`;
+	int $cmpCur = `strcmp $cur ""`;
+	int $cmpGack = `strcmp $gackSound ""`;
+	if ($cmpCur == 0 && $cmpGack == 0){
+		//currently muted and flag hasn't been set
+		//so can't set the flag
+		$msg = "Please make the sound you wish to toggle currently \n";
+		$msg += "active and re-execute ackToggleSound.\n\n";
+		$msg += "This sound will be used by ackToggleSound for the \n";
+		$msg += "rest of this maya session.";
+		confirmDialog -t "Error" -m $msg;
+		return;
+	} else if ($cmpCur == 1 && $cmpGack == 0){
+		//a sound is active and flag hasn't been set
+		//so it's the first real execution
+		$gackSound = $cur;
+	}	
+	
+	if ($cmpCur == 0){
+		//turn on sound
+		setSoundDisplay $gackSound 1;
+	} else {
+		//turn off sound
+		setSoundDisplay $gackSound 0;
+	}
+}

@@ -1,0 +1,289 @@
+//
+// reorder attributes
+//
+// Created by Hamish McKenzie www.emissionpossible.com
+// Created : 24 April 2003
+//
+// Description:
+// one of the most annoying things when setting up a character, is to
+// find that a control object for the right side of a character, has
+// had its attributes created in a different order to its
+// corresponding control on the right side.  this script enables one
+// to reorder attributes easily, while maintaining all connections to
+// and from the attribute.  it also allows one to easily rename and
+// delete attributes, without disrupting the current order.
+//
+// Usage:
+//  simply run the command:
+//	zzWeightTools;
+//
+// Hamish McKenzie ©2007...
+// Macaroni Kazoo Productions ©2007...
+
+
+global proc zzWeightTools () {
+	string $windowName = "zzWeightToolsWindow";
+	string $windowTitle = "Weighting Tools";
+
+	if ( `window -exists $windowName` ) { deleteUI $windowName; }
+
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0
+		-sizeable 1 -width 210 $windowName;
+
+		scriptJob -p $windowName -e "SelectionChanged" "zzWeightToolsWindowFunctions update";
+		scriptJob -p $windowName -e "ToolChanged" "zzWeightToolsWindowFunctions update";
+
+		menuBarLayout;
+			menu -label "Help";
+				menuItem -l "Help..." -c ( "zzWeightToolsHelp help" );
+				menuItem -divider 1;
+				menuItem -l "About" -c ( "zzWeightToolsHelp about" );
+
+			columnLayout -adjustableColumn 1 -rowSpacing 5;
+				rowLayout -numberOfColumns 2
+					-columnWidth2 130 90
+					-columnAttach 1 "both" 	1
+					-columnAttach 2 "both" 	1;
+					textScrollList -numberOfRows 20 -allowMultiSelection 1 zzWeightToolsScrollAttribs;
+					columnLayout -adjustableColumn 1 -rowSpacing 5;
+						button -l "lock weights" -height 18 -c ( "zzWeightToolsWindowFunctions lock" ) zzWeightToolsButtonUp;
+						button -l "unlock weights" -height 18 -c ( "zzWeightToolsWindowFunctions unlock" ) zzWeightToolsButtonDown;
+						button -l "paint weights" -height 18 -c ( "zzWeightToolsWindowFunctions paint" ) zzWeightToolsButtonPaint;
+						radioCollection zzWeightToolsRadioSort;
+							radioButton -l "graph order" -cc ( "zzWeightToolsWindowFunctions update" ) zzWeightToolsRadioGraph;
+							radioButton -l "alphabetical" -sl -cc ( "zzWeightToolsWindowFunctions update" ) zzWeightToolsRadioAlphabetical;
+
+						//floatSliderGrp -label "opy" -field 1;
+						//floatSliderGrp -label "val" -field 1 -minValue 0 -maxValue 1 -fieldMinValue 0 -fieldMaxValue 1 -value 1;
+						rowLayout -numberOfColumns 2
+							-columnWidth2 23 60
+							-columnAttach 1 "both" 	1
+							-columnAttach 2 "both" 	1;
+							text -l "opy";
+							floatField -min 0 -max 1 -s 0.05 -cc ( "zzWeightToolsWindowFunctions changeField" ) zzWeightToolsFloatFieldOpacity;
+							setParent..;
+
+						floatSlider -min 0 -max 1 -cc ( "zzWeightToolsWindowFunctions changeSlider" ) zzWeightToolsFloatSliderOpacity;
+						rowLayout -numberOfColumns 2
+							-columnWidth2 23 60
+							-columnAttach 1 "both" 	1
+							-columnAttach 2 "both" 	1;
+							text -l "val";
+							floatField -min 0 -max 1 -s 0.05 -cc ( "zzWeightToolsWindowFunctions changeField" ) zzWeightToolsFloatFieldValue;
+							setParent..;
+
+						floatSlider -min 0 -max 1 -cc ( "zzWeightToolsWindowFunctions changeSlider" ) zzWeightToolsFloatSliderValue;
+
+						rowLayout -numberOfColumns 3
+							-columnWidth3 27 29 29
+							-columnAttach 1 "both" 	1
+							-columnAttach 2 "both" 	1
+							-columnAttach 3 "both" 	1;
+							text -l "X";
+							text -l "Y";
+							text -l "Z";
+							setParent ..;
+
+						rowLayout -numberOfColumns 3
+							-columnWidth3 27 29 29
+							-columnAttach 1 "both" 	1
+							-columnAttach 2 "both" 	1
+							-columnAttach 3 "both" 	1;
+							checkBox -l "" -onc ( "artAttrCtx -e -reflectX 1 `currentCtx`" ) -ofc ( "artAttrCtx -e -reflectX 0 `currentCtx`" ) zzWeightToolsCheckX;
+							checkBox -l "" -onc ( "artAttrCtx -e -reflectY 1 `currentCtx`" ) -ofc ( "artAttrCtx -e -reflectY 0 `currentCtx`" ) zzWeightToolsCheckY;
+							checkBox -l "" -onc ( "artAttrCtx -e -reflectZ 1 `currentCtx`" ) -ofc ( "artAttrCtx -e -reflectZ 0 `currentCtx`" ) zzWeightToolsCheckZ;
+							setParent ..;
+						setParent ..;
+					setParent ..;
+				setParent ..;
+			//button -l "reorder" -height 18 -c ( "zzWeightToolsWindowFunctions reorder" ) zzWeightToolsButtonReorder;
+
+	showWindow $windowName;
+	zzWeightToolsWindowFunctions update;
+	}
+
+
+global proc zzWeightToolsWindowFunctions ( string $function ) {
+	switch ( $function ) {
+		//this is the generic window update function
+		case "update":
+		string $selObjs[] = `ls -sl`;
+		string $selItems[] = `textScrollList -q -selectItem zzWeightToolsScrollAttribs`;
+		string $skin = `zzWeightToolsGetSkinCluster $selObjs[0]`;
+		if ( $skin != "" ) {
+			string $jointList[] = `skinCluster -q -influence $skin`;
+			string $sortedList[] = `sort $jointList`;
+			string $sortOrder = `radioCollection -q -sl zzWeightToolsRadioSort`;
+			string $useOrder[] = $sortedList;
+
+			if ( $sortOrder == "zzWeightToolsRadioGraph" ) { $useOrder = $jointList; }
+			textScrollList -e -removeAll zzWeightToolsScrollAttribs;
+			for ( $joint in $useOrder ) {
+				string $name = $joint;
+				if ( `getAttr ( $joint + ".liw" )` == 1 ) { $name = "*** " + $joint; }
+				textScrollList -e -append $name zzWeightToolsScrollAttribs;
+				}
+
+			string $context = `currentCtx`;
+			if ( $context == "artAttrSkinContext" ) {
+				float $opacity = `artAttrCtx -q -opacity $context`;
+				float $value = `artAttrCtx -q -value $context`;
+
+				floatField -e -v $opacity zzWeightToolsFloatFieldOpacity;
+				floatSlider -e -v $opacity zzWeightToolsFloatSliderOpacity;
+				floatField -e -v $value zzWeightToolsFloatFieldValue;
+				floatSlider -e -v $value zzWeightToolsFloatSliderValue;
+
+				checkBox -e -v ( `artAttrCtx -q -reflectX $context` ) zzWeightToolsCheckX;
+				checkBox -e -v ( `artAttrCtx -q -reflectY $context` ) zzWeightToolsCheckY;
+				checkBox -e -v ( `artAttrCtx -q -reflectZ $context` ) zzWeightToolsCheckZ;
+				}
+			}
+		else { textScrollList -e -removeAll zzWeightToolsScrollAttribs; }
+		break;
+
+
+		case "changeSlider":
+		float $newOpacity = `floatSlider -q -v zzWeightToolsFloatSliderOpacity`;
+		float $newValue = `floatSlider -q -v zzWeightToolsFloatSliderValue`;
+
+		string $context = `currentCtx`;
+		if ( $context == "artAttrSkinContext" ) {
+			artAttrCtx -e -opacity $newOpacity `currentCtx`;
+			artAttrCtx -e -value $newValue `currentCtx`;
+			zzWeightToolsWindowFunctions update;
+			}
+		break;
+
+
+		case "changeField":
+		float $newOpacity = `floatField -q -v zzWeightToolsFloatFieldOpacity`;
+		float $newValue = `floatField -q -v zzWeightToolsFloatFieldValue`;
+
+		string $context = `currentCtx`;
+		if ( $context == "artAttrSkinContext" ) {
+			artAttrCtx -e -opacity $newOpacity `currentCtx`;
+			artAttrCtx -e -value $newValue `currentCtx`;
+			zzWeightToolsWindowFunctions update;
+			}
+		break;
+
+
+		case "lock":
+		string $selItems[] = `textScrollList -q -selectItem zzWeightToolsScrollAttribs`;
+
+		for ( $joint in $selItems ) {
+			string $buffer[] = {};
+
+			tokenize $joint "* " $buffer;
+			if ( `objExists $buffer[0]` ) {
+				setAttr ( $buffer[0] + ".liw" ) 1;
+				print ( $buffer[0] + " has been locked\n" );
+				}
+			}
+
+		zzWeightToolsWindowFunctions update;
+		zzWeightToolsSelectItems $selItems lock;
+		break;
+
+
+		case "unlock":
+		string $selItems[] = `textScrollList -q -selectItem zzWeightToolsScrollAttribs`;
+		string $newItemNames[] = {};
+		int $n = 0;
+
+		for ( $joint in $selItems ) {
+			string $buffer[] = {};
+
+			tokenize $joint "* " $buffer;
+			if ( `objExists $buffer[0]` ) {
+				setAttr ( $buffer[0] + ".liw" ) 0;
+				$newItemNames[$n] = $buffer[0];
+				$n++;
+
+				print ( $buffer[0] + " has been unlocked\n" );
+				}
+			}
+
+		zzWeightToolsWindowFunctions update;
+		zzWeightToolsSelectItems $newItemNames unlock;
+		break;
+
+
+		case "paint":
+		string $selItems[] = `textScrollList -q -selectItem zzWeightToolsScrollAttribs`;
+		string $buffer[] = {};
+
+		tokenize $selItems[0] "* " $buffer;
+		setSmoothSkinInfluence $buffer[0];
+		break;
+		}
+	}
+
+
+global proc zzWeightToolsSelectItems ( string $selItems[], string $function ) {
+	for ( $item in $selItems ) {
+		string $itemName = $item;
+		if ( $function == "lock" ) { $itemName = "*** " + $item; }
+
+		textScrollList -e -selectItem $itemName zzWeightToolsScrollAttribs;
+		}
+	}
+
+
+global proc string zzWeightToolsGetSkinCluster ( string $obj ) {
+	string $skins[] = `ls -type skinCluster`;
+	string $skinClusterOnSelected = "";
+
+	for ( $skin in $skins ) {
+		string $geometry[] = `skinCluster -q -geometry $skin`;
+
+		for ( $mesh in $geometry ) {
+			string $transform[] = `listRelatives -parent $mesh`;
+			if ( $transform[0] == $obj ) { $skinClusterOnSelected = $skin; }
+			}
+		}
+
+	return $skinClusterOnSelected;
+	}
+
+
+global proc zzWeightToolsHelp ( string $function ) {
+	string $windowName = "zzWeightToolsAbout";
+	string $windowTitle = "About Weight Tools";
+	float $currentVersion = `zzWeightToolsVersion`;
+	string $aboutScript = "Overview:\nWeight Tools is a simple little script that is a slight improvement on the tool panel for the paint skin weights artisan brush.  It is smaller, and more compact.  It allows you to select mulitple joint for locking weights on, and it also allows you to order the joints alphabetically.";
+	string $aboutAuthor = "Version: " + $currentVersion + "\nCreation Date: 24 April 2003\nModified: 30 April 2003\n\nConstraint Tools was written by Macaroni Kazoo Productions  www.macaronikazoo.com\n\nWe hope you find it to be such a useful tool, that you tell all your friends about it.";
+	int $selTab = ( $function == "about" )?2:1;
+
+	if ( `window -exists $windowName` ) { deleteUI $windowName; }
+
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0 -sizeable 1 -widthHeight 330 350 $windowName;
+
+		 string $form = `formLayout`;
+		 string $tabs = `tabLayout -innerMarginWidth 5 -innerMarginHeight 5`;
+		 formLayout -edit
+			-attachForm $tabs "top"    0
+			-attachForm $tabs "left"   0
+			-attachForm $tabs "bottom" 0
+			-attachForm $tabs "right"  0
+			$form;
+
+			string $child1 = `paneLayout -configuration "single"`;
+				scrollField -ed 0 -wordWrap 1 -font plainLabelFont -w 300 -h 200 -numberOfLines 15 -text $aboutScript;
+				setParent ..;
+
+			string $child2 = `paneLayout -configuration "single"`;
+				scrollField -ed 0 -wordWrap 1 -font plainLabelFont -w 300 -h 200 -numberOfLines 15 -text $aboutAuthor;
+				setParent ..;
+
+			tabLayout -e -selectTabIndex $selTab -tabLabel $child1 "Weight Tools Help" -tabLabel $child2 "About Weight Tools" $tabs;
+
+	showWindow $windowName;
+	}
+
+
+global proc float zzWeightToolsVersion () {
+	float $currentVersion = 0.7;
+	return $currentVersion;
+	}

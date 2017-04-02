@@ -1,0 +1,12 @@
+Arc Tracker Pro 1.2.9
+EditableMotionTrails
+Docked
+AllowCollapse
+DisableRelativeTo
+Moving Camera
+None
+DisableSelectObjects
+locator1
+Editabletrails
+True,True,False,True,True,
+locator1

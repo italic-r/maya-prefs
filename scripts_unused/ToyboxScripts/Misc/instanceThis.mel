@@ -1,0 +1,38 @@
+// instanceThis
+// Ryan O'Phelan's first actually usable script, based on other people's honest work.
+// This script will instance the last object in a list of selections to the positions of the rest of the selected list, deleting the targets.
+
+string $selectedItems[] = `ls -sl`;
+int $noOfSel = size($selectedItems);
+
+for ($i=0;$i<$noOfSel;$i++){
+
+//where
+	
+	$alignRot = `xform -q -a -ws -ro $selectedItems[$i]`;
+	$alignPos = `xform -q -a -ws -rp $selectedItems[$i]`;
+	$alignPiv = `xform -q -a -ws -piv $selectedItems[$i]`;
+	
+
+//dup 
+
+
+string $dupObject = $selectedItems[$noOfSel-1];  
+select $dupObject;
+
+instance -n ($dupObject + $i); 
+
+move -a -ws $alignPos[0] $alignPos[1] $alignPos[2] ;
+rotate -a -ws $alignRot[0] $alignRot[1] $alignRot[2] ;
+xform -a -ws -piv $alignPiv[0] $alignPiv[1] $alignPiv[2] ;
+
+//del
+
+delete $selectedItems[$i];
+
+
+
+}
+
+
+

@@ -1,0 +1,110 @@
+//-----------------------------------------------------------------------------
+// Name: 
+//  czDisplayColorOverrideUI.mel
+//
+// Description: 
+//   Quickly override the display color of one or more selected objects 
+//   through a simple GUI.
+//
+// Author: 
+//   Chris Zurbrigg (http://zurbrigg.com)
+//
+// Copyright (C) 2012 Chris Zurbrigg. All rights reserved.
+//-----------------------------------------------------------------------------
+
+global proc czDisplayColorOverride(int $colorIndex) 
+{
+    if ($colorIndex >= 32)
+        error "Color index out-of-range (must be less than 32)";
+    
+    $selection = `ls -sl`;
+    if (size($selection) == 0)
+        error "No objects selected";
+    
+    string $shapes[];
+    for ($obj in $selection) {
+        $relatives = `listRelatives -shapes $obj`;
+        for ($rel in $relatives)
+            $shapes[size($shapes)] = $rel;
+    }
+    
+    // Use defaults if the color index is <= 0
+    if ($colorIndex <= 0) {
+        for ($shape in $shapes) {
+            setAttr ($shape + ".overrideEnabled") 0;
+        }
+    }
+    else {
+        for ($shape in $shapes) {
+            setAttr ($shape + ".overrideEnabled") 1;
+            setAttr ($shape + ".overrideColor") $colorIndex;
+        }
+    }
+}
+
+global proc czDisplayColorOverrideUI() 
+{
+    $windowName = "czDisplayColorOverrideUI";
+    $maxOverrideColors = 32;
+    $formOffset = 2;
+    
+    if (`window -exists $windowName`)
+        deleteUI  $windowName;
+    
+    $mainWindow = `window -title "Display Color Override"
+                          -rtf 1
+                          -sizeable 0
+                          $windowName`;
+    
+    $mainLayout = `formLayout -parent $mainWindow`;
+    
+    $columns = $maxOverrideColors / 2;
+    $rows = 2;
+    $cellWidth = 17;
+    $cellHeight = 17;
+    
+    // Create a color palette with all of the available override colors
+    $colorPalette = `palettePort -dimensions $columns $rows
+                                 -transparent 0
+                                 -width ($columns * $cellWidth)
+                                 -height ($rows * $cellHeight)
+                                 -topDown 1
+                                 -colorEditable 0`;
+    
+    // Match the color palette to the color index values
+    for ($index = 1; $index < $maxOverrideColors; ++$index) {
+        $colorComponent = `colorIndex -q $index`;
+        palettePort -e 
+                    -rgbValue $index $colorComponent[0] $colorComponent[1] $colorComponent[2]
+                    $colorPalette;
+    }
+    
+    palettePort -e -rgbValue 0 0.6 0.6 0.6 $colorPalette;
+    
+    
+    // Create the Override and Default buttons
+    $overrideButton = `button -label "Override"
+                              -command ("czDisplayColorOverride(`palettePort -q -setCurCell " + $colorPalette + "`)")
+                              -parent $mainLayout`;
+    
+    $defaultButton = `button -label "Default"
+                             -command "czDisplayColorOverride(-1)"
+                             -parent $mainLayout`;
+    
+    
+    // Layout the Color Palette
+    formLayout -e -attachForm $colorPalette "top" $formOffset $mainLayout;
+    formLayout -e -attachForm $colorPalette "left" $formOffset $mainLayout;
+    formLayout -e -attachForm $colorPalette "right" $formOffset $mainLayout;
+    
+    // Layout the Override and Default buttons
+    formLayout -e -attachControl $overrideButton "top" $formOffset $colorPalette $mainLayout;
+    formLayout -e -attachForm $overrideButton "left" $formOffset $mainLayout;
+    formLayout -e -attachPosition $overrideButton "right" 0 50 $mainLayout;
+    
+    formLayout -e -attachOppositeControl $defaultButton "top" 0 $overrideButton $mainLayout;
+    formLayout -e -attachControl $defaultButton "left" 0 $overrideButton $mainLayout;
+    formLayout -e -attachForm $defaultButton "right" $formOffset $mainLayout;
+    
+    showWindow $mainWindow;
+}

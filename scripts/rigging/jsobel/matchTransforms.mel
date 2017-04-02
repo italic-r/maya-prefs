@@ -1,0 +1,8 @@
+proc matchTrans() {
+
+string $parCon2[] = `parentConstraint`;
+delete $parCon2[0];
+
+}
+
+matchTrans();

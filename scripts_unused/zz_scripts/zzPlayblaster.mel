@@ -1,0 +1,342 @@
+/*  This file downloaded from Highend3d.com
+''
+''  Highend3d.com File Information:
+''
+''    Script Name: zzPlayblaster v1.4
+''    Author: Hamish McKenzie
+''    Last Updated: June 24, 2003
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=animation#1314
+''
+''  History:
+''    zzPlayblaster v1.4 on June 24, 2003 by Hamish McKenzie
+''    clean playblaster v1.1 on October 16, 2001 by Hamish McKenzie
+''
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+
+
+
+
+
+//
+// playblast visibility marking menu
+//
+// Created by Hamish McKenzie www.emissionpossible.com
+// Created : 15 October 2001
+//
+// Description:
+// basically a script to help making playblasts a little less
+// painful.  brings up a marking menu enabling you to specify
+// what is visible when a playblast is done.  default settings
+// are polys, nurbs and subdivision surfaces.
+//
+// Usage:
+//  assign this function to a key press:
+//	zzPlayblaster;
+//
+//  assign this function to the release;
+//	if( `popupMenu -exists tempMM` ) { deleteUI tempMM; }
+//
+// NOTE: if the hotkey you want to assign this script to contains
+// either ctrl, alt or shift, then modify the "popupMenu" line below
+// to reflect which key is used (ie if you're using alt-w then
+// change it to -alt 1).
+//
+// Hamish McKenzie ©2007...
+
+
+global proc zzPlayblaster() {
+	if( `popupMenu -ex tempMM` )deleteUI tempMM;
+
+	string $menuFlags = "{ \"-nurbsCurves\",\"-nurbsSurfaces\",\"-polymeshes\",\"-subdivSurfaces\",\"-planes\",\"-lights\",\"-cameras\",\"-controlVertices\",\"-grid\",\"-hulls\",\"-joints\",\"-ikHandles\",\"-deformers\",\"-dynamics\",\"-locators\",\"-dimensions\",\"-handles\",\"-pivots\",\"-textures\",\"-strokes\" }";
+	popupMenu -ctl 0 -alt 0 -sh 1 -mm 1 -b 1 -aob 1 -p viewPanes -pmc ( "zzPlayblasterMM " + $menuFlags ) tempMM;
+	}
+
+
+global proc zzPlayblasterMM( string $menuFlags[] ) {
+	string $menuItems[] = { "NURBS Curves","NURBS Surfaces","Polygons","Subdivs","Planes","Lights","Cameras","CVs","Grid","Hulls","Joints","ik Handles","Deformers","Dynamics","Locators","Dimensions","Handles","Pivots","Textures","Strokes" };
+	string $currentPanel = `getPanel -wf`;
+	string $menuFlagsString = "{";
+	int $userMenuStates[] = ( `optionVar -exists zzPBStatePref` )?`optionVar -q zzPBStatePref`:`zzPlayblasterCreatePrefs $menuFlags`;
+	int $currentMenuStates[] = `zzPlayblasterGetState $menuFlags`;
+	int $n = 0;
+
+	if( `popupMenu -ex tempMM` ) menu -e -deleteAllItems tempMM;
+	menuItem -l "zzPlayblaster UI" -c ( "zzPlayblasterUI " + `zzPlayblasterStringFromArray $menuFlags` ) -rp "E";
+	menuItem -l "create playblast" -command ( "zzPlayblasterDo " + `zzPlayblasterStringFromArray $menuFlags` ) -rp "N";
+		menuItem -optionBox 1 -annotation "Set Options Box" -label "Set Options Box" -command ( "performPlayblast 4" );
+	menuItem -l "Default Settings" -command ( "zzPlayblasterSetDefaults " + `zzPlayblasterStringFromArray $menuFlags` );
+	menuItem -divider 1;
+
+	for ( $n = 0; $n < `size $menuFlags`; $n++ ) {
+		menuItem -l $menuItems[$n]	-command ( "zzPlayblasterChangePrefs " + $n ) -checkBox $userMenuStates[$n];
+		}
+
+	menuItem -divider 1;
+	menuItem -l "Help..." -c ( "zzPlayblasterHelp help" );
+	menuItem -l "About" -c ( "zzPlayblasterHelp about" );
+	}
+
+
+global proc zzPlayblasterUI( string $menuFlags[] ) {
+	string $windowName = "zzPlayblasterWindow";
+	string $windowTitle = "zzPlayblaster v" + `zzPlayblasterInfo version` + "   ::macaroniKazoo::";
+	string $menuItems[] = { "NURBS Curves","NURBS Surfaces","Polygons","Subdivs","Planes","Lights","Cameras","CVs","Grid","Hulls","Joints","ik Handles","Deformers","Dynamics","Locators","Dimensions","Handles","Pivots","Textures","Strokes" };
+	string $layers[] = `ls -type displayLayer`;
+	int $userMenuStates[] = ( `optionVar -exists zzPBStatePref` )?`optionVar -q zzPBStatePref`:`zzPlayblasterCreatePrefs $menuFlags`;
+
+	if ( `window -exists $windowName` ) { deleteUI $windowName; }
+
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0 -sizeable 1 -widthHeight 330 250 $windowName;
+		menuBarLayout;
+			menu -label "Operations";
+				menuItem -l "Make Playblast..." -c ( "deleteUI " + $windowName + "; zzPlayblasterDo " + `zzPlayblasterStringFromArray $menuFlags` );
+			menu -label "Help";
+				menuItem -l "Help..." -c ( "zzPlayblasterHelp help" );
+				menuItem -divider 1;
+				menuItem -l "About" -c ( "zzPlayblasterHelp about" );
+
+			columnLayout -adjustableColumn 1;
+				rowColumnLayout -numberOfColumns 2
+					-columnWidth 1 140
+					-columnWidth 2 20;
+					button -height 20 -l "pre Command" -c ( "zzPlayblasterCommandFunctions window Pre" );
+					palettePort -ed 0 -dim 1 1 -height 20 -rgb 0 1 0 0 zzPlayblasterPalettePre;
+
+					button -height 20 -l "post Command" -c ( "zzPlayblasterCommandFunctions window Post" );
+					palettePort -ed 0 -dim 1 1 -height 20 -rgb 0 1 0 0 zzPlayblasterPalettePost;
+					setParent ..;
+
+				/*rowLayout -numberOfColumns 2
+					-columnWidth2 180 145
+					-columnAttach 1 "both" 	0
+					-columnAttach 2 "both"  0;*/
+					frameLayout -label "Component Vis" -labelAlign bottom -collapse 0 -collapsable 0;
+						columnLayout -adjustableColumn 1;
+							for ( $n = 0; $n <`size $menuFlags`; $n++ ) checkBox -l $menuItems[$n] -align "left" -v $userMenuStates[$n] -cc ( "zzPlayblasterChangePrefs " + $n );
+							setParent ..;
+						setParent ..;
+
+					/*frameLayout -label "Layer Vis" -labelAlign bottom -collapse 0 -collapsable 0;
+						columnLayout -adjustableColumn 1;
+							for ( $n = 1; $n <`size $layers`; $n++ ) checkBox -l $layers[$n] -align "left" -v `getAttr ( $layers[$n] + ".visibility" )` -cc ( "zzPlayblasterChangePrefs " + $n );
+							setParent ..;
+						setParent ..;
+					setParent ..;*/
+
+				button -height 20 -l "Make Playblast" -c ( "deleteUI " + $windowName + "; zzPlayblasterDo " + `zzPlayblasterStringFromArray $menuFlags` );
+				setParent ..;
+
+	showWindow $windowName;
+	zzPlayblasterWindowFunctions update;
+	}
+
+
+global proc zzPlayblasterWindowFunctions( string $function ) {
+	switch ( $function ) {
+		case "update":
+		if( `objExists zzPlayblaster.PreCommand` ) palettePort -e -redraw -rgb 0 0 1 0 zzPlayblasterPalettePre;
+		else palettePort -e -redraw -rgb 0 0.831 0.816 0.784 zzPlayblasterPalettePre;
+		if( `objExists zzPlayblaster.PostCommand` ) palettePort -e -redraw -rgb 0 0 1 0 zzPlayblasterPalettePost;
+		else palettePort -e -redraw -rgb 0 0.831 0.816 0.784 zzPlayblasterPalettePost;
+		break;
+		}
+	}
+
+
+global proc zzPlayblasterCommandFunctions ( string $function, string $type ) { //$type is either Post or Pre
+	string $windowName = "zzPlayblasterCommandWindow";
+	string $windowTitle = ( $type + " Command" );
+	string $optionVarName = ( "zzPBCommandString" + $type );
+	string $commandString = "";
+
+	switch ( $function ) {
+		case "window":
+		if ( `objExists ( "zzPlayblaster." + $type + "Command" )` ) $commandString = `getAttr ( "zzPlayblaster." + $type + "Command" )`;
+		if ( `window -exists $windowName` ) { deleteUI $windowName; }
+		window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0
+			-sizeable 1 -width 400 $windowName;
+
+			columnLayout -adjustableColumn true -rowSpacing 7;
+				rowLayout -numberOfColumns 4
+					-columnWidth4 130 330 35 40
+					-columnAttach 1 "both" 	1
+					-columnAttach 2 "both" 	1
+					-columnAttach 3 "both" 	1
+					-columnAttach 4 "both" 	0;
+					text -label ( $type + "Playblast Command:" );
+					textField -ed 1 -text $commandString -cc ( "zzPlayblasterCommandFunctions update " + $type ) ( $type + "CommandText" );
+					button -height 20 -label "close" -c ( "deleteUI " + $windowName );
+					button -height 20 -label "delete" -c ( "zzPlayblasterCommandFunctions delete " + $type );
+					setParent ..;
+				setParent ..;
+
+		showWindow $windowName;
+		zzPlayblasterCommandFunctions update $type;
+		break;
+
+
+		case "update":
+		string $command = `textField -q -text ( $type + "CommandText" )`;
+		if( $command != "" ) {
+			if( `objExists zzPlayblaster` ) {
+				if( `objExists ( "zzPlayblaster." + $type + "Command" )`) setAttr -type "string" ( "zzPlayblaster." + $type + "Command" ) $command;
+				else {
+					addAttr -dt "string" -ln ( $type + "Command" ) zzPlayblaster;
+					setAttr -type "string" ( "zzPlayblaster." + $type + "Command" ) $command;
+					}
+				}
+			else {
+				createNode unknown -n zzPlayblaster;
+				addAttr -dt "string" -ln ( $type + "Command" ) zzPlayblaster;
+				setAttr -type "string" ( "zzPlayblaster." + $type + "Command" ) $command;
+				}
+
+			palettePort -e -redraw -rgb 0 0 1 0 ( "zzPlayblasterPalette" + $type );
+			}
+		break;
+
+
+		case "delete":
+		deleteAttr -at ( $type + "Command" ) zzPlayblaster;
+		if( size( `listAttr -ud zzPlayblaster` ) == 0 ) delete zzPlayblaster;
+		palettePort -e -redraw -rgb 0 0.831 0.816 0.784 ( "zzPlayblasterPalette" + $type );
+		deleteUI $windowName;
+		break;
+		}
+	}
+
+
+global proc int[] zzPlayblasterGetState( string $menuFlags[] ) {
+	string $currentPanel = `getPanel -wf`;
+	int $currentMenuStates[] = {};
+	int $n = 0;
+
+	for( $n = 0; $n < `size $menuFlags`; $n++ ) $currentMenuStates[$n] = `modelEditor -q $menuFlags[$n] $currentPanel`;
+	return $currentMenuStates;
+	}
+
+
+global proc int[] zzPlayblasterCreatePrefs( string $menuFlags[] ) {
+	string $currentPanel = `getPanel -wf`;
+	int $currentMenuStates[] = {};
+	int $n = 0;
+
+	optionVar -clearArray zzPBStatePref;
+	for( $n = 0; $n < `size $menuFlags`; $n++ ) {
+		int $state = `modelEditor -q $menuFlags[$n] $currentPanel`;
+		optionVar -iva zzPBStatePref $state;
+		$currentMenuStates[$n] = $state;
+		}
+
+	return $currentMenuStates;
+	}
+
+
+global proc zzPlayblasterSetDefaults( string $menuFlags[] ) {
+	string $currentPanel = `getPanel -wf`;
+	int $userMenuStates[] = {};
+	int $n = 0;
+
+	for ( $n = 0; $n < `size $menuFlags`; $n++ ) $userMenuStates[$n] = `modelEditor -q $menuFlags[$n] $currentPanel`;
+	optionVar -clearArray zzPBStatePref;
+	for ( $n = 0; $n < `size $userMenuStates`; $n++ ) optionVar -iva zzPBStatePref $userMenuStates[$n];
+	}
+
+
+global proc zzPlayblasterChangePrefs( int $flagNumber ) {
+	int $userMenuStates[] = `optionVar -q zzPBStatePref`;
+	int $n = 0;
+
+	$userMenuStates[$flagNumber] = !$userMenuStates[$flagNumber];
+	optionVar -clearArray zzPBStatePref;
+	for ( $n = 0; $n < `size $userMenuStates`; $n++ ) optionVar -iva zzPBStatePref $userMenuStates[$n];
+	}
+
+
+global proc zzPlayblasterDo( string $menuFlags[] ) {
+	string $currentPanel = `getPanel -wf`;
+	string $currentSelection[] = `ls -sl`;
+	int $userMenuStates[] = ( `optionVar -exists zzPBStatePref` )?`optionVar -q zzPBStatePref`:`zzPlayblasterCreatePrefs $menuFlags`;
+	int $currentMenuStates[] = `zzPlayblasterGetState $menuFlags`;
+	int $n = 0;
+
+	select -cl;
+	for ( $n = 0; $n < `size $menuFlags`; $n++ ) modelEditor -e $menuFlags[$n] $userMenuStates[$n] $currentPanel;
+	if( `objExists zzPlayblaster.PreCommand` ) eval( `getAttr zzPlayblaster.PreCommand` );
+	print ( "you will be returned to your regular program shortly\n" );
+	performPlayblast 3;
+
+	// this code returns the panel to its initial view modes.
+	for ( $n = 0; $n < `size $menuFlags`; $n++ ) modelEditor -e $menuFlags[$n] $currentMenuStates[$n] $currentPanel;
+	select $currentSelection;
+	if( `objExists zzPlayblaster.PostCommand` ) eval( `getAttr zzPlayblaster.PostCommand` );
+	print ( "view state returned to normal\n" );
+	}
+
+
+global proc string zzPlayblasterStringFromArray( string $array[] ) {
+	string $returnString = "{";
+
+	for ( $entry in $array ) $returnString = $returnString + "\"" + $entry + "\",";
+	int $temp = `size $returnString` - 1;
+	$returnString = `substring $returnString 1 $temp`;
+	$returnString = $returnString + "}";
+	return $returnString;
+	}
+
+
+global proc zzPlayblasterHelp ( string $function ) {
+	string $windowName = "zzPlayblasterAbout";
+	string $windowTitle = "About zzPlayblaster v" + `zzPlayblasterInfo version` + "   ::macaroniKazoo::";
+	string $aboutScript = "Overview:\nthis script will record a custom \"show\" menu preset when creating playblasts.  It allows you to automatically turn on/off any setting in the show menu for the duration of the playblast.  Pre playblast conditions are then restored once the playblast is finished.\n\nPre/Post Commands:\nThese allow custom mel code to be run both before and after the playblast has been created.  This can be useful for controlling visibility of layers, or specific objects.  Pre/Post commands are saved with the scene they were set in.  They're stored on a node called zzPlayblaster as custom string attributes.";
+	string $aboutAuthor = "Version: " + `zzPlayblasterInfo version` + "\nCreation Date: " + `zzPlayblasterInfo created` + "\nLast Modified: " + `zzPlayblasterInfo modified` + "\n\nzzPlayblaster was written by Macaroni Kazoo Productions  www.macaronikazoo.com\n\n" + `zzPlayblasterInfo history`;
+	int $selTab = ( $function == "about" )?2:1;
+
+	if ( `window -exists $windowName` ) { deleteUI $windowName; }
+
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0 -sizeable 0 -widthHeight 330 350 $windowName;
+
+		 string $form = `formLayout`;
+		 string $tabs = `tabLayout -innerMarginWidth 5 -innerMarginHeight 5`;
+		 formLayout -edit
+			-attachForm $tabs "top"    0
+			-attachForm $tabs "left"   0
+			-attachForm $tabs "bottom" 0
+			-attachForm $tabs "right"  0
+			$form;
+
+			string $child1 = `paneLayout -configuration "single"`;
+				scrollField -ed 0 -wordWrap 1 -font plainLabelFont -w 300 -h 200 -numberOfLines 15 -text $aboutScript;
+				setParent ..;
+
+			string $child2 = `paneLayout -configuration "single"`;
+				scrollField -ed 0 -wordWrap 1 -font plainLabelFont -w 300 -h 200 -numberOfLines 15 -text $aboutAuthor;
+				setParent ..;
+
+			tabLayout -e -selectTabIndex $selTab -tabLabel $child1 "Script Loader Help" -tabLabel $child2 "About Script Loader" $tabs;
+
+	showWindow $windowName;
+	}
+
+
+global proc string zzPlayblasterInfo ( string $function ) {
+	string $creationDate = "15 October 2001";
+	string $lastRevision = "25 June 2003";
+	string $revisionHistory = "v1.42\n25-06-03 The Pre and Post commands are now stored in a node called zzPlayblaster so that it is stored with the scene, instead of globally.  I might add an option to store with either the scene, or in an optionVar for v1.5\n\nv1.41\n25-06-03 added pre and post playblast commands, as well as adding a UI window, which is useful for when you have to change lots of visibility components at once.\n\nv1.0\n15-10-01 initial version of zzPlayblaster.  Back then it was simply called zzPlayblast.";
+	string $info = "";
+	float $currentVersion = 1.42;
+
+	if ( $function == "created" ) $info = $creationDate;
+	if ( $function == "modified" ) $info = $lastRevision;
+	if ( $function == "history" ) $info = $revisionHistory;
+	if ( $function == "version" ) $info = $currentVersion;
+	return $info;
+	}
+
+
+//zz.end

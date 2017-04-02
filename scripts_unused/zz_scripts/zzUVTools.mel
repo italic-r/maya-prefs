@@ -1,0 +1,474 @@
+   //
+// uv tools
+//
+// Created by Hamish McKenzie www.emissionpossible.com
+// Created : 21 April 2002
+//
+// Description:
+// uv tools is a bunch of scripts cobbled together in an interface
+// UV Spinning
+// cycles uvs around their own shape.  Useful for game artists, needing
+// to spin uvs, not rotate them.  basically, it takes a starting uv, and
+// puts it in the same position as the next uv along the edge of the
+// selected face.
+//   2-3	              1-2
+// 1/   \4  becomes: 6/   \3
+//  \   /             \   /
+//   6-5	              5-4
+//
+// Usage:
+//  either run this command, or assing it to a hotkey
+//	zzFaceUVCycle;
+//
+// Hamish McKenzie ©2007...
+// Macaroni Kazoo Productions ©2007...
+
+
+global proc zzUVTools() {
+	string $windowName = "zzUVToolsWindow";
+	string $windowTitle = "UV Tools v" + `zzUVToolsInfo version` + "   ::macaroniKazoo::";
+	if ( `window -exists $windowName` ) { deleteUI $windowName; }
+
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0
+		-sizeable 1 -width 400 $windowName;
+
+		menuBarLayout;
+			menu -label "Help";
+				menuItem -l "Help..." -c ( "zzUVToolsHelp help" );
+				menuItem -divider 1;
+				menuItem -l "About" -c ( "zzUVToolsHelp about" );
+
+			columnLayout -adjustableColumn true -rowSpacing 7;
+				frameLayout -label "Face Ops" -labelAlign "center" -collapsable 1 -collapse 0;
+					rowLayout -numberOfColumns 2 -rowAttach 2 both 0
+						//-columnWidth2 120 80
+						-columnAttach 1 "left" 	0
+						-columnAttach 2 "right" 0;
+						columnLayout -rowSpacing 5;
+							checkBox -label "Cut Edges" -v 1 zzUVToolsCheckCutEdge;
+							checkBox -label "Anti-clockwise" -v 0 zzUVToolsCheckAntiClock;
+							checkBox -label "Convert Selection" -v 0 zzUVToolsCheckConvert;
+							setParent ..;
+						columnLayout -rowSpacing 5 -columnAttach both 0;
+							button -label "Spin UVs" -align center -c "zzUVToolsFunctionSelector UVSpin";
+							setParent ..;
+						setParent ..;
+					setParent ..;
+					/*frameLayout -label "" -collapsable 0 -collapse 0 -borderStyle "in";
+						rowLayout -numberOfColumns 2 -rowAttach 2 both 0
+							//-columnWidth2 120 80
+							-columnAttach 1 "left" 	0
+							-columnAttach 2 "right" 0;
+							columnLayout -rowSpacing 5;
+								checkBox -label "remap" -v 1 zzUVToolsCheckRemap;
+								checkBox -label "temp" -v 0;
+								setParent ..;
+							columnLayout -rowSpacing 5 -columnAttach both 0;
+								button -label "Face Strip" -align center -c "zzUVToolsFunctionSelector UVStripper";
+								setParent ..;
+							setParent ..;
+						setParent ..;
+					setParent ..;
+
+				frameLayout -label "UV Ops" -labelAlign "center" -collapsable 1 -collapse 1 -borderStyle "etchedOut";
+					columnLayout -rowSpacing 5;
+						text -align "left" -label "nothing here yet...";
+						setParent ..;
+					setParent ..;
+				frameLayout -label "Selection Independant Tools" -labelAlign "center" -collapsable 1 -collapse 1 -borderStyle "etchedOut";
+					columnLayout -rowSpacing 5;
+						text -align "left" -label "nothing here yet...";
+						setParent ..;
+					setParent ..;
+				setParent ..;*/
+
+	showWindow $windowName;
+	}
+
+
+global proc zzUVToolsFunctionSelector ( string $function ) {
+	int $filterVert = 31;
+	int $filterEdge = 32;
+	int $filterFace = 34;
+	int $filterUVs = 35;
+	switch ( $function ) {
+		case "UVSpin":
+		//list selected poly faces (sm 34).  selection type is faces only
+		string $selObjs[] = `ls -sl`;
+		string $selFaces[] = `filterExpand -ex 1 -sm $filterFace`;
+		string $selAll[] = `ls -sl -fl`;
+		if ( `checkBox -q -v zzUVToolsCheckConvert` ) {
+			if ( `size $selAll` != `size $selFaces` ) {
+				clear $selFaces;
+				string $temp[] = `polyListComponentConversion -toFace`;
+				$selFaces = `filterExpand -ex 1 -sm $filterFace $temp`;
+				}
+			else print ( "you only have faces selected\n" );
+			}
+
+		constructionHistory -toggle 0;
+		for ( $face in $selFaces ) {
+			zzUVSpinner $face;
+			}
+
+		constructionHistory -toggle 1;
+		setComponentPickMask "Facet" true;
+		setComponentPickMask "Line" false;
+		select $selObjs;
+		break;
+
+
+		case "UVStripper":
+		string $selObjs[] = `ls -sl`;
+		string $selFaces[] = `getSelectionInOrder`;
+		string $prevLoop[] = {};
+		string $prevEdge;
+
+		//***debugging-print out selection order nb:the order gets reset after an undo!
+		string $printString = "Sel Faces ---->";
+		for ( $face in $selFaces ) {
+			$printString = ( $printString + "  " + $face );
+			}
+		print ( $printString + "\n" );
+
+		//first edge detection-gets the name of the edge shared by first two selected faces, and gets opposite edge
+		string $startEdge;
+		string $startFaceEdgeLoop[] = {};
+		string $tempList[] = {};
+
+		clear $tempList;
+		$tempList = `polyListComponentConversion -toEdge $selFaces[0]`;
+		string $face01Edges[] = `filterExpand -ex 1 -sm $filterEdge $tempList`;
+
+		clear $tempList;
+		$tempList = `polyListComponentConversion -toEdge $selFaces[1]`;
+		string $face02Edges[] = `filterExpand -ex 1 -sm $filterEdge $tempList`;
+
+		for ( $edge01 in $face01Edges ) {
+			print ( "----> outerLoop action: " + $edge01 + "<----\n" );
+			for ( $edge02 in $face02Edges ) {
+				print ( "innerLoop action: " + $edge02 + "---\n" );
+				if ( $edge01 == $edge02 ) $startEdge = $edge01;
+				}
+			}
+
+		//now get the edge loop, and take the opposite edge.  this edge now becomes prevEdge for the starting face
+		$startFaceEdgeLoop = `zzUVToolsFaceCycle $selFaces[0] $startEdge`;
+		$startEdge = $startFaceEdgeLoop[2];
+		$prevEdge = "none";
+		constructionHistory -toggle 0;
+
+		//first make sure all faces have their uv edges cut
+		/*
+		for ( $face in $selFaces ) {
+			polyMapCut -constructionHistory 0 `polyListComponentConversion -toEdge $face`;
+			}
+		setComponentPickMask "Facet" true;
+		setComponentPickMask "Line" false;
+		select $selFaces;
+		*/
+
+		//this loop deals with going through the selected faces, and keeping track of previous edges, etc
+		for ( $face in $selFaces ) {
+			print ( "current face: " + $face + "  previous Edge: " + $prevEdge + "\n" );
+			$prevEdge = `zzUVToolsStripper $face $prevEdge $startEdge`;
+			}
+
+		constructionHistory -toggle 1;
+		setComponentPickMask "Facet" true;
+		setComponentPickMask "Line" false;
+		select $selObjs;
+		break;
+		}
+	}
+
+
+//this function takes a face and a previous edge, and figures out how to orient the face's uvs.  it then returns the edge along which it was stripped
+global proc string zzUVToolsStripper ( string $face, string $prevEdge, string $startEdge ) {
+		int $filterVert = 31;
+		int $filterEdge = 32;
+		int $filterFace = 34;
+		int $filterUVs = 35;
+
+		string $prevLoop[] = {};
+		string $tempList[] = `polyListComponentConversion -toEdge $face`;
+		string $faceEdges[] = `filterExpand -ex 1 -sm $filterEdge $tempList`;
+		string $stripEdge = "";
+
+		//only continue if we're dealing with 4 sided faces
+		if ( `size $faceEdges` == 4 ) {
+			polyForceUV -unitize $face;
+
+			string $faceUVs[] = `polyListComponentConversion -toUV $face`;
+			//if this is not the first face (ie there is no previous edge) determine where on the loop the current face is
+			if ( $prevEdge != "none" ) {
+				int $orient = 1;
+				int $i = 1;
+				int $uOffset = 0;
+				int $vOffset = 0;
+				int $uMult = 1;
+				int $vMult = 1;
+				$prevLoop = `zzUVToolsFaceCycle $face $prevEdge`;
+				for ( $edge01 in $prevLoop ) {
+					for ( $edge02 in $faceEdges ) {
+						if ( $edge01 == $edge02 ) { $orient = $i; $stripEdge = $edge01; }
+						$i++;
+						}
+					}
+
+				//if ( $orient == 1 ) { $uMult = -1; $uOffset++; }  //theoretically, orient can't be 1
+				if ( $orient == 2 ) { $vMult = 1; $vOffset++; }
+				if ( $orient == 3 ) { $uMult = 1; $uOffset++; }
+				if ( $orient == 4 ) { $vMult = -1; $vOffset++; }
+				polyEditUV -r 1 -u ( $uOffset * $uMult ) -v ( $vOffset * $vMult ) $faceUVs;
+				}
+
+			else $stripEdge = $startEdge;
+			}
+		else warning "stripping only works with quads";
+
+	print ( "stripEdge = " + $stripEdge );
+	return $stripEdge;
+	}
+
+
+global proc zzUVSpinner ( string $face ) {
+	int $filterVert = 31;
+	int $filterEdge = 32;
+	int $filterFace = 34;
+	int $filterUVs = 35;
+	string $temp[] = {};
+
+	clear $temp;
+	$temp = `polyListComponentConversion -toEdge $face`;
+	string $faceEdges[] = `filterExpand -ex 1 -sm $filterEdge $temp`;
+	if ( `checkBox -q -v zzUVToolsCheckCutEdge` ) {
+		$tempSel = `ls -sl`;
+		polyMapCut -constructionHistory 0 $faceEdges;
+		select $tempSel;
+		}
+
+	clear $temp;
+	$temp = `polyListComponentConversion -toVertex $face`;
+	string $faceVerts[] = `filterExpand -ex 1 -sm $filterVert $temp`;
+
+	clear $temp;
+	$temp = `polyListComponentConversion -toUV $face`;
+	string $faceUVs[] = `filterExpand -ex 1 -sm $filterUVs $temp`;
+	string $vertList[] = {};
+	string $UVList[] = {};
+
+	string $startEdge = $faceEdges[0];
+	clear $temp;
+	$temp = `polyListComponentConversion -toVertex $startEdge`;
+	string $startEdgeVerts[] = `filterExpand -ex 1 -sm $filterVert $temp`;
+	string $startVert = $startEdgeVerts[0];
+	string $vert1 = $startEdgeVerts[1];
+	string $prevEdge = $startEdge;
+
+	$vertList[0] = $startVert;
+
+	//this while loop gives us a cyclical vertex numbers of the current face
+	while ( $startVert != $vert1 ) {
+		int $nextListNum = `size $vertList`;
+		$vertList[$nextListNum] = $vert1;
+
+		clear $temp;
+		$temp = `polyListComponentConversion -toEdge $vert1`;
+		string $connectedEdges[] = `filterExpand -ex 1 -sm $filterEdge $temp`;
+		string $containedEdges[] = `zzFaceUVContainedEdges $faceEdges $connectedEdges`;
+		string $newEdge;
+		string $newVerts[] = {};
+
+		$newEdge = ( $containedEdges[0] != $prevEdge ) ?$containedEdges[0]:$containedEdges[1];
+		clear $temp;
+		$temp = `polyListComponentConversion -toVertex $newEdge`;
+		$newVerts = `filterExpand -ex 1 -sm $filterVert $temp`;
+		$vert1 = ( $newVerts[0] != $vert1 ) ?$newVerts[0]:$newVerts[1];
+		$prevEdge = $newEdge;
+		}
+
+	//now convert these verticies into UVs that exist on the current face
+	int $n = 0;
+	for ( $n; $n < `size $vertList`; $n++ ) {
+		clear $temp;
+		$temp = `polyListComponentConversion -toUV $vertList[$n]`;
+		string $vertUVs[] = `filterExpand -ex 1 -sm $filterUVs $temp`;
+
+		$UVList[$n] = `zzFaceUVContainedUVs $face $vertUVs`;
+		}
+
+	//now get the positions of each UV, and cycle them around
+	vector $UVPosList[] = {};
+	int $UVListSize = `size $UVList`;
+	$n = 0;
+	for ( $n; $n < $UVListSize; $n++ ) {
+		float $UVCoords[] = `polyEditUV -q $UVList[$n]`;
+		$UVPosList[$n] = << $UVCoords[0], $UVCoords[1], 0 >>;
+		}
+
+	//now go back and move the UVs to their cycled position
+	$n = 0;
+	for ( $n; $n < $UVListSize; $n++ ) {
+		//if ( `checkBox -q -v zzUVToolsCheckAntiClock` ) $uvVector = $UVPosList[( $UVListSize - $n )];
+		//else $uvVector = $UVPosList[( ($n + 1) % $UVListSize )];
+		$uvVector = $UVPosList[( ($n + 1) % $UVListSize )];
+		$uPos = $uvVector.x;
+		$vPos = $uvVector.y;
+		eval ( "polyEditUV -r 0 -u " + $uPos + " -v " + $vPos + " " + $UVList[$n] );
+		}
+	}
+
+
+//returns an ordered loop of edges, given a starting edge (this is used for the direction of the loop)
+global proc string[] zzUVToolsFaceCycle ( string $face, string $firstEdge ) {
+	int $filterVert = 31;
+	int $filterEdge = 32;
+	int $filterFace = 34;
+	int $filterUVs = 35;
+	string $temp[] = {};
+
+	clear $temp;
+	$temp = `polyListComponentConversion -toEdge $face`;
+	string $faceEdges[] = `filterExpand -ex 1 -sm $filterEdge $temp`;
+
+	clear $temp;
+	$temp = `polyListComponentConversion -toVertex $face`;
+	string $faceVerts[] = `filterExpand -ex 1 -sm $filterVert $temp`;
+
+	clear $temp;
+	$temp = `polyListComponentConversion -toUV $face`;
+	string $faceUVs[] = `filterExpand -ex 1 -sm $filterUVs $temp`;
+	string $vertList[] = {};
+	string $edgeList[] = {};
+	string $UVList[] = {};
+
+	string $startEdge = ( $firstEdge != "none" ) ? $firstEdge:$faceEdges[0];
+	clear $temp;
+	$temp = `polyListComponentConversion -toVertex $startEdge`;
+	string $startEdgeVerts[] = `filterExpand -ex 1 -sm $filterVert $temp`;
+	string $startVert = $startEdgeVerts[0];
+	string $vert1 = $startEdgeVerts[1];
+	string $prevEdge = $startEdge;
+
+	$vertList[0] = $startVert;
+	$edgeList[0] = $startEdge;
+
+	//this while loop gives us a cyclical vertex numbers of the current face
+	while ( $startVert != $vert1 ) {
+		int $nextListNum = `size $vertList`;
+
+		clear $temp;
+		$temp = `polyListComponentConversion -toEdge $vert1`;
+		string $connectedEdges[] = `filterExpand -ex 1 -sm $filterEdge $temp`;
+		string $containedEdges[] = `zzFaceUVContainedEdges $faceEdges $connectedEdges`;
+		string $newEdge;
+		string $newVerts[] = {};
+
+		$newEdge = ( $containedEdges[0] != $prevEdge ) ?$containedEdges[0]:$containedEdges[1];
+		$vertList[$nextListNum] = $vert1;
+		$edgeList[$nextListNum] = $newEdge;
+
+		clear $temp;
+		$temp = `polyListComponentConversion -toVertex $newEdge`;
+		$newVerts = `filterExpand -ex 1 -sm $filterVert $temp`;
+		$vert1 = ( $newVerts[0] != $vert1 ) ?$newVerts[0]:$newVerts[1];
+		$prevEdge = $newEdge;
+		}
+
+	return $edgeList;
+	}
+
+
+global proc string[] zzFaceUVContainedEdges ( string $faceEdges[], string $testEdgeList[] ) {
+	string $returnList[] = {};
+	int $filterVert = 31;
+	int $filterEdge = 32;
+	int $filterFace = 34;
+	int $filterUVs = 35;
+	int $n = 0;
+
+	for ( $edge in $faceEdges ) {
+		for ( $testEdge in $testEdgeList ) {
+			if ( $edge == $testEdge ) {
+				$returnList[$n] = $edge;
+				$n++;
+				}
+			}
+		}
+
+	return $returnList;
+	}
+
+
+global proc string zzFaceUVContainedUVs ( string $face, string $UVList[] ) {
+	int $filterVert = 31;
+	int $filterEdge = 32;
+	int $filterFace = 34;
+	int $filterUVs = 35;
+	string $returnString;
+	string $temp[] = `polyListComponentConversion -toUV $face`;
+	string $faceUVs[] = `filterExpand -ex 1 -sm $filterUVs $temp`;
+
+	for ( $testUV in $UVList ) {
+		for ( $UV in $faceUVs ) {
+			if ( $UV == $testUV ) {
+				$returnString = $UV;
+				}
+			}
+		}
+
+	return $returnString;
+	}
+
+
+global proc zzUVToolsHelp ( string $function ) {
+	string $windowName = "zzUVToolsAbout";
+	string $windowTitle = "About UVTools v" + `zzUVToolsInfo version` + "   ::macaroniKazoo::";
+	string $aboutScript = "Overview:\nUVTools at the moment is a simple UV face spinning script, which will spin the uv mapping on a face, like so:\n   2-3	              1-2\n 1/   \\4  becomes: 6/   \\3\n  \\   /             \\   /\n   6-5	              5-4\n\nIn all likelihood it will be extended to include a few more tools as well.\n\nCut Edges:\nThis option will automatically cut the edges of the selected face, so that the uv spinning doesn't affect connected faces.  Generally its a good idea for this to be on.\n\nAnti-Clockwise:\nThis will just spin the face in the opposite direction to what it would be if this option were un checked...\n\nConvert Selection:\nThis will automatically convert the currently selected component type to faces when doing the spinning calculation.  If this is unchecked and the selection type isn't faces, nothing will happen.\n\nHotkey Command:\nIf you wish to assign this command to a hotkey instead of using the UI, use the command:\nzzFaceUVCycle;";
+	string $aboutAuthor = "Version: " + `zzUVToolsInfo version` + "\nCreation Date: " + `zzUVToolsInfo created` + "\nModified: " + `zzUVToolsInfo modified` + "\n\nUVTools was written by Hamish McKenzie.\n\n" + `zzUVToolsInfo history`;
+	int $selTab = ( $function == "about" )?2:1;
+
+	if ( `window -exists $windowName` ) { deleteUI $windowName; }
+
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0 -sizeable 1 -widthHeight 330 350 $windowName;
+
+		 string $form = `formLayout`;
+		 string $tabs = `tabLayout -innerMarginWidth 5 -innerMarginHeight 5`;
+		 formLayout -edit
+			-attachForm $tabs "top"    0
+			-attachForm $tabs "left"   0
+			-attachForm $tabs "bottom" 0
+			-attachForm $tabs "right"  0
+			$form;
+
+			string $child1 = `paneLayout -configuration "single"`;
+				scrollField -ed 0 -wordWrap 1 -font plainLabelFont -w 300 -h 200 -numberOfLines 15 -text $aboutScript;
+				setParent ..;
+
+			string $child2 = `paneLayout -configuration "single"`;
+				scrollField -ed 0 -wordWrap 1 -font plainLabelFont -w 300 -h 200 -numberOfLines 15 -text $aboutAuthor;
+				setParent ..;
+
+			tabLayout -e -selectTabIndex $selTab -tabLabel $child1 "UVTools Help" -tabLabel $child2 "About UVTools" $tabs;
+
+	showWindow $windowName;
+	}
+
+
+global proc string zzUVToolsInfo ( string $function ) {
+	string $creationDate = "21 April 2002";
+	string $lastRevision = "not modified";
+	string $revisionHistory = "";
+	string $info = "";
+	float $currentVersion = 0.35;
+
+	if ( $function == "created" ) $info = $creationDate;
+	if ( $function == "modified" ) $info = $lastRevision;
+	if ( $function == "history" ) $info = $revisionHistory;
+	if ( $function == "version" ) $info = $currentVersion;
+	return $info;
+	}
+
+
+//zz.end

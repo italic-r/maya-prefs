@@ -1,0 +1,1301 @@
+//---------------------------------------------------------------------------
+// cr_dummyRigPartModulesLib.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:
+//		build dummy locator for joint skeleton - library
+//
+// REQUIRES:
+//		cr_curveUtilitiesLib.mel
+//		cr_charUtilsLib.mel
+//		libString.mel
+//		snaps.mel
+//
+// AUTHOR:
+//		Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+source "snaps.mel";
+cr_charUtilsLib;
+cr_curveUtilitiesLib;
+libString;
+
+global proc cr_dummyRigPartModulesLib() {
+	return;
+	}
+
+global proc string cr_createDummyBone(string $name, string $side, string $startDummyJoint, string $endDummyJoint)
+{
+//creating parent grp 
+string $boneCrvGrp = ($side+$name+"BoneCurves_grp");
+
+// some error checking
+if (!`objExists $boneCrvGrp`)
+$boneCrvGrp = `group -em -n ($side+$name+"BoneCurves_grp")`;
+
+string $startDummySp = `getAttr ($startDummyJoint+".startPos")`;
+string $startDummyEp = `getAttr ($startDummyJoint+".endPos")`;
+string $endDummySp = `getAttr ($endDummyJoint+".startPos")`;
+string $endDummyEp = `getAttr ($endDummyJoint+".endPos")`;
+
+string $temp[];
+string $shape[];
+
+$temp = `cr_createDistance $startDummySp $startDummyEp`;
+$shape = `listRelatives -s $temp[0]`;
+
+float $startSphereRad = `getAttr ($shape[0]+".distance")`;
+delete $temp;
+
+$temp = `cr_createDistance $endDummySp $endDummyEp`;
+$shape = `listRelatives -s $temp[0]`;
+
+float $endSphereRad = `getAttr ($shape[0]+".distance")`;
+delete $temp;
+
+//creating dummy bone rig
+select -r $startDummyJoint;
+string $startLoc1[0] = `cr_curveControl loc curve`;
+$startLoc1[0] = `rename ($startDummyJoint + "Aim_loc#")`;
+string $startLoc2[0] = `cr_curveControl loc curve`;
+$startLoc2[0] = `rename ($startDummyJoint + "AimPos_loc#")`;
+parent $startLoc2[0] $startLoc1[0];
+setAttr ($startLoc2[0] + ".tx") $startSphereRad;
+parent $startLoc1[0] $startDummyJoint;
+
+select -r $endDummyJoint;
+string $endLoc1[0] = `cr_curveControl loc curve`;
+$endLoc1[0] = `rename ($endDummyJoint + "Aim_loc#")`;
+string $endLoc2[0] = `cr_curveControl loc curve`;
+$endLoc2[0] = `rename ($endDummyJoint + "AimPos_loc#")`;
+parent $endLoc2[0] $endLoc1[0];
+setAttr ($endLoc2[0] + ".tx") (-$endSphereRad);
+parent $endLoc1[0] $endDummyJoint;
+
+aimConstraint -offset 0 0 0 -weight 1 -aimVector 1 0 0 -upVector 0 1 0 -worldUpType "vector" -worldUpVector 0 1 0 $endDummyJoint $startLoc1[0];
+aimConstraint -offset 0 0 0 -weight 1 -aimVector -1 0 0 -upVector 0 1 0 -worldUpType "vector" -worldUpVector 0 1 0 $startDummyJoint $endLoc1[0];
+
+select -cl;
+string $connect[0] = `cr_curveControl cone curve`;
+$connect[0] = `rename ($startDummyJoint + "Bone_crv#")`;
+select -r ($connect[0] + ".cv[0:1]") ($connect[0] + ".cv[3:4]") ($connect[0] + ".cv[6:7]") ($connect[0] + ".cv[9:10]") ($connect[0] + ".cv[12:13]") ($connect[0] + ".cv[15:16]");
+string $posAClts[] = `cluster`;
+select -cl;
+select -r ($connect[0] + ".cv[2]") ($connect[0] + ".cv[5]") ($connect[0] + ".cv[8]") ($connect[0] + ".cv[11]") ($connect[0] + ".cv[14]") ;
+string $posBClts[] = `cluster`;
+select -cl;
+setAttr ($connect[0] + ".overrideEnabled") 1;
+setAttr ($connect[0] + ".overrideDisplayType") 2;
+
+pointConstraint -offset 0 0 0 -weight 1 $startLoc2[0] $posAClts[1];
+parent $posAClts[1] $startLoc1[0];
+float $boneScale[] = `getAttr($startDummyJoint+".s")`;
+setAttr ($posAClts[1] + ".r") 0 0 0;
+setAttr ($posAClts[1] + ".s") $boneScale[0] $boneScale[1] $boneScale[2];
+
+pointConstraint -offset 0 0 0 -weight 1 $endLoc2[0] $posBClts[1];
+parent $posBClts[1] $endLoc1[0];
+hide $startLoc1[0] $endLoc1[0];
+
+cr_lockAndHide $startLoc1[0] lock "trans rot scale vis";
+cr_lockAndHide $endLoc1[0] lock "trans rot scale vis";
+
+parent $connect[0] $boneCrvGrp;
+
+return $boneCrvGrp;
+}
+
+global proc string[] cr_createDummyJoint(int $colorIndex)
+{
+string $impSphere = `createNode implicitSphere`;
+setAttr ($impSphere + ".rd") 0.7;
+string $parent[] = `listRelatives -p $impSphere`; 
+string $sph[] = `sphere -p 0 0 0 -ax 0 1 0 -ssw 0 -esw 360 -r 0.6 -d 3 -ut 0 -tol 0.01 -s 8 -nsp 4 -ch 1`;
+string $sphShape[] = `listRelatives -s $sph[0]`;
+
+string $distanation[] = `listConnections -s 1 -p 1 $sphShape[0]`;
+string $source[] = `listConnections -s 1 -p 1 $distanation[0]`;
+disconnectAttr $source[0] $distanation[0];
+
+cr_shapeColorOverride $sph[0] $colorIndex;
+parent -r -s $sphShape[0] $parent[0];
+cr_shapeRename $parent[0];
+
+string $startDis[0] = `cr_curveControl loc curve`;
+$startDis[0] = `rename ($parent[0] + "Sp_loc#")`;
+string $endDis[0] = `cr_curveControl loc curve`;
+$endDis[0] = `rename ($parent[0] + "Ep_loc#")`;
+parent $endDis[0] $startDis[0];
+setAttr ($endDis[0] + ".tx") 0.7;
+parent $startDis[0] $parent[0];
+hide $startDis[0] $endDis[0];
+
+cr_lockAndHide $startDis[0] lock "trans rot scale vis";
+cr_lockAndHide $endDis[0] lock "trans rot scale vis";
+
+addAttr -ln "startPos" -dt "string" $parent[0]; 
+addAttr -ln "endPos" -dt "string" $parent[0]; 
+
+setAttr -type "string" ($parent[0] + ".startPos") $startDis[0];
+setAttr -type "string" ($parent[0] + ".endPos") $endDis[0];
+
+delete $sph[0];
+return $parent;
+}
+
+global proc cr_shapeColorOverride(string $n, int $colorIndex)
+{
+/*
+color index 
+ 6 = blue 
+13 = red 
+14 = green 
+17 = yellow
+int $colorIndex = 17;
+*/
+string $sel[];
+string $shape[];
+
+    if ($n=="")
+    $sel =`ls -sl`;
+    else
+    $sel[0] = $n;
+for($i=0;$i<size($sel);$i++)
+{
+$shape = `listRelatives -f -s $sel[$i]`;
+	for($x=0;$x<size($shape);$x++)
+	{
+	setAttr ($shape[$x] + ".overrideEnabled") 1;
+	setAttr ($shape[$x] + ".overrideColor") $colorIndex;
+	}
+}
+}
+
+/*
+string $name = "";
+string $side = "";
+string $fingerName = "index";
+int $numCon = 5;
+string $axis = "x";
+float $val = 5;
+int $colorIndex = 3;
+cr_fingerSegmentDummyBoneCreator($name, $side, $numCon, $axis, $dis, $colorIndex);
+*/
+global proc string cr_fingerSegmentDummyBoneCreator(string $name, string $fingerName, string $side, int $numCon, string $axis, float $val, int $colorIndex)
+{
+string $tentacleDummyJnt[];
+string $control[];
+string $list;
+string $dummyBoneGrp;
+string $lock;
+float $pos = $val;
+string $tentMainPos[0] = cr_curveControl("cube1","curve");
+$tentMainPos[0] = `rename ($name+$side+$fingerName+"Main_ctrl")`;
+cr_shapeColorOverride $tentMainPos[0] $colorIndex;
+cr_resizeCurves {} 1 1 1 1.5;
+//module tags
+addAttr -ln "moduleTag" -dt "string" $tentMainPos[0];
+addAttr -ln "buildTag" -dt "string" $tentMainPos[0];
+addAttr -ln "jointPosList"  -dt "string" $tentMainPos[0];
+
+setAttr -type "string" ($tentMainPos[0]+ ".moduleTag") "finger";
+
+for($i=0;$i<$numCon;$i++)
+{
+$tentacleDummyJnt = cr_createDummyJoint($colorIndex);
+$tentacleDummyJnt[0] = `rename $tentacleDummyJnt[0] ($name+$side+$fingerName+ ($i+1) +"_loc")`;
+$control[$i] = $tentacleDummyJnt[0];
+	if($i>0)
+	{	
+	if($axis == "x"){
+	move $val 0 0 $control[$i];
+	$lock = "z";}
+	else if($axis == "y"){
+	move 0 $val 0 $control[$i];
+	$lock = "x";}
+	else if($axis == "z"){
+	move 0 0 $val $control[$i];
+	$lock = "x";}
+	$dummyBoneGrp = cr_createDummyBone($fingerName,$side,$control[$i-1],$control[$i]);
+	$val = ($val+$pos);
+	}
+parent $tentacleDummyJnt $tentMainPos[0];
+$list += ($tentacleDummyJnt[0]+" ");
+}
+for($x=0;$x<$numCon;$x++) setAttr -lock true ($control[$x] + ".t" + $lock);
+setAttr ($dummyBoneGrp+".inheritsTransform") 0;
+parent -r $dummyBoneGrp $tentMainPos[0];
+setAttr -type "string" ($tentMainPos[0] + ".jointPosList") $list;
+//select -r $control;
+//scale -r 0.5 0.5 0.5;
+return $tentMainPos[0];
+}
+
+/*
+string $name = "";
+string $side = "";
+string $moduleName = "spine";
+int $numCon = 4;
+string $axis = "y";
+float $dis = 15;
+int $colorIndex = 3;
+cr_linearDisDummyBoneCreator($name, $side, $numCon, $axis, $dis, $colorIndex);
+*/
+global proc string cr_linearDisDummyBoneCreator(string $name, string $side, string $moduleName, int $numCon, string $axis, float $dis, int $colorIndex)
+{
+string $tentacleDummyJnt[];
+string $control[];
+string $list;
+string $dummyBoneGrp;
+string $lock;
+float $split = $dis/($numCon-1);
+float $pos = 0;
+string $tentMainPos[0] = cr_curveControl("cube1","curve");
+$tentMainPos[0] = `rename ($name+$side+$moduleName+"Main_ctrl")`;
+cr_shapeColorOverride $tentMainPos[0] $colorIndex;
+cr_resizeCurves {} 1 1 1 1.5;
+addAttr -ln "jointPosList"  -dt "string" $tentMainPos[0]; 
+select -cl;
+for($i=0;$i<$numCon;$i++)
+{
+$tentacleDummyJnt = cr_createDummyJoint($colorIndex);
+$tentacleDummyJnt[0] = `rename $tentacleDummyJnt[0] ($name+$side+$moduleName+ ($i+1) +"_loc")`;
+$control[$i] = $tentacleDummyJnt[0];
+scale 0.7 0.7 0.7 $tentacleDummyJnt[0];
+	if($i>0)
+	{	
+	if($axis == "x"){
+	move $pos 0 0 $control[$i];
+	$lock = "z";}
+	else if($axis == "y"){
+	move 0 $pos 0 $control[$i];
+	$lock = "x";}
+	else if($axis == "z"){
+	move 0 0 $pos $control[$i];
+	$lock = "x";}
+	$dummyBoneGrp = cr_createDummyBone($moduleName,$side,$control[$i-1],$control[$i]);
+	}
+$pos = ($pos+$split);
+parent $tentacleDummyJnt $tentMainPos[0];
+$list += ($tentacleDummyJnt[0]+" ");
+select -cl;
+}
+for($x=0;$x<$numCon;$x++) setAttr -lock true ($control[$x] + ".t" + $lock);
+setAttr ($dummyBoneGrp+".inheritsTransform") 0;
+parent -r $dummyBoneGrp $tentMainPos[0];
+setAttr -type "string" ($tentMainPos[0] + ".jointPosList") $list;
+select -cl;
+
+return $tentMainPos[0];
+}
+
+
+global proc vector[] cr_getDummyBoneLimbPos(string $curve, int $numJoints)
+{
+vector $tempJointPos;
+vector $dummyJointPos[];
+
+string $curveInfo = `pointOnCurve -constructionHistory 1 $curve`;
+setAttr ($curveInfo + ".turnOnPercentage") 1;
+
+int $i = 0;
+for ($i; $i<($numJoints); $i++)
+	{
+	float $parameter = $i * (1.0/($numJoints-1));
+	setAttr ($curveInfo + ".parameter") $parameter;
+	$tempJointPos = getAttr ($curveInfo + ".position");
+	$dummyJointPos[$i] = $tempJointPos;
+	}
+delete $curveInfo;
+
+return $dummyJointPos;
+}
+
+/*
+string $name = "";
+string $side = "";
+int $numJoints = 3;
+int $fingers = 1;
+int $numFingers = 5;
+int $numSegment = 4;
+int $colorIndex = 3;
+cr_buildArmDummySkeletonModule ($name, $side, $numJoints, $fingers, $numFingers, $numSegment, $colorIndex);
+*/
+global proc cr_buildArmDummySkeletonModule(string $name, string $side, int $numJoints,  int $fingers, int $numFingers, int $numSegment, int $colorIndex)
+{
+string $list;
+string $dummyBoneGrp;
+string $clavDummyJoint[0] = cr_createDummyJoint($colorIndex);
+$clavDummyJoint[0] = `rename $clavDummyJoint[0] ($name+$side+"clav_loc")`;
+move 1 0 1 $clavDummyJoint[0];
+
+string $curve = `curve -d 1 -p 3 0 0 -p 10 0 -1 -p 17 0 0`;
+
+vector $armDummyBonePos[] = cr_getDummyBoneLimbPos($curve, $numJoints);
+delete $curve;
+
+string $armSegmentNames[] = {"shoulder","elbow"};
+int $middleIndex = ($numJoints/2);
+string $allArmDummyJoints[];
+
+for ($i=0;$i<($numJoints-1);$i++)
+	{
+	string $tempDummyJoint[0] = cr_createDummyJoint($colorIndex);
+	
+	if($numJoints == 3)
+		{
+		if($i<=$middleIndex)
+			$tempDummyJoint[0] = `rename $tempDummyJoint[0] ($name+$side+$armSegmentNames[0]+"_loc")`;	
+		if($i>=$middleIndex)
+			$tempDummyJoint[0] = `rename $tempDummyJoint[0] ($name+$side+$armSegmentNames[1]+"_loc")`;
+		}
+	else
+		{
+		if($i<=$middleIndex)
+			$tempDummyJoint[0] = `rename $tempDummyJoint[0] ($name+$side+$armSegmentNames[0]+($i+1)+"_loc")`;	
+		if($i>=$middleIndex)
+			$tempDummyJoint[0] = `rename $tempDummyJoint[0] ($name+$side+$armSegmentNames[1]+(($i+1)-$middleIndex)+"_loc")`;
+		}	
+		
+	vector $tempPosition = $armDummyBonePos[$i];
+	
+	move ($tempPosition.x) ($tempPosition.y) ($tempPosition.z) $tempDummyJoint[0]; 
+	
+	$allArmDummyJoints[$i]=$tempDummyJoint[0];
+	if($i>0)
+	$dummyBoneGrp = cr_createDummyBone ("arm",$side, $allArmDummyJoints[$i-1], $allArmDummyJoints[$i]);
+	}
+
+string $mainArmPlacer[0] = `cr_curveControl cube1 curve`;
+$mainArmPlacer[0] = `rename ($name+$side+"armPlacer_loc")`;
+cr_resizeCurves {} 1 1 1 1.5;
+cr_shapeColorOverride $mainArmPlacer[0] $colorIndex;
+addAttr -ln "jointPosList"  -dt "string" $mainArmPlacer[0]; 
+	
+//create arm annotation
+string $arm = `cr_createModuleAnnotation ($name+$side+"arm") $mainArmPlacer[0]`;
+setAttr ($arm+".t") 0 1 0;
+
+//shoulderPosition
+vector $shoulderPosition = $armDummyBonePos[0];
+move ($shoulderPosition.x) ($shoulderPosition.y) ($shoulderPosition.z) $mainArmPlacer[0];
+
+string $wristDummyJoint[0] = cr_createDummyJoint($colorIndex);
+$wristDummyJoint[0] = `rename $wristDummyJoint[0] ($name+$side+"wrist_loc")`;
+string $wristEndDummyJoint[0] = cr_createDummyJoint($colorIndex);
+$wristEndDummyJoint[0] = `rename $wristEndDummyJoint[0] ($name+$side+"wristEnd_loc")`;
+
+string $mainWristPlacer[0] = `cr_curveControl cube1 curve`;
+$mainWristPlacer[0] = `rename ($name+$side+"wristPlacer_loc")`;
+cr_resizeCurves {} 1 1 1 1.5;
+cr_shapeColorOverride $mainWristPlacer[0] $colorIndex;
+addAttr -ln "jointPosList"  -dt "string" $mainWristPlacer[0]; 
+setAttr -type "string" ($mainWristPlacer[0] + ".jointPosList") $wristDummyJoint[0];
+
+//create wrist annotation
+string $wrist = `cr_createModuleAnnotation ($name+$side+"wrist") $mainWristPlacer[0]`;
+setAttr ($wrist+".t") 0 1 0;
+
+
+addAttr -ln "wristPlacer"  -dt "string" $mainArmPlacer[0]; 
+setAttr -type "string" ($mainArmPlacer[0] + ".wristPlacer") $mainWristPlacer[0];
+
+move 0.7 0 0 $wristEndDummyJoint;
+$dummyBoneGrp = cr_createDummyBone ("arm",$side, $clavDummyJoint[0],$allArmDummyJoints[0]);		
+$dummyBoneGrp = cr_createDummyBone ("arm",$side, $allArmDummyJoints[$numJoints-2],$wristDummyJoint[0]);		
+$dummyBoneGrp = cr_createDummyBone ("arm",$side, $wristDummyJoint[0], $wristEndDummyJoint[0]);	
+
+parent $wristDummyJoint $wristEndDummyJoint $mainWristPlacer[0];
+
+//wristPosition
+vector $wristPosition = $armDummyBonePos[$numJoints-1];
+move ($wristPosition.x) ($wristPosition.y) ($wristPosition.z) $mainWristPlacer[0];
+
+$list += ($clavDummyJoint[0]+" ");
+for ($n=0;$n<size($allArmDummyJoints);$n++)
+	{
+	$list += ($allArmDummyJoints[$n]+" ");
+	setAttr -lock true ($allArmDummyJoints[$n] + ".ty");
+	}
+
+$list += ($wristDummyJoint[0]+" "+$wristEndDummyJoint[0]);
+setAttr -type "string" ($mainArmPlacer[0] + ".jointPosList") $list;
+
+parent $allArmDummyJoints $mainArmPlacer[0];
+parent $mainWristPlacer[0] $mainArmPlacer[0];
+setAttr -lock true ($wristDummyJoint[0] + ".ty");
+setAttr -lock true ($wristEndDummyJoint[0] + ".ty");
+setAttr -lock true ($wristEndDummyJoint[0] + ".tz");
+setAttr -lock true ($mainWristPlacer[0] + ".ty");
+
+select -r $clavDummyJoint[0] $allArmDummyJoints $wristDummyJoint[0] $wristEndDummyJoint[0];
+scale 0.7 0.7 0.7;
+select -cl;
+
+if($fingers)
+	{
+	//declaring position for fingers
+	string $fingerlist;
+	
+	vector $fingerPos[] = {<<17.7, -0.35, 1>>, <<18.3, 0.15, 0.9>>, <<18.2, 0.3, 0.1>>,<<18.15, 0.15, -0.5>>,<<18.1, 0, -1>>};
+	vector $fingerRot[] = {<<85,-35,-30>>, <<0, -3, 0>>, <<0,0,0>>,<<0,5,0>>, <<0,10.25,0>>};
+	float $scale[] = {0.35,0.35,0.4,0.35,0.3};
+	string $fingerNames[] = {"thumb","index","middle","ring","pinky"};
+
+	select -cl;
+	for($j=0;$j<$numFingers;$j++)
+		{
+		if($j==0)//idea here is that thumb joints will have one less segment compare to other fingers
+			$finger =  cr_fingerSegmentDummyBoneCreator($name, $fingerNames[$j], $side, $numSegment, "x", 3, $colorIndex);
+		else
+			$finger =  cr_fingerSegmentDummyBoneCreator($name, $fingerNames[$j], $side, ($numSegment+1), "x", 3, $colorIndex);
+		
+		$fingerlist += ($finger+" ");
+		 
+		vector $position = $fingerPos[$j];
+		move ($position.x) ($position.y) ($position.z) $finger;
+		
+		vector $rotation = $fingerRot[$j];
+		rotate ($rotation.x) ($rotation.y) ($rotation.z) $finger;
+		
+		cr_connectModuleComponants ($wristDummyJoint[0], $finger); 	
+
+		scale $scale[$j] $scale[$j] $scale[$j] $finger;
+		
+		parent $finger $mainWristPlacer[0];
+
+		setAttr -type "string" ($finger+ ".buildTag") $mainArmPlacer[0];
+
+		select -cl;
+		}
+	
+	addAttr -ln "child"  -dt "string" $mainArmPlacer[0]; 
+	setAttr -type "string" ($mainArmPlacer[0] + ".child") $fingerlist;
+	}
+
+setAttr ($dummyBoneGrp+".inheritsTransform") 0;
+parent -r $dummyBoneGrp $mainArmPlacer[0];
+
+//create world pos loc and parent main arm placer ctrl...
+string $worldPosLoc[] = cr_buildWorldPosLoc($name);
+if(!`attributeExists "arm" $worldPosLoc[0]`)
+	addAttr -ln "arm"  -dt "string" $worldPosLoc[0]; 
+
+string $moduleParts = `getAttr ($worldPosLoc[0] + "." +"arm")`;
+setAttr -type "string" ($worldPosLoc[0] + "." +"arm") ($moduleParts+" "+$mainArmPlacer[0]);
+
+parent $clavDummyJoint[0] $mainArmPlacer[0] $worldPosLoc[0];
+
+//module tags
+addAttr -ln "moduleTag" -dt "string" $mainArmPlacer[0];
+addAttr -ln "buildTag" -dt "string" $mainArmPlacer[0];
+
+setAttr -type "string" ($mainArmPlacer[0] + ".moduleTag") "arm";
+setAttr -type "string" ($mainArmPlacer[0] + ".buildTag") $worldPosLoc[0];
+
+//rig info Attr
+addAttr -ln "name"  -dt "string" $mainArmPlacer[0]; 
+	setAttr -type "string" ($mainArmPlacer[0] + ".name") $name;
+addAttr -ln "side"  -dt "string" $mainArmPlacer[0]; 
+	setAttr -type "string" ($mainArmPlacer[0] + ".side") $side;
+addAttr -ln ($side+"shoulderJoint") -dt "string" $mainArmPlacer[0]; 
+	setAttr -type "string" ($mainArmPlacer[0] + "." + ($side+"shoulderJoint")) $allArmDummyJoints[0];
+addAttr -ln ($side+"wristJoint")  -dt "string" $mainArmPlacer[0]; 
+	setAttr -type "string" ($mainArmPlacer[0] + "." + ($side+"wristJoint")) $wristDummyJoint[0];
+
+select -cl;
+}
+
+/*
+string $name = "";
+string $side = "";
+int $numJoints = 3;
+int $fingers = 1;
+int $numFingers = 5;
+int $numSegment = 4;
+int $colorIndex = 3;
+cr_buildBipedLegDummySkeletonModule ($name, $side, $numJoints, $fingers, $numFingers, $numSegment, $colorIndex);
+*/
+global proc cr_buildBipedLegDummySkeletonModule(string $name, string $side, int $numJoints, int $fingers, int $numFingers, int $numSegment, int $colorIndex)
+{
+string $list;
+string $dummyBoneGrp;
+
+string $curve = `curve -d 1 -p 2 15 0 -p 2 8 1 -p 2 1 0`;
+
+vector $legDummyBonePos[] = cr_getDummyBoneLimbPos($curve, $numJoints);
+delete $curve;
+
+string $legSegmentNames[] = {"hip","knee"};
+int $middleIndex = ($numJoints/2);
+string $allLegDummyJoints[];
+
+for ($i=0;$i<($numJoints-1);$i++)
+	{
+	string $tempDummyJoint[0] = cr_createDummyJoint($colorIndex);
+	
+	if($numJoints==3)
+		{
+		if($i<=$middleIndex)
+			$tempDummyJoint[0] = `rename $tempDummyJoint[0] ($name+$side+$legSegmentNames[0]+"_loc")`;	
+		if($i>=$middleIndex)
+			$tempDummyJoint[0] = `rename $tempDummyJoint[0] ($name+$side+$legSegmentNames[1]+"_loc")`;
+		}
+	else
+		{
+		if($i<=$middleIndex)
+			$tempDummyJoint[0] = `rename $tempDummyJoint[0] ($name+$side+$legSegmentNames[0]+($i+1)+"_loc")`;	
+		if($i>=$middleIndex)
+			$tempDummyJoint[0] = `rename $tempDummyJoint[0] ($name+$side+$legSegmentNames[1]+(($i+1)-$middleIndex)+"_loc")`;
+		}		
+		
+	vector $tempPosition = $legDummyBonePos[$i];
+	
+	move ($tempPosition.x) ($tempPosition.y) ($tempPosition.z) $tempDummyJoint[0]; 
+	
+	$allLegDummyJoints[$i]=$tempDummyJoint[0];
+	if($i>0)
+	$dummyBoneGrp = cr_createDummyBone ("leg",$side, $allLegDummyJoints[$i-1], $allLegDummyJoints[$i]);
+	}
+
+string $ankleDummyJoint[0] = cr_createDummyJoint($colorIndex);
+$ankleDummyJoint[0] = `rename $ankleDummyJoint[0] ($name+$side+"ankle_loc")`;
+string $ballDummyJoint[0] = cr_createDummyJoint($colorIndex);
+$ballDummyJoint[0] = `rename $ballDummyJoint[0] ($name+$side+"ball_loc")`;
+string $toeDummyJoint[0] = cr_createDummyJoint($colorIndex);
+$toeDummyJoint[0] = `rename $toeDummyJoint[0] ($side+"toe_loc")`;
+
+string $mainLegPlacer[0] = `cr_curveControl cube1 curve`;
+$mainLegPlacer[0] = `rename ($name+$side+"legPlacer_loc")`;
+cr_resizeCurves {} 1 1 1 1.5;
+cr_shapeColorOverride $mainLegPlacer[0] $colorIndex;
+addAttr -ln "jointPosList"  -dt "string" $mainLegPlacer[0]; 
+addAttr -ln "footPlacer"  -dt "string" $mainLegPlacer[0]; 
+	
+//create leg annotation
+string $leg = `cr_createModuleAnnotation ($name+$side+"leg") $mainLegPlacer[0]`;
+setAttr ($leg+".t") 0 1 0;
+
+string $mainFootPlacer[0] = `cr_curveControl cube1 curve`;
+$mainFootPlacer[0] = `rename ($name+$side+"footPlacer_loc")`;
+cr_resizeCurves {} 1 1 1 1.5;
+cr_shapeColorOverride $mainFootPlacer[0] $colorIndex;
+addAttr -ln "jointPosList"  -dt "string" $mainFootPlacer[0]; 
+
+vector $hipPosition = $legDummyBonePos[0];
+move ($hipPosition.x) ($hipPosition.y) ($hipPosition.z) $mainLegPlacer[0];
+
+vector $anklePosition = $legDummyBonePos[$numJoints-1];
+parent $ankleDummyJoint[0] $mainFootPlacer[0];
+setAttr ($ankleDummyJoint[0]+".t") 0 0 0;
+move ($anklePosition.x) ($anklePosition.y) ($anklePosition.z) $mainFootPlacer[0];
+
+//create ankle annotation
+string $ankle = `cr_createModuleAnnotation ($name+$side+"ankle") $mainFootPlacer[0]`;
+setAttr ($ankle+".t") 1 0 0;
+
+move 2 0 2 $ballDummyJoint;
+move 2 0 4 $toeDummyJoint;
+
+$dummyBoneGrp = cr_createDummyBone ("leg",$side, $allLegDummyJoints[$numJoints-2], $ankleDummyJoint[0]);
+$dummyBoneGrp = cr_createDummyBone ("leg",$side, $ankleDummyJoint[0], $ballDummyJoint[0]);
+$dummyBoneGrp = cr_createDummyBone ("leg",$side, $ballDummyJoint[0], $toeDummyJoint[0]);
+
+parent $ballDummyJoint $toeDummyJoint $mainFootPlacer[0];
+parent $allLegDummyJoints $mainFootPlacer[0] $mainLegPlacer[0];
+
+for ($n=0;$n<size($allLegDummyJoints);$n++)
+	{
+	$list += ($allLegDummyJoints[$n]+" ");
+	setAttr -lock true ($allLegDummyJoints[$n] + ".tx");
+	}
+
+$list += ($ankleDummyJoint[0]+" "+$ballDummyJoint[0]+" "+$toeDummyJoint[0]);
+setAttr -type "string" ($mainLegPlacer[0] + ".jointPosList") $list;
+setAttr -type "string" ($mainLegPlacer[0] + ".footPlacer") $mainFootPlacer[0];
+setAttr -type "string" ($mainFootPlacer[0] + ".jointPosList") $ankleDummyJoint[0];
+
+setAttr ($dummyBoneGrp+".inheritsTransform") 0;
+parent -r $dummyBoneGrp $mainLegPlacer[0];
+select -cl;
+
+select -r $allLegDummyJoints $ankleDummyJoint[0] $ballDummyJoint $toeDummyJoint;
+scale 0.7 0.7 0.7;
+select -cl;
+
+if($fingers)
+	{
+	//declaring position for fingers
+	addAttr -ln "child" -dt "string" $mainLegPlacer[0];
+	string $fingerJointList;
+	vector $fingerPos[] = {<<1, 0, 2>>, <<1.7, 0, 2>>, <<2.4, 0, 2>>,<<3.1, 0, 2>>,<<3.8, 0, 2>>};
+	float $scale[] = {0.35,0.32,0.30,0.27,0.25};
+	string $fingerName[] = {"bigToe","indexToe","midToe","ringToe","pinkyToe"};
+	
+	for($i=0;$i<$numFingers;$i++)
+		{
+		string $finger =  cr_fingerSegmentDummyBoneCreator($name, $fingerName[$i], $side, $numSegment, "z", 2, $colorIndex);
+		$fingerJointList += ($finger + " ");
+		addAttr -ln "parent" -dt "string" $finger;
+		setAttr -type "string" ($finger + ".parent") $ballDummyJoint; 
+		vector $position = $fingerPos[$i];
+		move ($position.x) ($position.y) ($position.z) $finger;
+		scale $scale[$i] $scale[$i] $scale[$i] $finger;
+		parent $finger $mainFootPlacer[0];
+		select -cl;
+		setAttr -type "string" ($finger+ ".buildTag") $mainLegPlacer[0];
+		}
+	setAttr -type "string" ($mainLegPlacer[0] + ".child") $fingerJointList;
+	}
+
+//lock Attrs
+setAttr -lock true ($ankleDummyJoint[0] + ".tx");
+setAttr -lock true ($ballDummyJoint[0] + ".tx");
+setAttr -lock true ($toeDummyJoint[0] + ".tx");
+setAttr -lock true ($mainFootPlacer[0] + ".tx");
+setAttr -lock true ($mainFootPlacer[0] + ".rz");
+setAttr -lock true ($mainLegPlacer[0] + ".rz");
+
+//create world pos loc and parent main leg placer ctrl..
+string $worldPosLoc[] = cr_buildWorldPosLoc($name);
+if(!`attributeExists "leg" $worldPosLoc[0]`)
+	addAttr -ln "leg"  -dt "string" $worldPosLoc[0]; 
+
+string $moduleParts = `getAttr ($worldPosLoc[0] + ".leg")`;
+setAttr -type "string" ($worldPosLoc[0] + ".leg") ($moduleParts+" "+$mainLegPlacer[0]);
+
+parent $mainLegPlacer[0] $worldPosLoc[0]; 
+
+//module tags
+addAttr -ln "moduleTag" -dt "string" $mainLegPlacer[0];
+addAttr -ln "buildTag" -dt "string" $mainLegPlacer[0];
+
+setAttr -type "string" ($mainLegPlacer[0] + ".moduleTag") "bipedLeg";
+setAttr -type "string" ($mainLegPlacer[0] + ".buildTag") $worldPosLoc[0];
+
+//rig info Attr
+addAttr -ln "name"  -dt "string" $mainLegPlacer[0]; 
+	setAttr -type "string" ($mainLegPlacer[0] + ".name") $name;
+addAttr -ln "side"  -dt "string" $mainLegPlacer[0]; 
+	setAttr -type "string" ($mainLegPlacer[0] + ".side") $side;
+addAttr -ln ($side+"hipJoint") -dt "string" $mainLegPlacer[0]; 
+	setAttr -type "string" ($mainLegPlacer[0] + "." + ($side+"hipJoint")) $allLegDummyJoints[0];
+addAttr -ln ($side+"ankleJoint")  -dt "string" $mainLegPlacer[0]; 
+	setAttr -type "string" ($mainLegPlacer[0] + "." + ($side+"ankleJoint")) $ankleDummyJoint[0];
+addAttr -ln ($side+"ballJoint")  -dt "string" $mainLegPlacer[0]; 
+	setAttr -type "string" ($mainLegPlacer[0] + "." + ($side+"ballJoint")) $ballDummyJoint[0];
+	
+select -cl;
+}
+
+/*
+string $name = "";
+string $side = "";
+int $numJoints = 3;
+int $fingers = 1;
+int $numFingers = 5;
+int $numSegment = 4;
+int $colorIndex = 3;
+cr_buildQuadLegDummySkeletonModule($name, $side, $numJoints, $fingers, $numFingers, $numSegment, $colorIndex);
+*/
+global proc cr_buildQuadLegDummySkeletonModule(string $name, string $side, int $numJoints, int $fingers, int $numFingers, int $numSegment, int $colorIndex)
+{
+string $list;
+string $dummyBoneGrp;
+
+string $curve = `curve -d 1 -p 2 15 0 -p 2 9 2 -p 2 4 -1 -p 2 1 0`;
+
+vector $legDummyBonePos[] = cr_getDummyBoneLimbPos($curve, $numJoints);
+delete $curve;
+
+string $legSegmentNames[] = {"hip","knee"};
+int $middleIndex = ($numJoints/2);
+string $allLegDummyJoints[];
+
+for ($i=0;$i<($numJoints-1);$i++)
+	{
+	string $tempDummyJoint[0] = cr_createDummyJoint($colorIndex);
+	
+	if($numJoints==3)
+		{
+		if($i<=$middleIndex)
+			$tempDummyJoint[0] = `rename $tempDummyJoint[0] ($name+$side+$legSegmentNames[0]+"_loc")`;	
+		if($i>=$middleIndex)
+			$tempDummyJoint[0] = `rename $tempDummyJoint[0] ($name+$side+$legSegmentNames[1]+"_loc")`;
+		}
+	else
+		{
+		if($i<=$middleIndex)
+			$tempDummyJoint[0] = `rename $tempDummyJoint[0] ($name+$side+$legSegmentNames[0]+($i+1)+"_loc")`;	
+		if($i>=$middleIndex)
+			$tempDummyJoint[0] = `rename $tempDummyJoint[0] ($name+$side+$legSegmentNames[1]+(($i+1)-$middleIndex)+"_loc")`;
+		}		
+		
+	vector $tempPosition = $legDummyBonePos[$i];
+	
+	move ($tempPosition.x) ($tempPosition.y) ($tempPosition.z) $tempDummyJoint[0]; 
+	
+	$allLegDummyJoints[$i]=$tempDummyJoint[0];
+	if($i>0)
+	$dummyBoneGrp = cr_createDummyBone ("leg",$side, $allLegDummyJoints[$i-1], $allLegDummyJoints[$i]);
+	}
+string $hockJoint = `cr_createModuleAnnotation ($name+$side+"hockJoint") $allLegDummyJoints[$numJoints-2]`;
+setAttr ($hockJoint+".t") 0 1 0;
+
+string $ankleDummyJoint[0] = cr_createDummyJoint($colorIndex);
+$ankleDummyJoint[0] = `rename $ankleDummyJoint[0] ($name+$side+"ankle_loc")`;
+string $ballDummyJoint[0] = cr_createDummyJoint($colorIndex);
+$ballDummyJoint[0] = `rename $ballDummyJoint[0] ($name+$side+"ball_loc")`;
+string $toeDummyJoint[0] = cr_createDummyJoint($colorIndex);
+$toeDummyJoint[0] = `rename $toeDummyJoint[0] ($side+"toe_loc")`;
+
+string $mainLegPlacer[0] = `cr_curveControl cube1 curve`;
+$mainLegPlacer[0] = `rename ($name+$side+"legPlacer_loc")`;
+cr_resizeCurves {} 1 1 1 1.5;
+cr_shapeColorOverride $mainLegPlacer[0] $colorIndex;
+addAttr -ln "jointPosList"  -dt "string" $mainLegPlacer[0]; 
+addAttr -ln "footPlacer"  -dt "string" $mainLegPlacer[0]; 
+	
+//create leg annotation
+string $leg = `cr_createModuleAnnotation ($name+$side+"leg") $mainLegPlacer[0]`;
+setAttr ($leg+".t") 0 1 0;
+
+string $mainFootPlacer[0] = `cr_curveControl cube1 curve`;
+$mainFootPlacer[0] = `rename ($name+$side+"footPlacer_loc")`;
+cr_resizeCurves {} 1 1 1 1.5;
+cr_shapeColorOverride $mainFootPlacer[0] $colorIndex;
+addAttr -ln "jointPosList"  -dt "string" $mainFootPlacer[0]; 
+
+vector $hipPosition = $legDummyBonePos[0];
+move ($hipPosition.x) ($hipPosition.y) ($hipPosition.z) $mainLegPlacer[0];
+
+vector $anklePosition = $legDummyBonePos[$numJoints-1];
+parent $ankleDummyJoint[0] $mainFootPlacer[0];
+setAttr ($ankleDummyJoint[0]+".t") 0 0 0;
+move ($anklePosition.x) ($anklePosition.y) ($anklePosition.z) $mainFootPlacer[0];
+
+//create ankle annotation
+string $ankle = `cr_createModuleAnnotation ($name+$side+"ankle") $mainFootPlacer[0]`;
+setAttr ($ankle+".t") 1 0 0;
+
+move 2 0 2 $ballDummyJoint;
+move 2 0 4 $toeDummyJoint;
+
+$dummyBoneGrp = cr_createDummyBone ("leg",$side, $allLegDummyJoints[$numJoints-2], $ankleDummyJoint[0]);
+$dummyBoneGrp = cr_createDummyBone ("leg",$side, $ankleDummyJoint[0], $ballDummyJoint[0]);
+$dummyBoneGrp = cr_createDummyBone ("leg",$side, $ballDummyJoint[0], $toeDummyJoint[0]);
+
+parent $ballDummyJoint $toeDummyJoint $mainFootPlacer[0];
+parent $allLegDummyJoints $mainFootPlacer[0] $mainLegPlacer[0];
+
+for ($n=0;$n<size($allLegDummyJoints);$n++)
+	{
+	$list += ($allLegDummyJoints[$n]+" ");
+	setAttr -lock true ($allLegDummyJoints[$n] + ".tx");
+	}
+
+$list += ($ankleDummyJoint[0]+" "+$ballDummyJoint[0]+" "+$toeDummyJoint[0]);
+setAttr -type "string" ($mainLegPlacer[0] + ".jointPosList") $list;
+setAttr -type "string" ($mainLegPlacer[0] + ".footPlacer") $mainFootPlacer[0];
+setAttr -type "string" ($mainFootPlacer[0] + ".jointPosList") $ankleDummyJoint[0];
+
+setAttr ($dummyBoneGrp+".inheritsTransform") 0;
+parent -r $dummyBoneGrp $mainLegPlacer[0];
+select -cl;
+
+select -r $allLegDummyJoints $ankleDummyJoint[0] $ballDummyJoint $toeDummyJoint;
+scale 0.7 0.7 0.7;
+select -cl;
+
+if($fingers)
+	{
+	//declaring position for fingers
+	addAttr -ln "child" -dt "string" $mainLegPlacer[0];
+	string $fingerJointList;
+	vector $fingerPos[] = {<<1, 0, 1.5>>, <<1.7, 0, 1.5>>, <<2.4, 0, 1.5>>,<<3.1, 0, 1.5>>,<<3.8, 0, 1.5>>};
+	float $scale[] = {0.35,0.385,0.385,0.35,0.35};
+	string $fingerName[] = {"bigToe","indexToe","midToe","ringToe","pinkyToe"};
+	
+	for($i=0;$i<$numFingers;$i++)
+		{
+		string $finger =  cr_fingerSegmentDummyBoneCreator($name, $fingerName[$i], $side, $numSegment, "z", 2, $colorIndex);
+		$fingerJointList += ($finger + " ");
+		addAttr -ln "parent" -dt "string" $finger;
+		setAttr -type "string" ($finger + ".parent") $ankleDummyJoint; 
+		vector $position = $fingerPos[$i];
+		move ($position.x) ($position.y) ($position.z) $finger;
+		scale $scale[$i] $scale[$i] $scale[$i] $finger;
+		parent $finger $mainFootPlacer[0];
+		select -cl;
+		setAttr -type "string" ($finger+ ".buildTag") $mainLegPlacer[0];
+		}
+	setAttr -type "string" ($mainLegPlacer[0] + ".child") $fingerJointList;
+	}
+
+//lock Attrs
+setAttr -lock true ($ankleDummyJoint[0] + ".tx");
+setAttr -lock true ($ballDummyJoint[0] + ".tx");
+setAttr -lock true ($toeDummyJoint[0] + ".tx");
+setAttr -lock true ($mainFootPlacer[0] + ".tx");
+setAttr -lock true ($mainFootPlacer[0] + ".rz");
+setAttr -lock true ($mainLegPlacer[0] + ".rz");
+
+//create world pos loc and parent main leg placer ctrl..
+string $worldPosLoc[] = cr_buildWorldPosLoc($name);
+if(!`attributeExists "leg" $worldPosLoc[0]`)
+	addAttr -ln "leg"  -dt "string" $worldPosLoc[0]; 
+
+string $moduleParts = `getAttr ($worldPosLoc[0] + "." +"leg")`;
+setAttr -type "string" ($worldPosLoc[0] + "." +"leg") ($moduleParts+" "+$mainLegPlacer[0]);
+
+parent $mainLegPlacer[0] $worldPosLoc[0]; 
+
+//module tags
+addAttr -ln "moduleTag" -dt "string" $mainLegPlacer[0];
+addAttr -ln "buildTag" -dt "string" $mainLegPlacer[0];
+
+setAttr -type "string" ($mainLegPlacer[0] + ".moduleTag") "quadLeg";
+setAttr -type "string" ($mainLegPlacer[0] + ".buildTag") $worldPosLoc[0];
+
+//rig info Attr
+addAttr -ln "name"  -dt "string" $mainLegPlacer[0]; 
+	setAttr -type "string" ($mainLegPlacer[0] + ".name") $name;
+addAttr -ln "side"  -dt "string" $mainLegPlacer[0]; 
+	setAttr -type "string" ($mainLegPlacer[0] + ".side") $side;
+addAttr -ln ($side+"hipJoint") -dt "string" $mainLegPlacer[0]; 
+	setAttr -type "string" ($mainLegPlacer[0] + "." + ($side+"hipJoint")) $allLegDummyJoints[0];
+addAttr -ln ($side+"hockJoint") -dt "string" $mainLegPlacer[0]; 
+	setAttr -type "string" ($mainLegPlacer[0] + "." + ($side+"hockJoint")) $allLegDummyJoints[$numJoints-2];
+addAttr -ln ($side+"ankleJoint")  -dt "string" $mainLegPlacer[0]; 
+	setAttr -type "string" ($mainLegPlacer[0] + "." + ($side+"ankleJoint")) $ankleDummyJoint[0];
+addAttr -ln ($side+"ballJoint")  -dt "string" $mainLegPlacer[0]; 
+	setAttr -type "string" ($mainLegPlacer[0] + "." + ($side+"ballJoint")) $ballDummyJoint[0];
+	
+select -cl;
+}
+
+
+/*
+string $name = "";
+string $side = "l_";
+string $moduleName = "spine";
+int $numCon = 4;
+string $axis = "y";
+float $dis = 15;
+int $colorIndex = 3;
+
+cr_buildSpineDummySkeletonModule($name, $side, $moduleName, $numCon, $axis, $dis, $colorIndex);
+*/
+global proc cr_buildSpineDummySkeletonModule(string $name, string $side, string $moduleName, int $numCon, string $axis, float $dis, int $colorIndex)
+{
+string $lock;
+string	$dummyBoneGrp;
+string $jointPosList;
+string $jointPosLists[];
+//create spineModule
+string $spinePalcer = cr_linearDisDummyBoneCreator($name, $side, $moduleName, $numCon, $axis, $dis, $colorIndex);
+cr_createModuleAnnotation ($name+$side+$moduleName) $spinePalcer;
+string $chest = `cr_createModuleAnnotation ($name+$side+"chest") ($name+$side+$moduleName+$numCon+"_loc")`;
+setAttr ($chest+".t") 0 0 0;
+
+//negate pos value in order to get hips position opposite to the spine joint
+float $pos = ($dis/$dis)*-1;
+
+string $hipsDummyJnt[] = cr_createDummyJoint($colorIndex);
+$hipsDummyJnt[0] = `rename $hipsDummyJnt[0] ($name+$side+$moduleName+"Hips_loc")`;
+scale 0.7 0.7 0.7 $hipsDummyJnt[0];
+addAttr -ln "jointPosList"  -dt "string" $hipsDummyJnt[0];
+setAttr -type "string" ($hipsDummyJnt[0] + ".jointPosList") $hipsDummyJnt[0];
+string $hips = `cr_createModuleAnnotation ($name+$side+"hips") $hipsDummyJnt[0]`;
+setAttr ($hips+".t") 0 -1 0;
+
+parent $hipsDummyJnt[0] $spinePalcer;
+
+$jointPosList = `getAttr ($spinePalcer + ".jointPosList")`;
+$jointPosLists = stringToStringArray($jointPosList," "); 
+$dummyBoneGrp = cr_createDummyBone($side,$moduleName,$jointPosLists[0],$hipsDummyJnt[0]);
+
+addAttr -ln "parent"  -dt "string" $hipsDummyJnt[0];
+setAttr -type "string" ($hipsDummyJnt[0] + ".parent") $jointPosLists[0];
+
+addAttr -ln "child" -dt "string" $spinePalcer ;
+setAttr -type "string" ($spinePalcer + ".child") $hipsDummyJnt[0];
+
+	if($axis == "x"){
+	move $pos 0 0 $hipsDummyJnt[0];
+	$lock = "z";}
+	else if($axis == "y"){
+	move 0 $pos 0 $hipsDummyJnt[0];
+	$lock = "x";}
+	else if($axis == "z"){
+	move 0 0 $pos $hipsDummyJnt[0];
+	$lock = "x";}
+
+setAttr -lock true ($hipsDummyJnt[0] + ".t" + $lock);
+
+setAttr ($dummyBoneGrp+".inheritsTransform") 0;
+catchQuiet(`parent -r $dummyBoneGrp $spinePalcer`);
+select -cl;
+
+//create world pos loc and parent main arm placer ctrl...
+string $worldPosLoc[] = cr_buildWorldPosLoc($name);
+if(!`attributeExists "spine" $worldPosLoc[0]`)
+	addAttr -ln "spine"  -dt "string" $worldPosLoc[0]; 
+
+string $moduleParts = `getAttr ($worldPosLoc[0] + "." +"spine")`;
+setAttr -type "string" ($worldPosLoc[0] + "." +"spine") ($moduleParts+" "+$spinePalcer);
+
+parent $spinePalcer $worldPosLoc[0];
+
+//module tags
+addAttr -ln "moduleTag" -dt "string" $spinePalcer;
+addAttr -ln "buildTag" -dt "string" $spinePalcer;
+
+setAttr -type "string" ($spinePalcer + ".moduleTag") "spine";
+setAttr -type "string" ($spinePalcer + ".buildTag") $worldPosLoc[0];
+
+//rig info Attr
+string $spineList = `getAttr ($spinePalcer + ".jointPosList")`;
+string $spineJointsList[] = stringToStringArray($spineList," ");
+int $size = size($spineJointsList); 
+
+addAttr -ln "name"  -dt "string" $spinePalcer; 
+	setAttr -type "string" ($spinePalcer + ".name") $name;
+addAttr -ln "side"  -dt "string" $spinePalcer; 
+	setAttr -type "string" ($spinePalcer + ".side") $side;
+addAttr -ln ($side+"rootJoint") -dt "string" $spinePalcer; 
+	setAttr -type "string" ($spinePalcer + "." + ($side+"rootJoint")) $spineJointsList[0];
+addAttr -ln ($side+"chestJoint")  -dt "string" $spinePalcer; 
+	setAttr -type "string" ($spinePalcer + "." + ($side+"chestJoint")) $spineJointsList[$size-1];
+addAttr -ln ($side+"hipJoint")  -dt "string" $spinePalcer; 
+	setAttr -type "string" ($spinePalcer + "." + ($side+"hipJoint")) $hipsDummyJnt[0];
+
+select -cl;
+}
+
+/*
+string $name = "";
+string $side = "";
+string $moduleName = "head";
+int $colorIndex = 3;
+cr_buildHeadDummySkeletonModule($name, $side, $moduleName, $colorIndex);
+*/
+global proc cr_buildHeadDummySkeletonModule(string $name, string $side, string $moduleName, int $colorIndex)
+{
+string	$dummyBoneGrp;
+string $jointPosList;
+string $jointPosLists[];
+
+string $headPalcer = cr_linearDisDummyBoneCreator($name, $side, $moduleName, 2, "y", 7, $colorIndex);
+
+//create head annotation
+string $head = `cr_createModuleAnnotation ($name+$side+$moduleName) $headPalcer`;
+
+string $lEyeDummyJnt[] = cr_createDummyJoint($colorIndex);
+$lEyeDummyJnt[0] = `rename $lEyeDummyJnt[0] ($name+$side+"l_"+$moduleName+"Eye_loc")`;
+scale 0.7 0.7 0.7 $lEyeDummyJnt[0];
+addAttr -ln "jointPosList"  -dt "string" $lEyeDummyJnt[0];
+setAttr -type "string" ($lEyeDummyJnt[0] + ".jointPosList") $lEyeDummyJnt[0];
+
+//create l_eye annotation
+string $lEye = `cr_createModuleAnnotation ($name+"l_eye") $lEyeDummyJnt[0]`;
+setAttr ($lEye+".t") 0 1 0;
+rename $lEye ($name+$side+$moduleName+"LEye_annotate");
+
+string $rEyeDummyJnt[] = cr_createDummyJoint($colorIndex);
+$rEyeDummyJnt[0] = `rename $rEyeDummyJnt[0] ($name+$side+"r_"+$moduleName+"Eye_loc")`;
+scale 0.7 0.7 0.7 $rEyeDummyJnt[0];
+addAttr -ln "jointPosList"  -dt "string" $rEyeDummyJnt[0];
+setAttr -type "string" ($rEyeDummyJnt[0] + ".jointPosList") $rEyeDummyJnt[0];
+
+//create r_eye annotation
+string $rEye = `cr_createModuleAnnotation ($name+"r_eye") $rEyeDummyJnt[0]`;
+setAttr ($rEye+".t") 0 1 0;
+rename $rEye ($name+$side+$moduleName+"REye_annotate");
+
+cr_moduleSymmetryConnector $lEyeDummyJnt[0] $rEyeDummyJnt[0];
+move 1 3 1.5 $lEyeDummyJnt[0];
+parent $lEyeDummyJnt[0] $rEyeDummyJnt[0] $headPalcer;
+
+addAttr -ln "child" -dt "string" $headPalcer ;
+setAttr -type "string" ($headPalcer + ".child") ($lEyeDummyJnt[0]+ " " + $rEyeDummyJnt[0]);
+addAttr -ln "side"  -dt "string" $headPalcer; 
+	setAttr -type "string" ($headPalcer + ".side") $side;
+
+$jointPosList = `getAttr ($headPalcer + ".jointPosList")`;
+$jointPosLists = stringToStringArray($jointPosList," "); 
+$dummyBoneGrp = cr_createDummyBone($side,$moduleName,$jointPosLists[0],$lEyeDummyJnt[0]);
+$dummyBoneGrp = cr_createDummyBone($side,$moduleName,$jointPosLists[0],$rEyeDummyJnt[0]);
+
+addAttr -ln "parent"  -dt "string" $lEyeDummyJnt[0];
+setAttr -type "string" ($lEyeDummyJnt[0] + ".parent") $jointPosLists[0];
+addAttr -ln "parent"  -dt "string" $rEyeDummyJnt[0];
+setAttr -type "string" ($rEyeDummyJnt[0] + ".parent") $jointPosLists[0];
+
+setAttr ($dummyBoneGrp+".inheritsTransform") 0;
+catchQuiet (`parent -r $dummyBoneGrp $headPalcer`);
+select -cl;
+/*
+//create world pos loc and parent main arm placer ctrl...
+string $worldPosLoc[] = cr_buildWorldPosLoc($name);
+if(!`attributeExists "head" $worldPosLoc[0]`)
+	addAttr -ln "head"  -dt "string" $worldPosLoc[0]; 
+
+string $moduleParts = `getAttr ($worldPosLoc[0] + "." +"head")`;
+setAttr -type "string" ($worldPosLoc[0] + "." +"head") ($moduleParts+" "+$headPalcer);
+
+parent $headPalcer $worldPosLoc[0];
+
+//module tags
+addAttr -ln "moduleTag" -dt "string" $headPalcer;
+addAttr -ln "buildTag" -dt "string" $headPalcer;
+
+setAttr -type "string" ($headPalcer + ".moduleTag") "head";
+setAttr -type "string" ($headPalcer + ".buildTag") $worldPosLoc[0];
+*/
+select -cl;
+}
+
+/*
+string $name = "";
+string $side = "";
+string $moduleName = "neck1";
+int $numCon = 2;
+string $axis = "y";
+float $dis = 3;
+int $colorIndex = 3;
+cr_buildNeckDummySkeletonModule($name, $side, $moduleName, $numCon, $axis, $dis, $colorIndex);
+*/
+global proc cr_buildNeckDummySkeletonModule(string $name, string $side, string $moduleName, int $numCon, string $axis, float $dis, int $colorIndex)
+{
+string $neckPlacer;
+
+if($numCon>1)
+	$neckPlacer = cr_linearDisDummyBoneCreator($name, $side, $moduleName, $numCon, $axis, $dis, $colorIndex);
+else
+	{
+	string $mainNeckPlacer[0] = `cr_curveControl cube1 curve`;
+	$mainNeckPlacer[0] = `rename ($name+$side+$moduleName+"Main_ctrl")`;
+	cr_shapeColorOverride $mainNeckPlacer[0] $colorIndex;
+	cr_resizeCurves {} 1 1 1 1.5;
+	addAttr -ln "jointPosList"  -dt "string" $mainNeckPlacer[0];
+	
+	string $neckDummyJoint[0] = cr_createDummyJoint($colorIndex);
+	$neckDummyJoint[0] = `rename $neckDummyJoint[0] ($name+$side+"neck_loc")`;
+	scale 0.7 0.7 0.7 $neckDummyJoint[0];
+
+	parent $neckDummyJoint[0] $mainNeckPlacer[0];
+	
+	setAttr -type "string" ($mainNeckPlacer[0] + ".jointPosList") $neckDummyJoint[0];
+	$neckPlacer = $mainNeckPlacer[0];
+	}
+
+//create neck annotation
+string $neck = `cr_createModuleAnnotation ($name+$side+$moduleName) $neckPlacer`;
+/*
+//create world pos loc and parent main arm placer ctrl...
+string $worldPosLoc[] = cr_buildWorldPosLoc($name);
+if(!`attributeExists "neck" $worldPosLoc[0]`)
+	addAttr -ln "neck"  -dt "string" $worldPosLoc[0]; 
+
+string $moduleParts = `getAttr ($worldPosLoc[0] + "." +"neck")`;
+setAttr -type "string" ($worldPosLoc[0] + "." +"neck") ($moduleParts+" "+$neckPlacer);
+
+parent $neckPlacer $worldPosLoc[0];
+
+//module tags
+addAttr -ln "moduleTag" -dt "string" $neckPlacer;
+addAttr -ln "buildTag" -dt "string" $neckPlacer;
+
+setAttr -type "string" ($neckPlacer + ".moduleTag") "neck";
+setAttr -type "string" ($neckPlacer + ".buildTag") $worldPosLoc[0];
+*/
+select -cl;	
+}
+
+/*
+string $name = "";
+string $side = "";
+string $moduleName = "neck";
+int $numCon = 1;
+string $axis = "y";
+float $dis = 3;
+int $colorIndex = 3;
+cr_buildHeadNeckDummySkeletonModule($name, $side, $moduleName, $numCon, $axis, $dis, $colorIndex);
+*/
+global proc cr_buildHeadNeckDummySkeletonModule(string $name, string $side, string $moduleName, int $numCon, string $axis, float $dis, int $colorIndex)
+{
+cr_buildNeckDummySkeletonModule($name, $side, $moduleName, $numCon, $axis, $dis, $colorIndex);
+cr_buildHeadDummySkeletonModule($name, $side, "head", $colorIndex);
+
+string $neckPlacer = ($name+$side+$moduleName+"Main_ctrl");
+string $headPlacer = ($name+$side+"headMain_ctrl");
+
+addAttr -ln "child" -dt "string" $neckPlacer ;
+setAttr -type "string" ($neckPlacer + ".child") $headPlacer;
+
+float $headPos;
+
+string $neckJoint = `getAttr ($neckPlacer+".jointPosList")`;
+string $neckJointList[] = stringToStringArray($neckJoint," ");
+
+string $headJoint = `getAttr ($headPlacer+".jointPosList")`;
+string $headJointList[] = stringToStringArray($headJoint," ");
+
+string $eyeJoints = `getAttr ($headPlacer+".child")`;
+
+string $neckJoint = `getAttr ($neckPlacer+".jointPosList")`;
+string $neckJointList[] = stringToStringArray($neckJoint," ");
+
+if($numCon>1)
+	{
+	int $size = size($neckJointList);
+	cr_connectModuleComponants $neckJointList[$size-1] $headPlacer;
+	$headPos = ($dis/($numCon-1));
+	move 0 ($dis+$headPos) 0 $headPlacer;
+	}
+else
+	{
+	cr_connectModuleComponants $neckJointList[0] $headPlacer;
+	$headPos = ($dis/$numCon);
+	move 0 $headPos 0 $headPlacer;
+	}
+
+parent $headPlacer $neckPlacer;
+
+//create world pos loc and parent main arm placer ctrl...
+string $worldPosLoc[] = cr_buildWorldPosLoc($name);
+if(!`attributeExists "neckHead" $worldPosLoc[0]`)
+	addAttr -ln "neckHead"  -dt "string" $worldPosLoc[0]; 
+
+string $moduleParts = `getAttr ($worldPosLoc[0] + ".neckHead")`;
+setAttr -type "string" ($worldPosLoc[0] + ".neckHead") ($moduleParts+" "+$neckPlacer);
+
+parent $neckPlacer $worldPosLoc[0];
+
+//module tags
+addAttr -ln "moduleTag" -dt "string" $headPlacer;
+addAttr -ln "buildTag" -dt "string" $headPlacer;
+
+setAttr -type "string" ($headPlacer + ".moduleTag") "head";
+setAttr -type "string" ($headPlacer + ".buildTag") $worldPosLoc[0];
+
+addAttr -ln "moduleTag" -dt "string" $neckPlacer;
+addAttr -ln "buildTag" -dt "string" $neckPlacer;
+
+setAttr -type "string" ($neckPlacer + ".moduleTag") "neck";
+setAttr -type "string" ($neckPlacer + ".buildTag") $worldPosLoc[0];
+
+addAttr -ln "name"  -dt "string" $neckPlacer; 
+	setAttr -type "string" ($neckPlacer + ".name") $name;
+addAttr -ln "side"  -dt "string" $neckPlacer; 
+	setAttr -type "string" ($neckPlacer + ".side") $side;
+addAttr -ln ($side+"neckJoint") -dt "string" $neckPlacer ; 
+	setAttr -type "string" ($neckPlacer + "." + ($side+"neckJoint")) $neckJointList[0];
+addAttr -ln ($side+"headJoint")  -dt "string" $neckPlacer ; 
+	setAttr -type "string" ($neckPlacer + "." + ($side+"headJoint")) $headJointList[0];
+addAttr -ln ($side+"eyeJoints")  -dt "string" $neckPlacer ; 
+	setAttr -type "string" ($neckPlacer + "." + ($side+"eyeJoints")) $eyeJoints;
+}
+
+/*
+string $name = "";
+string $side = "";
+string $moduleName = "tail";
+int $numCon = 2;
+string $axis = "y";
+float $dis = 3;
+int $colorIndex = 3;
+cr_buildTentacleDummySkeletonModule($name, $side, $moduleName, $numCon, $axis, $dis, $colorIndex);
+*/
+
+global proc cr_buildTentacleDummySkeletonModule(string $name, string $side, string $moduleName, int $numCon, string $axis, float $dis, int $colorIndex)
+{
+string $tentaclePlacer = cr_linearDisDummyBoneCreator($name, $side, $moduleName, $numCon, $axis, $dis, $colorIndex);
+
+//create tentacle annotation
+string $tentacle = `cr_createModuleAnnotation ($name+$side+$moduleName) $tentaclePlacer`;
+setAttr ($tentacle+".t") 0 1 0;
+
+//create world pos loc and parent main arm placer ctrl...
+string $worldPosLoc[] = cr_buildWorldPosLoc($name);
+if(!`attributeExists "tentacle" $worldPosLoc[0]`)
+	addAttr -ln "tentacle"  -dt "string" $worldPosLoc[0]; 
+
+string $moduleParts = `getAttr ($worldPosLoc[0] + "." +"tentacle")`;
+setAttr -type "string" ($worldPosLoc[0] + "." +"tentacle") ($moduleParts+" "+$tentaclePlacer);
+
+parent $tentaclePlacer $worldPosLoc[0];
+
+//module tags
+addAttr -ln "moduleTag" -dt "string" $tentaclePlacer;
+addAttr -ln "buildTag" -dt "string" $tentaclePlacer;
+
+setAttr -type "string" ($tentaclePlacer + ".moduleTag") "tentacle";
+setAttr -type "string" ($tentaclePlacer + ".buildTag") $worldPosLoc[0];
+
+//rig info Attr
+string $tentacleList = `getAttr ($tentaclePlacer + ".jointPosList")`;
+string $tentacleJointsList[] = stringToStringArray($tentacleList," ");
+int $size = size($tentacleJointsList); 
+
+addAttr -ln "name"  -dt "string" $tentaclePlacer; 
+	setAttr -type "string" ($tentaclePlacer + ".name") $name;
+addAttr -ln "side"  -dt "string" $tentaclePlacer; 
+	setAttr -type "string" ($tentaclePlacer + ".side") $side;
+addAttr -ln ($side+"startJoint") -dt "string" $tentaclePlacer; 
+	setAttr -type "string" ($tentaclePlacer + "." + ($side+"startJoint")) $tentacleJointsList[0];
+addAttr -ln ($side+"endJoint")  -dt "string" $tentaclePlacer; 
+	setAttr -type "string" ($tentaclePlacer + "." + ($side+"endJoint")) $tentacleJointsList[$size-1];
+addAttr -ln ($side+"types")  -dt "string" $tentaclePlacer; 
+	setAttr -type "string" ($tentaclePlacer + "." + ($side+"types")) $moduleName;
+
+select -cl;	
+}
+
+//This proc will create world pos loc for position dummy modules
+global proc string[] cr_buildWorldPosLoc(string $name)
+{
+string $worldPosLoc[] = {($name + "worldPos_loc")};
+
+if (!`objExists $worldPosLoc[0]`)
+	{
+	$worldPosLoc = `spaceLocator -p 0 0 0 -n ($name + "worldPos_loc")`;
+	setAttr ($worldPosLoc[0]+"Shape.localScaleX") 7;
+	setAttr ($worldPosLoc[0]+"Shape.localScaleY") 7;
+	setAttr ($worldPosLoc[0]+"Shape.localScaleZ") 7;
+	}
+return $worldPosLoc;
+}
+
+global proc string cr_createModuleAnnotation(string $name, string $obj)
+{
+string $annotation = `annotate -tx $name -p 0 0 0 $obj`;
+setAttr ($annotation + ".displayArrow") 0;
+setAttr ($annotation + ".overrideEnabled") 1;
+setAttr ($annotation + ".overrideDisplayType") 2;
+
+string $annotationShape[] = `listRelatives -p $annotation`;
+$annotationShape[0] = `rename $annotationShape[0] ($name+"_annotate")`;
+parent $annotationShape[0] $obj;
+
+return $annotationShape[0];
+}

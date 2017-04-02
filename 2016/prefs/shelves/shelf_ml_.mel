@@ -1,0 +1,614 @@
+global proc shelf_ml_ () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Toggle the visible state of selected nodes. Force if possible." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_toggleVisibility" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "ml_toggleVisibility.png" 
+        -image1 "ml_toggleVisibility.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_toggleVisibility\nml_toggleVisibility.main()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open a UI to trace the animation of a node across the screen." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_arcTracer" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 1 0.5 0 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "ml_arcTracer.png" 
+        -image1 "ml_arcTracer.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_arcTracer\nml_arcTracer.ui()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "Trace From Camera" ( "import ml_arcTracer\nml_arcTracer.traceCamera()" )
+        -mip 0
+        -mi "Retrace" ( "import ml_arcTracer\nml_arcTracer.retraceArc()" )
+        -mip 1
+        -mi "Clear Arcs" ( "import ml_arcTracer\nml_arcTracer.clearArcs()" )
+        -mip 2
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open an UI to edit animation curves in bulk." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_animCurveEditor" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "edit" 
+        -overlayLabelColor 1 0.5 0 
+        -overlayLabelBackColor 0 0 0 0.7 
+        -image "ml_animCurveEditor.png" 
+        -image1 "ml_animCurveEditor.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_animCurveEditor\nml_animCurveEditor.ui()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Reset the selected nodes or channels to their default values." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_resetChannels" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "reset" 
+        -overlayLabelColor 1 0.5 0 
+        -overlayLabelBackColor 0 0 0 0 
+        -image "ml_resetChannels.png" 
+        -image1 "ml_resetChannels.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_resetChannels\nml_resetChannels.resetPuppetControl()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "Reset Transforms Only" ( "import ml_resetChannels\nml_resetChannels.main(transformsOnly=True)" )
+        -mip 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open a UI to set keyframes with options." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_setKey" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "set" 
+        -overlayLabelColor 1 0.5 0 
+        -overlayLabelBackColor 0 0 0 0 
+        -image "ml_setKey.png" 
+        -image1 "ml_setKey.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_setKey\nml_setKey.setKey(insert=True, deleteSubFrames=True, visibleInGraphEditor=True, keyShapes=False, selectedChannels=True, keyKeyed=True)" 
+        -sourceType "python" 
+        -doubleClickCommand "import ml_setKey\nml_setKey.setKey(insert=True, deleteSubFrames=True, keyShapes=False, selectedChannels=True)" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "Set Key UI" ( "import ml_setKey\nml_setKey.ui()" )
+        -mip 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open a UI to delete keys with various options." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_deleteKey" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "del" 
+        -overlayLabelColor 1 0.5 0 
+        -overlayLabelBackColor 0 0 0 0 
+        -image "ml_deleteKey.png" 
+        -image1 "ml_deleteKey.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_deleteKey\nml_deleteKey.deleteKey(deleteSubFrames=True, visibleInGraphEditor=True, selectedKeys=True)" 
+        -sourceType "python" 
+        -doubleClickCommand "import ml_deleteKey\nml_deleteKey.deleteChannels()" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "Delete Key UI" ( "import ml_deleteKey\nml_deleteKey.ui()" )
+        -mip 0
+        -mi "Delete Selected Channels" ( "import ml_deleteKey\nml_deleteKey.deleteChannels()" )
+        -mip 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Select all keyed nodes within a namespace or hierarchy." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_selectKeyed" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "ml_selectKeyed.png" 
+        -image1 "ml_selectKeyed.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_selectKeyed\nml_selectKeyed.main()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open a UI to copy animation from one node or hierarchy to another." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_copyAnim" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 1 0.5 0 
+        -overlayLabelBackColor 0 0 0 0 
+        -image "ml_copyAnim.png" 
+        -image1 "ml_copyAnim.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_copyAnim\nml_copyAnim.ui()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "Copy Single" ( "import ml_copyAnim\nml_copyAnim.copySingle()" )
+        -mip 0
+        -mi "Copy Hierarchy" ( "import ml_copyAnim\nml_copyAnim.copyHierarchy()" )
+        -mip 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Select two nodes to transfer the keytimes from the first to the second." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_transferKeytimes" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "xfer" 
+        -overlayLabelColor 1 0.5 0 
+        -overlayLabelBackColor 0 0 0 0 
+        -image "ml_transferKeytimes.png" 
+        -image1 "ml_transferKeytimes.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_transferKeytimes\nml_transferKeytimes.main()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open a UI to change time based on keyframes and selection." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_goToKeyframe" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 1 0.5 0 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "ml_goToKeyframe.png" 
+        -image1 "ml_goToKeyframe.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_goToKeyframe;ml_goToKeyframe.ui()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open a UI to create holds." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_hold" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "hold" 
+        -overlayLabelColor 1 0.5 0 
+        -overlayLabelBackColor 0 0 0 0 
+        -image "ml_hold.png" 
+        -image1 "ml_hold.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_hold;ml_hold.ui()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "Hold Current" ( "import ml_hold\nml_hold.current()" )
+        -mip 0
+        -mi "Hold Average" ( "import ml_hold\nml_hold.average()" )
+        -mip 1
+        -mi "<< Previous" ( "import ml_hold\nml_hold.previous()" )
+        -mip 2
+        -mi ">> Next" ( "import ml_hold\nml_hold.next()" )
+        -mip 3
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open a UI to weight key values to neighboring keys." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_breakdown" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "BD" 
+        -overlayLabelColor 1 0.5 0 
+        -overlayLabelBackColor 0 0 0 0 
+        -image "ml_breakdown.png" 
+        -image1 "ml_breakdown.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_breakdown\nml_breakdown.drag()" 
+        -sourceType "python" 
+        -doubleClickCommand "import ml_breakdown\nml_breakdown.ui()" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "Breakdown UI" ( "import ml_breakdown\nml_breakdown.ui()" )
+        -mip 0
+        -mi "<< Previous" ( "import ml_breakdown\nml_breakdown.weightPrevious()" )
+        -mip 1
+        -mi ">> Next" ( "import ml_breakdown\nml_breakdown.weightNext()" )
+        -mip 2
+        -mi "Average" ( "import ml_breakdown\nml_breakdown.weightAverage()" )
+        -mip 3
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Adjust the value of the current key by dragging in the viewport." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_keyValueDragger" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "ml_keyValueDragger.png" 
+        -image1 "ml_keyValueDragger.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_keyValueDragger\nml_keyValueDragger.drag()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open a UI for setting keyframe tangent weight." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_tangentWeight" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 1 0.5 0 
+        -overlayLabelBackColor 0 0 0 0 
+        -image "ml_tangentWeight.png" 
+        -image1 "ml_tangentWeight.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_tangentWeight\nml_tangentWeight.ui()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "+ Plus" ( "import ml_tangentWeight\nml_tangentWeight.plus()" )
+        -mip 0
+        -mi "- Minus" ( "import ml_tangentWeight\nml_tangentWeight.minus()" )
+        -mip 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open a UI to change the rotation order of an animated node while preserving motion." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_convertRotationOrder" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 1 0.5 0 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "ml_convertRotationOrder.png" 
+        -image1 "ml_convertRotationOrder.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_convertRotationOrder;ml_convertRotationOrder.ui()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open the UI for ml_worldBake." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_worldBake" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 1 0.5 0 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "ml_worldBake.png" 
+        -image1 "ml_worldBake.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_worldBake;ml_worldBake.ui()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open a UI to record timings." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_stopwatch" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 1 0.5 0 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "ml_stopwatch.png" 
+        -image1 "ml_stopwatch.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_stopwatch;ml_stopwatch.ui()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Move a node exactly towards or away from camera." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ml_cameraDepthDragger" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "ml_cameraDepthDragger.png" 
+        -image1 "ml_cameraDepthDragger.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import ml_cameraDepthDragger\nml_cameraDepthDragger.drag()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+
+} 

@@ -1,0 +1,1183 @@
+// Make Maya2Octane window
+global string $gMainProgressBar;
+$startRange = `getAttr "defaultRenderGlobals.startFrame"`;
+$endRange = `getAttr "defaultRenderGlobals.endFrame"`;
+$byFrame = `getAttr "defaultRenderGlobals.byFrameStep"`;
+if (`window -exists Maya2Octane`)
+  deleteUI Maya2Octane;
+
+window 	-menuBar 1
+		-mxb 0
+        -s 1
+		-resizeToFitChildren 1
+        -widthHeight 450 320
+        -title "Maya2Octane v2.5" Maya2Octane;
+
+menu -label "Menu" -helpMenu true;
+          menuItem -label "Save Settings" -command "octaneWriteCfg";
+		  menuItem -label "Reset Settings" -command "octaneResetCfg";
+
+//	Project Configuration
+        columnLayout -adjustableColumn 1 -columnAlign "left";
+            picture -image "octane_logo.bmp";
+            frameLayout -label "Project Configuration"
+                -borderStyle "etchedIn";
+            rowColumnLayout -numberOfRows 5;
+            textFieldButtonGrp -label "Octane Render Binary:" -cw 1 125 -cw 2 260 -fileName "" -buttonLabel "  Browse  " -buttonCommand "openOctane_binary" octaneBinary;
+            textFieldButtonGrp -label "Project Path:" -cw 1 125 -cw 2 260 -fileName "" -buttonLabel "  Browse  " -buttonCommand "openProject_path" projectPath;
+            textFieldButtonGrp -label "Project Name:" -cw 1 125 -cw 2 212 -fileName "" -buttonLabel "Use existing project" -buttonCommand "openProject_name" -cc "removeSpace" projectName;
+            /*optionMenuGrp -cal 1 "right" -label "Native Unit Size:" -en 1 -cw 1 125 unitSize;
+                menuItem -label "millimeters";
+                menuItem -label "centimeters";
+                menuItem -label "meters";
+                menuItem -label "inches";
+                menuItem -label "feet/foot";
+                menuItem -label "yards";
+			string $mayaSize = `currentUnit -q -linear`;
+			switch($mayaSize)
+			    {
+				case "mm":
+					float $mayaSizeValue = 1;
+					break;
+				case "cm":
+					float $mayaSizeValue = 2;
+					break;
+				case "m":
+					float $mayaSizeValue = 3;
+					break;
+				case "in":
+					float $mayaSizeValue = 4;
+					break;
+				case "ft":
+					float $mayaSizeValue = 5;
+					break;
+				case "yd":
+					float $mayaSizeValue = 6;
+					break;
+				case "mi":
+					float $mayaSizeValue = 7;
+					break;
+				}
+            optionMenuGrp -edit -sl $mayaSizeValue unitSize;*/
+			checkBoxGrp -label "Export Smoothing: " -cw 1 128 -cal 2 "left" objSmoothing;
+        	setParent ..;
+   		 setParent ..;
+
+/*	Export Configuration	*/
+            frameLayout -label "Export Configuration"
+                -w 450
+                -borderStyle "etchedIn";
+            columnLayout -adjustableColumn 1;
+
+/*	Film	*/
+                frameLayout -label "Film"
+                    -borderStyle "etchedOut";
+                rowColumnLayout -numberOfRows 1 -co 1 "left" 15;
+                    checkBox -label "Resolution" -cc "enableRes" imageRes;
+                    textFieldGrp -label "Width:" -en 0 -text "1024" -cw 1 50 -cw 2 50 -cc "defaultSize" imageWidth;
+                    textFieldGrp -label "Height:" -en 0 -text "512" -cw 1 50 -cw 2 50 -cc "defaultSize" imageHeight;
+                    optionMenuGrp -en 0 -cc "scaleSize" scaleSize;
+                        menuItem -label "100%";
+                        menuItem -label "75%";
+                        menuItem -label "50%";
+                        menuItem -label "25%";
+                    setParent ..;
+                setParent ..;
+
+/* Camera */
+            frameLayout -label "Camera"
+                -borderStyle "etchedOut";
+            rowColumnLayout -numberOfColumns 2 -co 1 "left" 15
+                -columnWidth 1 150
+                -columnWidth 2 285
+                -cal 1 "right";
+            checkBox -label "Export Camera" -v 1 -cc "enableCam" camExport;
+             optionMenuGrp -label "Active Camera:" -cw 1 80 -cc "getCamName" activeCam;
+                 menuItem -label "                                                        ";
+               string $camList[] = `listCameras`;
+                for ($eachCamera in $camList)
+                {
+                    menuItem -label $eachCamera;
+                }
+            checkBox -label "Lens Aperture Radius" aperture;
+            floatSliderButtonGrp -field 1 -w 100 -precision 3 -v 1 -buttonLabel "Key" -bc "setKeyLens" lensRadius;
+            checkBox -label "Focal Depth" depth;
+            floatSliderButtonGrp -field 1 -precision 3 -min 2.5 -max 3500 -cc "changeFov" -dc "changeFov" -buttonLabel "Key" -bc "setKeyFocal" focalDepth;
+            checkBox -label "Motion Blur" blur;
+            optionMenuGrp -label "Interpolate:" -cw 1 85 inteBlur;
+                menuItem -label "Next";
+                menuItem -label "Previous";
+            setParent ..;
+        setParent ..;
+
+/* Daylight Env */
+            frameLayout -label "Daylight Environment"
+                -borderStyle "etchedOut";
+            rowColumnLayout -numberOfColumns 2 -co 1 "left" 15
+                -columnWidth 1 145
+                -columnWidth 2 290;
+                checkBox -label "Export Sun Direction" -cc "enableSun" sunDirection;
+                textFieldButtonGrp -l "Light Source" -editable 0 -en 0 -cw 2 85 -fileName "" -buttonLabel "   Select   " -buttonCommand "selectSun" lightSource;
+            setParent ..;
+        setParent ..;
+
+/*	GPU Devices	*/
+            frameLayout -label "GPU Devices"
+                -borderStyle "etchedOut";
+            rowColumnLayout -numberOfColumns 2 -co 1 "left" 15
+                -columnWidth 1 285;
+            checkBox -label "Specify GPU devices to use" -cc "enableGPU" gpuDevice;
+            textFieldGrp -text "0" -en 0 -cw 1 145 gpu;
+            setParent ..;
+        setParent ..;
+    setParent ..;
+setParent ..;
+
+/*	Export	*/
+			frameLayout -label "Export"
+                  -borderStyle "etchedIn";
+            columnLayout -adjustableColumn 1;
+
+/*	Frame	*/
+            frameLayout -label "Frame"
+                -borderStyle "etchedOut";
+            rowColumnLayout -numberOfRows 1;
+                button -label "Export OBJ/MTL only" -w 150 -c "objExport";
+                button -label "Render" -w 150 -command "renderFrame";
+            setParent ..;
+        setParent ..;
+
+/*	Animation	*/
+            frameLayout -label "Animation"
+        		-borderStyle "etchedOut";
+            formLayout -numberOfDivisions 10 animForm;
+            textFieldButtonGrp -label "Image Output:" -cw 1 85 -cw 2 300 -fileName "" -buttonLabel "  Browse  " -buttonCommand "openImage_path" imageOutput;
+            textFieldGrp -label "Start frame:" -text $startRange -cw 1 66 -cw 2 40 animStart;
+            textFieldGrp -label "End frame:" -text $endRange -cw 1 66 -cw 2 40 animEnd;
+            textFieldGrp -label "By frame:" -text $byFrame -cw 1 55 -cw 2 40 animStep;
+			checkBox -label "Camera Only" camOnly;
+            intFieldGrp  -label "Pixelsamples" -value1 256 -cw 1 75 -cw 2 50 -cc "checkSamples" pixelSamples;
+            optionMenuGrp -cc "changeSamples" -w 150 samplesPreset;
+            menuItem -label "Very Low (8 s/px)" veryLow;
+            menuItem -label "Low (32 s/px)";
+            menuItem -label "Medium (256 s/px)";
+            menuItem -label "Medium/High (512 s/px)";
+            menuItem -label "High (1024 s/px)";
+            menuItem -label "Very High (4096 s/px)";
+            optionMenuGrp -edit -sl 3 samplesPreset;
+            button -label "Render Animation" -w 153 -command "renderAnim" animRender;
+            formLayout -edit
+              -attachForm imageOutput "top" 10
+              -attachForm imageOutput "left" 0
+
+              -attachForm animStart "top" 40
+              -attachForm animStart "left" 20
+
+              -attachForm animEnd "top" 40
+              -attachForm animEnd "left" 130
+
+              -attachForm animStep "top" 40
+              -attachForm animStep "left" 240
+
+              -attachForm camOnly "top" 43
+              -attachForm camOnly "left" 345
+
+              -attachForm pixelSamples "top" 70
+              -attachForm pixelSamples "left" 12
+
+              -attachForm samplesPreset "top" 70
+              -attachForm samplesPreset "left" 140
+
+              -attachForm animRender "top" 70
+              -attachForm animRender "left" 295
+               animForm;
+            setParent ..;
+        setParent ..;
+octaneReadCfg();
+showWindow Maya2Octane;
+global int $defaultWidth = 1024;
+global int $defaultHeight = 512;
+
+global proc setKeyLens()
+{
+	string $selCamera = `optionMenuGrp -q -v activeCam`;
+	setKeyframe ($selCamera +".octane_lens");
+}
+
+global proc setKeyFocal()
+{
+	string $selCamera = `optionMenuGrp -q -v activeCam`;
+	setKeyframe ($selCamera +".focalLength");
+}
+
+global proc checkSamples()
+{
+	int $value = `intFieldGrp -q -value1 pixelSamples`;
+	if ($value > 64000)
+    	{
+        	confirmDialog -title "Warning" -message "Maximum Value is 64000"
+    		-button "Ok" -dismissString "Ok";
+    		intFieldGrp -e -value1 64000 pixelSamples;
+        }
+    if ($value < 2)
+    	{
+            confirmDialog -title "Warning" -message "Minimum Value is 2"
+    		-button "Ok" -dismissString "Ok";
+    		intFieldGrp -e -value1 2 pixelSamples;
+        }
+    return;
+}
+
+global proc changeSamples()
+{
+	int $sampleValue = `optionMenuGrp -q -sl samplesPreset`;
+	    switch($sampleValue)
+    {
+    case 1:
+        float $value = 8;
+        break;
+    case 2:
+        float $value = 32;
+        break;
+    case 3:
+        float $value = 256;
+        break;
+    case 4:
+        float $value = 512;
+        break;
+    case 5:
+        float $value = 1024;
+        break;
+    case 6:
+        float $value = 4096;
+        break;
+    }
+	intFieldGrp  -e -value1 $value pixelSamples;
+}
+
+global proc changeLens()
+{
+	float $lensValue = `floatSliderGrp -q -v lensRadius`;
+    string $cameraName = `optionMenuGrp -q -v activeCam`;
+	setAttr ($cameraName + ".horizontalFilmAperture") $lensValue;
+}
+
+global proc changeFov()
+{
+	float $focalValue = `floatSliderGrp -q -v focalDepth`;
+    string $cameraName = `optionMenuGrp -q -v activeCam`;
+	setAttr ($cameraName + ".focalLength") $focalValue;
+}
+
+global proc string getPadding()
+{
+            string $padding = `currentTime -q`;
+            while(size($padding)<4)
+            	$padding = ("0"+$padding);
+            return $padding;
+}
+
+global proc int imgCheck(string $imgPath)
+{
+string $imgPath;
+int $imgCheck;
+if (!`exists $imgPath`)
+	{
+		$imgCheck = 0;
+	}
+	else
+	{
+		$imgCheck = 1;
+	}
+	return $imgCheck;
+}
+
+global proc string getSamples()
+{
+   	int $samplesBox = `intFieldGrp -q -v1 pixelSamples`;
+	string $pixSamples = " -s " + string ($samplesBox);
+    return $pixSamples;
+}
+
+global proc string padNumber()
+{
+	string $padding = `currentTime -q`;
+	while(size($padding)<4)
+		$padding = ("0"+$padding);
+	return $padding;
+}
+
+global proc renderFrame()
+{
+string $octanePath = `textFieldButtonGrp -q -fileName octaneBinary`;
+string $projectPath = `textFieldButtonGrp -q -fileName projectPath`;
+string $projectName = `textFieldButtonGrp -q -fileName projectName`;
+string $activeCam = `optionMenuGrp -q -v activeCam`;
+string $objName = $projectPath + $projectName + ".obj";
+string $fileExt = ".ocs";
+
+if ($projectPath == "")
+	{
+	confirmDialog -title "Warning" -message "Project Path is Empty!"
+    -button "Ok" -dismissString "Ok";
+	return;
+    }
+
+if ($projectName == "")
+	{
+	confirmDialog -title "Warning" -message "Project Name is Empty!"
+    -button "Ok" -dismissString "Ok";
+	return;
+    }
+
+if ((startsWith($activeCam, " ")) == 1 && `checkBox -query -v camExport` == 1)
+	{
+	confirmDialog -title "Warning" -message "Please Select Camera"
+    -button "Ok" -dismissString "Ok";
+	return;
+    }
+
+if (`textFieldButtonGrp -q -fileName lightSource` == "" && `checkBox -query -v sunDirection` == 1)
+	{
+	confirmDialog -title "Warning" -message "Please Select Light Source"
+    -button "Ok" -dismissString "Ok";
+	return;
+    }
+
+if (! `pluginInfo -query -l -n objExport`)
+	loadPlugin "objExport";
+
+objExport;
+int $octaneFlag = fileCheck();
+string $filmRes = getFilm();
+string $camPos = getPos();
+string $camVec = getVector();
+string $camAim = getAim();
+string $camAperture = getAperture();
+string $camFov = getFov();
+string $camFocus = " --cam-focaldepth " + (getAttr (`optionMenuGrp -q -v activeCam` + ".focusDistance"));
+string $sunDirection = getSun();
+string $gpuDev = getGpu();
+string $pixSamples = getSamples();
+string $cmdLine;
+string $winCmd ="";
+
+if (!$octaneFlag)
+    {
+    	$cmdLine = "\"" + $octanePath + "\"" + " -n " + "\"" + $projectPath + $projectName + $fileExt + "\"";
+		$cmdLine += $pixSamples + " -m " + $projectName + ".obj" + " -l " + "\"" + $objName + "\"";
+		$cmdLine += $camAperture + $camFov + $camFocus + $camPos + $camVec + $camAim + $sunDirection + $filmRes;
+        $cmdLine += $gpuDev;
+    }
+  else
+  	{
+		$cmdLine = "\"" + $octanePath + "\"" + " -m " + $projectName + ".obj";
+		$cmdLine += $pixSamples + " -r " + "\"" + $projectPath + $projectName + ".obj" + "\"";
+		$cmdLine += $camAperture + $camFov + $camFocus + $camPos + $camVec + $camAim + $sunDirection + $filmRes + $gpuDev;
+		$cmdLine += " " + "\"" + $projectPath + $projectName + $fileExt + "\"";
+	}
+
+if( `about -win`)
+   {
+	   while ( $cmdLine != ( $cmdLine = `substitute "/" $cmdLine "\\"` ) );
+	   $winCmd = "start ";
+   }
+print ($cmdLine + "\n");
+system($winCmd + $cmdLine);
+//resetScale();
+}
+
+global proc renderAnim()
+{
+	global string $gMainProgressBar;
+	string $octanePath = `textFieldButtonGrp -q -fileName octaneBinary`;
+    string $projectPath = `textFieldButtonGrp -q -fileName projectPath`;
+    string $projectName = `textFieldButtonGrp -q -fileName projectName`;
+
+	if (! `pluginInfo -query -l -n objExport`)
+		loadPlugin "objExport";
+
+    if ($projectPath == "")
+		{
+            confirmDialog -title "Warning" -message "Project Path is Empty!"
+            -button "Ok" -dismissString "Ok";
+            return;
+    	}
+
+    if ($projectName == "")
+        {
+            confirmDialog -title "Warning" -message "Project Name is Empty!"
+            -button "Ok" -dismissString "Ok";
+            return;
+        }
+
+   	string $imgBox = `textFieldButtonGrp -q -fileName imageOutput`;
+
+        if ($imgBox == "")
+        {
+            confirmDialog -title "Warning" -message "Image Output is Empty!"
+            -button "Ok" -dismissString "Ok";
+            return;
+        }
+
+    string $objName = $projectPath + $projectName + "_anim" + ".obj ";
+    string $fileExt = ".ocs";
+    string $activeCam = `optionMenuGrp -q -v activeCam`;
+
+    if ((startsWith($activeCam, " ")) == 1 && `checkBox -query -v camExport` == 1)
+        {
+            confirmDialog -title "Warning" -message "Please Select Camera"
+            -button "Ok" -dismissString "Ok";
+            return;
+        }
+
+	string $animStart = `textFieldGrp -q -tx animStart`;
+    string $animEnd = `textFieldGrp -q -tx animEnd`;
+    string $animStep = `textFieldGrp -q -tx animStep`;
+    string $filmRes = getFilm();
+    string $gpuDev = getGpu();
+    string $pixSamples = getSamples();
+    int $octaneFlag = fileCheck();
+    int $breakRender = 0;
+    string $animCmdLine = "";
+	string $winCmd ="";
+if (`textFieldButtonGrp -q -fileName lightSource` == "" && `checkBox -query -v sunDirection` == 1)
+	{
+		confirmDialog -title "Warning" -message "Please Select Light Source"
+		-button "Ok" -dismissString "Ok";
+		return;
+    }
+	int $f = int ($animEnd) - int ($animStart) + 1;
+      for ($n=int ($animStart);$n<=int ($animEnd);$n = $n + int($animStep))
+        {
+        	if ($breakRender) break;
+            currentTime -e $n;
+		int $camOnly = getOnlyCam();
+			if (!$camOnly)
+				{
+					print "Exporting...\n";
+					objAnimExport;
+				}
+			string $camPos = getPos();
+			string $camMotionPos = getMotionPos();
+			string $camVec = getVector();
+			string $camAim = getAim();
+			string $camMotionAim = getMotionAim();
+			string $camAperture = getAperture();
+			string $camFov = getFov();
+			string $camFocus = " --cam-focaldepth " + (getAttr (`optionMenuGrp -q -v activeCam` + ".focusDistance"));
+			string $sunDirection = getSun();
+			string $padding = getPadding();
+			string $imgPath = $imgBox + $projectName + "." + $padding + ".png";
+            if (!$octaneFlag)
+           		{
+               		$animCmdLine = "\"" + $octanePath + "\"" + " -e -q -o " + "\"" + $imgPath + "\"" + $pixSamples + " -m " + $projectName + ".obj";
+                    $animCmdLine += " -n " + "\"" + $projectPath + $projectName + $fileExt + "\"" + " -l " + "\"" + $objName + "\"";
+                    $animCmdLine += $camAperture + $camFov + $camFocus + $camPos + $camVec + $camMotionPos + $camAim + $camMotionAim + $sunDirection + $filmRes;
+                    $animCmdLine += $gpuDev;
+                }
+
+			else
+                {
+					if ($camOnly == 1)
+						{
+							$animCmdLine = "\"" + $octanePath + "\"" + " -e -q -o " + "\"" + $imgPath + "\"" + $pixSamples + " -m " + $projectName + ".obj";
+							$animCmdLine += " -l " + "\"" + $projectPath + $projectName + ".obj" + "\"";
+							$animCmdLine += $camAperture + $camFov + $camFocus + $camPos + $camVec + $camMotionPos + $camAim + $camMotionAim + $sunDirection + $filmRes + $gpuDev;
+							$animCmdLine += " " + "\"" + $projectPath + $projectName + $fileExt + "\"";
+						}
+					else
+						{
+							$animCmdLine = "\"" + $octanePath + "\"" + " -e -q -o " + "\"" + $imgPath + "\"" + $pixSamples + " -m " + $projectName + ".obj";
+							$animCmdLine += " -r " + "\"" + $projectPath + $projectName + "_anim" + ".obj" + "\"";
+							$animCmdLine += $camAperture + $camFov + $camFocus + $camPos + $camVec + $camMotionPos + $camAim + $camMotionAim + $sunDirection + $filmRes + $gpuDev;
+							$animCmdLine += " " + "\"" + $projectPath + $projectName + $fileExt + "\"";
+						}
+                }
+			if( `about -win`)
+			   {
+				  while ( $animCmdLine != ( $animCmdLine = `substitute "/" $animCmdLine "\\"` ) );
+				  $winCmd ="start ";
+			   }
+			print ($animCmdLine +"\n");
+			int $imgCheck=0;
+			$imgCheck = imgCheck($imgPath);
+			if (!$imgCheck)
+				{
+					system($winCmd + $animCmdLine);
+				}
+
+			do
+                {
+					$imgCheck = imgCheck($imgPath);
+                	progressBar -edit
+						-beginProgress
+                     	-status "Rendering..."
+						-maxValue $f
+                     	-isInterruptable true
+						$gMainProgressBar;
+                	if ( `progressBar -query -isCancelled $gMainProgressBar` )
+                        {
+                            $n = $animEnd;
+                            $breakRender = 1;
+                            progressBar -edit -endProgress $gMainProgressBar;
+							//resetScale();
+                            break;
+                        }
+                	if ( `progressBar -query -progress $gMainProgressBar` >= $f ) break;
+                }
+            while (!$imgCheck);
+            progressBar -edit
+                -s 1
+				$gMainProgressBar;
+			string $objDel = $projectPath + $projectName + "_anim" + ".obj";
+			if( `about -win`)
+			   {
+				   while ( $objDel != ( $objDel = `substitute "/" $objDel "\\"` ) );
+			   }
+			sysFile -delete $objDel;
+			//resetScale();
+        }
+			progressBar -edit
+    			-endProgress
+    			$gMainProgressBar;
+            if ($breakRender)
+                {
+                	print "Render Canceled \n";
+                }
+            else
+            	{
+                	print "Render Done \n";
+            	}
+}
+
+global proc int getOnlyCam()
+{
+	string $camOnlyBox = `checkBox -q -v camOnly`;
+	int $camOnly;
+	if ($camOnlyBox == 0)
+		{
+			$camOnly = 0;
+		}
+	else
+		{
+			$camOnly = 1;
+		}
+	return $camOnly;
+}
+
+global proc int fileCheck()
+{
+string $projectPath = `textFieldButtonGrp -q -fileName projectPath`;
+string $projectName = `textFieldButtonGrp -q -fileName projectName`;
+string $fileCheck = $projectPath + ($projectName + ".ocs");
+int $octaneFlag;
+if (!`exists $fileCheck`)
+	{
+		$octaneFlag = 0;
+	}
+	else
+	{
+		$octaneFlag = 1;
+	}
+	return $octaneFlag;
+}
+
+global proc string getFilm()
+{
+string $resBox = `checkBox -q -v imageRes`;
+ 	 string $filmRes;
+	int $resWidth = `getAttr defaultResolution.width`;
+	int $resHeight = `getAttr defaultResolution.height`;
+  if ($resBox == 0)
+	{
+    	$filmRes =" --film-width " + $resWidth + " --film-height " + $resHeight;
+    }
+  else
+	{
+		int $filmWidth = `textFieldGrp -q -tx imageWidth`;
+		int $filmHeight = `textFieldGrp -q -tx imageHeight`;
+		$filmRes =" --film-width " + $filmWidth + " --film-height " + $filmHeight;
+	}
+    return $filmRes;
+}
+
+global proc string getPos()
+{
+	string $camBox = `checkBox -q -v camExport`;
+    string $camPos;
+    if ($camBox == 0)
+        {
+           $camPos ="";
+        }
+    else
+    	{
+    		string $cameraName = `optionMenuGrp -q -v activeCam`;
+			float $camPosXYZ[] = `camera -q -p $cameraName`;
+		   $camPos = " --cam-pos-x " + $camPosXYZ[0] +
+		   			 " --cam-pos-y " + $camPosXYZ[1] +
+					 " --cam-pos-z " + $camPosXYZ[2];
+        }
+    return $camPos;
+}
+
+global proc string getVector()
+{
+	string $camBox = `checkBox -q -v camExport`;
+    string $camVector;
+    if ($camBox == 0)
+        {
+           $camVector ="";
+        }
+    else
+    	{
+    		string $cameraName = `optionMenuGrp -q -v activeCam`;
+			float $camUpXYZ[] = `camera -q -wup $cameraName`;
+			$camVector =" --cam-up-x " + $camUpXYZ[0] +
+		   			 	" --cam-up-y " + $camUpXYZ[1]+
+					 	" --cam-up-z " + $camUpXYZ[2];
+        }
+    return $camVector;
+}
+
+global proc string getMotionPos()
+{
+	string $camMoBox = `checkBox -q -v blur`;
+    string $camMotionPos;
+    if ($camMoBox == 0)
+        {
+           $camMotionPos ="";
+        }
+    else
+    	{
+    		string $cameraName = `optionMenuGrp -q -v activeCam`;
+			if (`optionMenuGrp -q  -sl inteBlur` == 1)
+				{
+					playButtonStepForward;
+				}
+			else
+				{
+					playButtonStepBackward;
+				}
+			float $camMoPosXYZ[] = `camera -q -p $cameraName`;
+			if (`optionMenuGrp -q  -sl inteBlur` == 1)
+				{
+					playButtonStepBackward;
+				}
+			else
+				{
+					playButtonStepForward;
+				}
+            $camMotionPos = " --cam-motion-pos-x " + $camMoPosXYZ[0] +
+							" --cam-motion-pos-y " + $camMoPosXYZ[1] +
+							" --cam-motion-pos-z " + $camMoPosXYZ[2];
+        }
+    return $camMotionPos;
+}
+
+global proc string getAim()
+{
+	string $camBox = `checkBox -q -v camExport`;
+    string $camAim;
+    if ($camBox == 0)
+        {
+           $camAim ="";
+        }
+    else
+    	{
+        	string $cameraName = `optionMenuGrp -q -v activeCam`;
+			float $camAimXYZ[] = `camera -q -wci $cameraName`;
+
+            $camAim = " --cam-target-x " + $camAimXYZ[0] +
+					  " --cam-target-y " + $camAimXYZ[1] +
+					  " --cam-target-z " + $camAimXYZ[2];
+        }
+    return $camAim;
+}
+
+global proc string getMotionAim()
+{
+	string $camMoBox = `checkBox -q -v blur`;
+    string $camMoAim;
+    if ($camMoBox == 0)
+        {
+           $camMoAim ="";
+        }
+    else
+    	{
+        	string $cameraName = `optionMenuGrp -q -v activeCam`;
+			if (`optionMenuGrp -q  -sl inteBlur` == 1)
+				{
+					playButtonStepForward;
+				}
+			else
+				{
+					playButtonStepBackward;
+				}
+			float $camMoAimXYZ[] = `camera -q -wci $cameraName`;
+
+			if (`optionMenuGrp -q  -sl inteBlur` == 1)
+				{
+					playButtonStepBackward;
+				}
+			else
+				{
+					playButtonStepForward;
+				}
+
+            $camMoAim = " --cam-motion-target-x " + $camMoAimXYZ[0] +
+						" --cam-motion-target-y " + $camMoAimXYZ[1] +
+						" --cam-motion-target-z " + $camMoAimXYZ[2];
+        }
+    return $camMoAim;
+}
+
+global proc string getAperture()
+{
+string $apertureBox = `checkBox -q -v aperture`;
+string $camAperture;
+  if ($apertureBox == 0)
+    {
+		$camAperture = "";
+    }
+  else
+   {
+	   string $selCamera = `optionMenuGrp -q -v activeCam`;
+	   float $camApertureValue = `getAttr ($selCamera + ".octane_lens")`;
+	   $camAperture = " --cam-aperture " + (string)$camApertureValue;
+   }
+   return $camAperture;
+}
+
+global proc string getFov()
+{
+string $fovBox = `checkBox -q -v depth`;
+string $camFov;
+  if ($fovBox == 0)
+    {
+    	$camFov ="";
+    }
+  else
+   {
+	   string $selCamera = `optionMenuGrp -q -v activeCam`;
+	   float $camAperture = `getAttr ($selCamera + ".horizontalFilmAperture")`;
+	   float $camFocalLenght = `getAttr ($selCamera + ".focalLength")`;
+	   float $camFovValue = (0.5 * $camAperture) / ($camFocalLenght * 0.03937);
+	   $camFovValue = 2.0 * atan ($camFovValue);
+	   $camFovValue = 57.29578 * $camFovValue;
+	   $camFov = " --cam-fov " + (string)$camFovValue;
+    }
+    return $camFov;
+}
+
+global proc string getSun()
+{
+	string $sunBox = `checkBox -q -v sunDirection`;
+    string $sunDirection;
+    if ($sunBox == 0)
+    	{
+			$sunDirection = "";
+    	}
+    else
+    	{
+			string $sunName = `textFieldButtonGrp -q -fileName lightSource`;
+			float $dirLight[16] = `getAttr ($sunName + ".worldMatrix")`;
+ 			vector $noLight = `unit <<$dirLight[8],$dirLight[9],$dirLight[10]>>`;
+        	$sunDirection = " --daylight-sundir-x " + ($noLight.x) +
+							" --daylight-sundir-y " + ($noLight.y) +
+							" --daylight-sundir-z " + ($noLight.z);
+        }
+	return $sunDirection;
+}
+
+global proc string getGpu()
+{
+string $gpuBox = `checkBox -q -v gpuDevice`;
+  string $gpuDev;
+
+  if ($gpuBox == 0)
+	{
+    	$gpuDev ="";
+    }
+  else
+	{
+		string $strGpu = `textFieldGrp -q -tx gpu`;
+		while ($strGpu != ($strGpu =`substitute " " $strGpu ""`));
+		$strSize=size($strGpu);
+		for ($g=0;$g<$strSize;$g++)
+			{
+				$gpu = `substring $strGpu ($g+1) ($g+1)`;
+				$gpuDev += " -g " + $gpu;
+			}
+	}
+    return $gpuDev;
+}
+
+global proc objExport()
+{
+    string $projectPath = `textFieldButtonGrp -q -fileName projectPath`;
+    string $projectName = `textFieldButtonGrp -q -fileName projectName`;
+	string $cameraName = `optionMenuGrp -q -v activeCam`;
+    string $objName = $projectPath + $projectName + ".obj";
+if ($projectPath == "")
+	{
+	confirmDialog -title "Warning" -message "Project Path is Empty!"
+    -button "Ok" -dismissString "Ok";
+	return;
+    }
+
+if ($projectName == "")
+	{
+	confirmDialog -title "Warning" -message "Project Name is Empty!"
+    -button "Ok" -dismissString "Ok";
+	return;
+    }
+
+	if( `about -win`)
+	   {
+		   while ( $objName != ( $objName = `substitute "/" $objName "\\"` ) );
+	   }
+	sysFile -delete $objName;
+	select `ls -g -v`;
+	/*select -ado;
+	string $selObj[] = `ls -sl`;
+	for ($eachObj in $selObj)
+		{
+			$visObj = `getAttr($eachObj + ".visibility")`;
+			if (!$visObj)
+				{
+					select -d $eachObj;
+				}
+
+		}
+	select -d $cameraName;
+	exportScale();*/
+	string $smooth;
+	if (`checkBoxGrp -q -value1 objSmoothing`)
+			{
+				$smooth = "smoothing=1";
+			}
+		else
+			{
+				$smooth = "smoothing=0";
+			}
+	file -op ("groups=1;ptgroups=1;materials=1;" + "\"" + $smooth + "\"" + ";normals=1") -typ "OBJexport" -pr -es $objName;
+	select -cl;
+}
+
+global proc objAnimExport()
+{
+    string $projectPath = `textFieldButtonGrp -q -fileName projectPath`;
+    string $projectName = `textFieldButtonGrp -q -fileName projectName`;
+	string $cameraName = `optionMenuGrp -q -v activeCam`;
+    string $objName = $projectPath + $projectName + "_anim" + ".obj";
+	select `ls -g -v`;
+	/*select -visible -ado;
+	string $selObj[] = `ls -sl`;
+	for ($eachObj in $selObj)
+		{
+			$visObj = `getAttr($eachObj + ".visibility")`;
+			if (!$visObj)
+				{
+					select -d $eachObj;
+				}
+
+		}
+	select -d $cameraName;
+	exportScale();*/
+	string $smooth;
+	if (`checkBoxGrp -q -value1 objSmoothing`)
+			{
+				$smooth = "smoothing=1";
+			}
+		else
+			{
+				$smooth = "smoothing=0";
+			}
+	file -op ("groups=1;ptgroups=1;materials=1;" + "\"" + $smooth + "\"" + ";normals=1") -typ "OBJexport" -pr -es $objName;
+	select -cl;
+}
+
+global proc exportScale()
+{
+	group -n "octane_scale_group"; xform -os -piv 0 0 0;
+	int $unitSize = `optionMenuGrp -q -sl unitSize`;
+	switch($unitSize)
+		{
+			case 1:
+				float $sSize = 10;
+				break;
+			case 2:
+				float $sSize = 1;
+				break;
+			case 3:
+				float $sSize = 0.01;
+				break;
+			case 4:
+				float $sSize = 1/2.54;
+				break;
+			case 5:
+				float $sSize = 1/30.48;
+				break;
+			case 6:
+				float $sSize = 1/91.44;
+				break;
+		}
+	setAttr "octane_scale_group.scaleX" ($sSize);
+	setAttr "octane_scale_group.scaleY" ($sSize);
+	setAttr "octane_scale_group.scaleZ" ($sSize);
+	select "octane_scale_group";
+}
+
+global proc resetScale()
+{
+	if (`objExists "octane_scale_group"`)
+		{
+			setAttr "octane_scale_group.scaleX" 1;
+			setAttr "octane_scale_group.scaleY" 1;
+			setAttr "octane_scale_group.scaleZ" 1;
+			ungroup "octane_scale_group";
+		}
+
+}
+
+global proc getCamName()
+{
+    string $selCamera = `optionMenuGrp -q -v activeCam`;
+    if ((startsWith($selCamera, " ")) == 1)
+    	{
+            floatSliderButtonGrp -e -v 2.500 focalDepth;
+            floatSliderButtonGrp -e -v 1 lensRadius;
+    	}
+
+    else
+    	{
+			connectControl lensRadius ""; //clear lensRadius conection
+			connectControl focalDepth ""; //clear focalDepth conection
+			if (!`attributeExists "octane_lens" $selCamera`)
+				{
+					addAttr -ln "octane_lens" -k true -at "float" -dv 1 $selCamera;
+				}
+			connectControl focalDepth ($selCamera + ".focalLength");
+			connectControl lensRadius ($selCamera + ".octane_lens");
+    	}
+}
+
+global proc selectSun()
+{
+    string $selection[] = `ls -selection`;
+    textFieldButtonGrp -edit -fileName $selection lightSource;
+}
+
+global proc removeSpace()
+{
+    string $nameSpace = `textFieldButtonGrp -q -fi projectName`;
+    while ($nameSpace != ($nameSpace =`substitute " " $nameSpace "_"`));
+    textFieldButtonGrp -edit -fileName $nameSpace projectName;
+}
+
+global proc openOctane_binary()
+{
+
+	string $filename[] = `fileDialog2 -fileMode 1 -okc "Select" -caption "Select OctaneRender Binary"`;
+	if (1 == `size($filename)`)
+	{
+		textFieldButtonGrp -edit -fileName $filename octaneBinary;
+	}
+
+}
+
+global proc openProject_path()
+{
+	string $filename[] = `fileDialog2 -fileMode 3 -okc "Select" -caption "Select Project Path"`;
+	if (1 == `size($filename)`)
+	{
+		textFieldButtonGrp -edit -fileName (($filename[0]) + "\\") projectPath;
+	}
+}
+
+
+global proc openProject_name()
+{
+	string $filename[] = `fileDialog2 -fm 1 -fileFilter "*.ocs"`;
+
+	if (1 == `size($filename)`)
+	{
+		string $projectDir = `match "^.*/" ($filename[0])`;
+		string $filePart = `match "[^/\\]*$" ($filename[0])`;
+		string $no_extension = `match "^[^\.]*" $filePart`;
+		textFieldButtonGrp -edit -fileName $projectDir projectPath;
+		textFieldButtonGrp -edit -fileName $no_extension projectName;
+	}
+}
+
+global proc openImage_path()
+{
+	string $filename[] = `fileDialog2 -fileMode 3 -okc "Select" -caption "Select Image Output"`;
+	if (1 == `size($filename)`)
+	{
+		textFieldButtonGrp -edit -fileName (($filename[0]) + "\\") imageOutput;
+	}
+}
+
+global proc enableRes()
+{
+    int $state = `checkBox -query -v imageRes`;
+    if ($state == 1)
+    	{
+			textFieldGrp -edit -en 1 imageWidth;
+            textFieldGrp -edit -en 1 imageHeight;
+            optionMenuGrp -edit -en 1 scaleSize;
+        }
+	else
+    	{
+			textFieldGrp -edit -en 0 imageWidth;
+            textFieldGrp -edit -en 0 imageHeight;
+            optionMenuGrp -edit -en 0 scaleSize;
+        }
+}
+
+global proc enableCam()
+ {
+  int $state = `checkBox -query -v camExport`;
+  if ($state == 1)
+    {
+        checkBox -edit -en 1 aperture;
+        checkBox -edit -en 1 depth;
+        checkBox -edit -en 1 blur;
+        floatSliderButtonGrp -edit -en 1 lensRadius;
+        floatSliderButtonGrp -edit -en 1 focalDepth;
+        optionMenuGrp -edit -en 1 activeCam;
+        optionMenuGrp -edit -en 1 inteBlur;
+    }
+  else
+  	{
+        checkBox -edit -en 0 -v 0 aperture;
+        checkBox -edit -en 0 -v 0 depth;
+        checkBox -edit -en 0 -v 0 blur;
+        floatSliderButtonGrp -edit -en 0 lensRadius;
+        floatSliderButtonGrp -edit -en 0 focalDepth;
+        optionMenuGrp -edit -en 0 activeCam;
+        optionMenuGrp -edit -en 0 inteBlur;
+    }
+ }
+
+global proc enableSun()
+{
+    int $state = `checkBox -query -v sunDirection`;
+    if ($state == 1)
+    	{
+			textFieldButtonGrp -edit -en 1 -editable 1 lightSource;
+        }
+	else
+    	{
+			textFieldButtonGrp -edit -en 0 lightSource;
+        }
+}
+
+global proc enableGPU()
+ {
+  int $state = `checkBox -query -v gpuDevice`;
+  if ($state == 1)
+    {
+        textFieldGrp -edit -en 1 gpu;
+    }
+  else
+  	{
+		textFieldGrp -edit -en 0 gpu;
+    }
+ }
+
+global proc scaleSize()
+{
+	int $persent = `optionMenuGrp -q -sl scaleSize`;
+	global int $defaultWidth;
+    global int $defaultHeight;
+    switch($persent)
+    {
+    case 1:
+        float $value = 1;
+        break;
+    case 2:
+        float $value = 0.75;
+        break;
+    case 3:
+        float $value = 0.5;
+        break;
+    case 4:
+        float $value = 0.25;
+        break;
+    }
+    int $newWidth = $defaultWidth * $value;
+    int $newHeight = $defaultHeight * $value;
+    textFieldGrp -e -tx $newWidth imageWidth;
+    textFieldGrp -e -tx $newHeight imageHeight;
+}
+
+global proc defaultSize()
+{
+	global int $defaultWidth;
+	$defaultWidth = `textFieldGrp -q -tx imageWidth`;
+    global int $defaultHeight;
+    $defaultHeight = `textFieldGrp -q -tx imageHeight`;
+    optionMenuGrp -e -sl 1 scaleSize;
+    return;
+}
+
+global proc octaneWriteCfg()
+{
+	string $octanePath = `textFieldButtonGrp -q -fileName octaneBinary`;
+    string $projectPath = `textFieldButtonGrp -q -fileName projectPath`;
+	string $strGpu = `textFieldGrp -q -tx gpu`;
+    string $imageOutput = `textFieldButtonGrp -q -fileName imageOutput`;
+
+	string $exportCfg="";
+
+	  $exportCfg += $octanePath +"\n" ;
+	  $exportCfg += $projectPath +"\n" ;
+	  $exportCfg += $strGpu +"\n" ;
+	  $exportCfg += $imageOutput +"\n" ;
+
+	$filePath = ( `internalVar -userAppDir` + "maya2octane.cfg" );
+	$fileId=`fopen $filePath "w"`;
+	fwrite $fileId ($exportCfg);
+	fclose $fileId;
+}
+
+global proc octaneReadCfg()
+{
+	string $cfg_lines[];
+	$filePath = $filePath = ( `internalVar -userAppDir` + "maya2octane.cfg" );
+	$f_check=`file -q -exists $filePath`;
+	if ($f_check==1)
+		{
+			int $fileIdentifier = `fopen $filePath "r"`;
+			string $nextLine = `fgetline $fileIdentifier`;
+			int $lineNumber=0;
+		while ( size ($nextLine) > 0 )
+			{
+				$cfg_lines[$lineNumber] = strip($nextLine);
+				$lineNumber++;
+				$nextLine = `fgetline $fileIdentifier`;
+			}
+			fclose $fileIdentifier;
+			textFieldButtonGrp -e -fileName $cfg_lines[0] octaneBinary;
+			textFieldButtonGrp -e -fileName $cfg_lines[1] projectPath;
+			textFieldGrp -e -tx $cfg_lines[2] gpu;
+			textFieldButtonGrp -e -fileName $cfg_lines[3] imageOutput;
+		}
+	else
+		{
+		textFieldButtonGrp -e -fileName "" octaneBinary;
+		textFieldButtonGrp -e -fileName "" projectPath;
+		textFieldGrp -e -tx "0" gpu;
+		textFieldButtonGrp -e -fileName "" imageOutput;
+ 	   }
+}
+
+global proc octaneResetCfg()
+{
+	string $octanePath = `textFieldButtonGrp -q -fileName octaneBinary`;
+	textFieldButtonGrp -e -fileName "" projectPath;
+	textFieldButtonGrp -e -fileName "" imageOutput;
+}

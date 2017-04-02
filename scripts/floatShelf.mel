@@ -1,0 +1,121 @@
+string $floatShelf = "floatShelf";
+
+if (`window -ex $floatShelf`)
+    deleteUI $floatShelf;
+
+window -title "Custom Toolset" $floatShelf;
+
+string $tabs = `tabLayout`;
+
+string $shelf = `shelfLayout`;
+
+shelfButton
+    -enableCommandRepeat 1
+    -enable 1
+    -width 34
+    -height 34
+    -manage 1
+    -visible 1
+    -label "global string $gSelect; setToolTo $gSelect;"
+    -image1 "aselect.xpm"
+    -style "iconOnly"
+    -command "global string $gSelect; setToolTo $gSelect;"
+;
+shelfButton
+    -enableCommandRepeat 1
+    -enable 1
+    -width 34
+    -height 34
+    -manage 1
+    -visible 1
+    -annotation "Move Tool: Select any object(s) or component(s)"
+    -label "Move Tool"
+    -image1 "move_M.xpm"
+    -style "iconOnly"
+    -command "MoveTool"
+    -doubleClickCommand "MoveToolOptions"
+;
+shelfButton
+    -enableCommandRepeat 1
+    -enable 1
+    -width 34
+    -height 34
+    -manage 1
+    -visible 1
+    -annotation "Rotate Tool: Select any object(s) or component(s)"
+    -label "Rotate Tool"
+    -image1 "rotate_M.xpm"
+    -style "iconOnly"
+    -command "RotateTool"
+    -doubleClickCommand "RotateToolOptions"
+;
+shelfButton
+    -enableCommandRepeat 1
+    -enable 1
+    -width 34
+    -height 34
+    -manage 1
+    -visible 1
+    -annotation "Scale Tool: Select any object(s) or component(s)"
+    -label "Scale Tool"
+    -image1 "scale_M.xpm"
+    -style "iconOnly"
+    -command "ScaleTool"
+    -doubleClickCommand "ScaleToolOptions"
+;
+shelfButton
+    -enableCommandRepeat 1
+    -enable 1
+    -width 34
+    -height 34
+    -manage 1
+    -visible 1
+    -annotation "Average Vertices: Move selected vertices to smooth shape"
+    -label "Average Vertices"
+    -image1 "polyAverageVertex.xpm"
+    -style "iconOnly"
+    -command "performPolyAverageVertex 0"
+;
+shelfButton
+    -enableCommandRepeat 1
+    -enable 1
+    -width 34
+    -height 34
+    -manage 1
+    -visible 1
+    -annotation "Split Polygon Tool: Select a point on an edge to start cutting the face"
+    -label "Split Polygon Tool"
+    -image1 "polySplitFacet.xpm"
+    -style "iconOnly"
+    -command "SplitPolygonTool"
+    -doubleClickCommand "SplitPolygonToolOptions"
+;
+shelfButton
+    -enableCommandRepeat 1
+    -enable 1
+    -width 34
+    -height 34
+    -manage 1
+    -visible 1
+    -annotation "Delete Edge: Delete non-border edges and cleanup their vertices"
+    -label "Delete Edge"
+    -image1 "polyDelEdge.xpm"
+    -style "iconOnly"
+    -command "DeleteEdge"
+;
+shelfButton
+    -enableCommandRepeat 1
+    -enable 1
+    -width 34
+    -height 34
+    -manage 1
+    -visible 1
+    -label "global string $gLasso; setToolTo $gLasso;"
+    -image1 "lassoSelect.xpm"
+    -style "iconOnly"
+    -command "global string $gLasso; setToolTo $gLasso;"
+;
+
+tabLayout -edit -tabLabel $shelf "Custom Shelf" $tabs;
+
+showWindow $floatShelf;

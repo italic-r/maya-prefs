@@ -1,0 +1,228 @@
+INTRODUCTION
+------------
+
+The displayDriver framework consists of few layers built on top of each other.
+At the very bottom is the displayDriver node that does all the "heavy lifting" in OpenGL and Maya API mechanics.
+Part of its job is to draw icons on screen. Unlike other systems the look of the icons is not hardcoded into the node but read from external ASCII file containing their definitions (properties that control how they appear on screen).
+This file can be edited by hand (hard) or by using the IconsDesigner (easy). Editing the file has instant impact on what the displayDriver nodes draw in the Maya viewports.
+
+
+
+ICON, ELEMENT, STRUCTURE, RELATIONSHIP, BRIEF DESCRIPTION
+---------------------------------------------------------
+
+Each icon is constructed by one or multiple elements drawn together. Its primary purpose is to visualize a transform node in the Maya scene (for example - animation control).
+But that is more of recommendation than a rule. Icons can be used in many different ways and it is basically up to the user's imagination and needs to define that.
+
+Element is an object with set of properties that control its appearance on screen:
+- OpenGL type - can be polygon, lines, looped line
+- point coordinates - set of 2D or 3D coordinates (depends on the is3D flag), the maximum number of coordinates is limited to 90 which translates to 45 2D points or 30 3D points
+- color - self-explanatory
+- alpha - self-explanatory
+- antialias - weither to smooth-out jagged edges of lines and looped line
+- line width - self explanatory, applicable only for lines and looped line
+- scalable line width - line width changes according to the scale of the icon the element is member of
+- outline - if set to "false" the element keeps its color regardless if its icon is selected in the Maya scene, if set to "true" the element gets recolored to the defined selection color (usually sharp green) if its icon is selected
+- is3D - if set to "true" the element appears like normal 3D object
+       - if set to "false":
+           - it always faces camera
+           - it is drawn in screen coordinates
+           - maintains consistent size regardless of its distance to camera
+The best way to get better sense of these parameters is to spend few minutes experimenting with them in the UI.
+
+
+
+ICONS DESIGNER
+--------------
+
+IconsDesigner is the second layer of the framework, focused on managing the icon definitions.
+It consists of 3 base classes - Element, Core and Gui. The public methods of the first two ones can be called directly from command line or other scripts.
+The third class (Gui) provides user interface only and contains no public methods.
+
+WORKFLOW
+
+Each session begins and ends in the "file" tab. It contains tools for loading and saving of config files containing icon definitions.
+At startup time the UI will try to find file called "icons.cfg" in the same directory where its script is located, if not there it will look-up the user's home directory for it. If the file is present in any of these two locations, fallowing that order, it will be loaded automatically and the path to it will be displayed in the "config file" field.
+To point to different file or to specify the location of new file use the "..." button.
+Buttons "load" and "save" are self-explanatory.
+CheckBox "save file every time when element or icon is modified" does exactly what its label says. This is useful when instant update of the Maya scene is required during the process of manipulation of element/icon definitions. For example - there is a complex rig in the scene and we want to interactivelly change the design of some of the icons used as animation controls. While this option greatly improves user experience it should be used with care. By default all modifications are stored in the operating memory and saved to file only when the user explicitly presses the "save" button. This way eventual user error can be undone by reloading the config file. But with "auto-save" turned on every modification of element/icon triggers "file save" action. Eventual user error will corrupt the config file and make it impossible to recover from that.
+A good idea in this case is to use two config files - "master" and "w.i.p.".
+
+Tab "elements" provides tools for creation of new or modification/deletion of existing elements.
+Buttons "create", "update", "rename", "delete", "copy", "paste", "convert to curve", "get from curve" are self-explanatory.
+Look-up the "ICON, ELEMENT, STRUCTURE, RELATIONSHIP, BRIEF DESCRIPTION" section above for reference about the elements properties.
+Notice that all modifications applied to the elements automatically update the icons.
+If icon consists of just one element and that elements gets deleted, the icon will be automatically deleted too.
+If element is used in one or multiple icons and the element gets renamed, the icons will automatically receive its new name.
+
+Tab "elements" provides tools for creation of new or modification/deletion of existing icons.
+Buttons "create", "update", "delete", "convert to curves" in the first section are self-explanatory.
+The second section allows for adding or removing of elements to the current icon in the list.
+The "preview" option allows for automatic previewing (in the Maya viewports) of the current icon in the list.
+
+
+
+API - USAGE
+-----------
+
+import sys; sys.path.append("/path/to/files/")
+import iconsDesigner as iconsDesigner; reload(iconsDesigner)
+iconsDesigner.Gui()
+
+# create instance of the Core class:
+c = iconsDesigner.Core()
+
+# create new element:
+e = iconsDesigner.Element()
+e.addPoint([0,0])
+e.addPoint([1,1])
+
+# add the newly created element above to the "database" under
+# the name "newElement":
+c.addElement("newElement", e)
+
+# create new icon that uses the new element:
+c.createIcon(["newElement"])
+
+# save modified data to file:
+c.save("/path/to/icons.cfg")
+
+# load element and icon definitions from file:
+c.load("/path/to/icons.cfg")
+
+
+
+API - CLASSES
+-------------
+    
+    class Core()
+     |  This class is a storage container for element and
+     |  icon definitions. It also provides set to tools to
+     |  operate on them.
+     |  
+     |  addElement(sName, element)
+     |      Add new element. First argument is the name
+     |      of the element. Second argument is instance of
+     |      the Element class that contains the element's
+     |      data.
+     |  
+     |  addIcon(listElementNames)
+     |      Add new icon. Input argument is list of
+     |      element names.
+     |  
+     |  getElement(sName)
+     |      Return instance of the Element class that
+     |      contains the properties of element with name
+     |      provided by the input argument.
+     |  
+     |  getElements()
+     |      Return the elements as dictionary, where
+     |      keys are element names and values are instances
+     |      of the Element class.
+     |  
+     |  getIcon(nId)
+     |      Return list of element names for icon
+     |      with index provided by the input argument.
+     |  
+     |  getIcons()
+     |      Return the icons as dictionary, where
+     |      keys are numerical indices and values are
+     |      lists containing the names of the element
+     |      members.
+     |  
+     |  load(sFilePath)
+     |      Load file containing icon definitions. Input
+     |      argument should provide path to valid config file.
+     |  
+     |  numElements()
+     |  
+     |  numIcons()
+     |  
+     |  removeElement(sName)
+     |      Delete element with name provided by the
+     |      input argument.
+     |  
+     |  removeIcon(nId)
+     |      Delete icon with index provided by the input
+     |      argument.
+     |  
+     |  save(sFilePath, bQuiet=False)
+     |      Save data (element and icon definitions) to file.
+     |      Input argument should provide writable location on disk.
+     |      If optional argument is set to True no messages will
+     |      be printed during execusion.
+     |  
+     |  setElement(sName, element)
+     |      Replace existing element. First argument is the
+     |      name of the element. Second argument is instance of
+     |      the Element class that contains the element's data.
+     |  
+     |  setElements(dictElements)
+     |      Replace all elements. Input argument is a
+     |      dictionary, where keys are element names
+     |      and values are instances of the Element
+     |      class containing the element properties.
+     |  
+     |  setIcon(nId, listElementNames)
+     |      Replace existing icon. Input argument is list
+     |      of element names.
+     |  
+     |  setIcons(dictIcons)
+     |      Replace all icons. Input argument is a
+     |      dictionary, where keys are numerical indices
+     |      and values are list of element names.
+     |  
+    
+    class Element()
+     |  This class is a storage container for displayDriver
+     |  elements. It also provides set of tools that operate on
+     |  the element's data.
+     |  
+     |  addPoint(listCoords)
+     |      Add point to the element. Input argument should
+     |      be oftype list with 2 (for 2D element) or 3 (for 3D
+     |      element) float values.
+     |  
+     |  clearPoints()
+     |  
+     |  convertToCurve()
+     |      Create nurbsCurve shape node that represents
+     |      the shape of the element. Returns the name of the
+     |      newly created node.
+     |  
+     |  getColor(asString=False)
+     |      Return the color of the element as list of 3
+     |      floats. If the optional argument is set to True
+     |      the color values will be returned as string.
+     |  
+     |  getPoints(asString=False)
+     |      Get the point coordinates of the element
+     |      as list of floats. If the optional argument
+     |      is set to True the values will be returned
+     |      as single string.
+     |  
+     |  getPointsFromCurve(sNode, bForce3DCoords=False)
+     |      Replace the point coordinates of the element
+     |      with CV coordinates of provided nurbsCurve shape
+     |      node. First argument should be a nurbsCurve node
+     |      node existing in the scene. By default the curve
+     |      CVs are interpreted as 2D points (for 2D element)
+     |      - only their XZ coordinates will be used. If the
+     |      optional argument is set to True they will be used
+     |      as 3D points for 3D element.
+     |  
+     |  setColor(r, g, b)
+     |  
+     |  setPoints(listCoords)
+     |      Replace the point coordinates of the element.
+     |      Input argument should be of type list with float
+     |      values.
+     |  
+     |  Public attributes:
+     |      a = 1.0 (alpha)
+     |      aa = True (antialiasing)
+     |      is3D = False (2D or 3D element)
+     |      o = False (outline)
+     |      slw = True (scalable line width)
+     |      t = 1 (type)
+     |      w = 1.0 (line width)

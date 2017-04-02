@@ -1,0 +1,168 @@
+//---------------------------------------------------------------------------
+// buildeyeSetup.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:	
+//		eye setup
+//
+// REQUIRES:
+//		cr_buildWorld.mel
+//		cr_curveUtilitiesLib.mel
+//		cr_charUtilsLib.mel
+//		libString.mel
+//		snaps.mel
+//
+// AUTHOR:
+//		Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+eval("source \"cr_buildWorld.mel\";");
+source "snaps.mel";
+cr_charUtilsLib;
+cr_curveUtilitiesLib;
+libString;
+
+
+global proc cr_buildEyeSetup(string $name, string $side, string $leftEye, string $rightEye, int $cr_buildWorld, float $scale)
+{
+
+string $partGrp = `group -em -n ($name + $side + "eyesParts_grp#")`;
+
+if($cr_buildWorld)
+	{
+	string $cleanGrp[] = cr_buildWorld ($name, $scale);
+	parent $partGrp $cleanGrp[0];
+	}	
+
+//controls creation
+	select -r $leftEye;
+	string $leftEyeOriControl[0] = `cr_curveControl cone curve`;
+	$leftEyeOriControl[0] = `rename ($leftEye + "_orient_ctrl")`;
+	setAttr ($leftEyeOriControl[0] + ".r") 0 0 0;
+		cr_fixFacingAxis Z 1;
+		cr_resizeCurves {} 1 1 1 0.9;
+	string $leftEyeOriGrp[0] = `cr_quickZeroOut $leftEyeOriControl[0]`;
+	cr_lockAndHide $leftEyeOriControl[0] cr_locknHide "trans scale vis";
+	
+	select -r $rightEye;
+	string $rightEyeOriControl[0] = `cr_curveControl cone curve`;
+	$rightEyeOriControl[0] = `rename ($rightEye + "_orient_ctrl")`;
+	setAttr ($rightEyeOriControl[0] + ".r") 0 0 0;
+		cr_fixFacingAxis Z 1;
+		cr_resizeCurves {} 1 1 1 0.9;
+	string $rightEyeOriGrp[0] = `cr_quickZeroOut $rightEyeOriControl[0]`;
+	cr_lockAndHide $rightEyeOriControl[0] cr_locknHide "trans scale vis";
+
+	string $eyeControl[0] = `cr_curveControl cross curve`;
+	$eyeControl[0] = `rename ($name + $side + "eyeMain_ctrl#")`;
+	string $tempCon[] = `pointConstraint -offset 0 0 0 -weight 1 $leftEye $rightEye $eyeControl[0]`;
+	delete $tempCon; refresh;
+		cr_fixFacingAxis Z 1;
+		cr_resizeCurves {} 1 1 1 1.1;
+	string $eyeConGrp[0] = `cr_quickZeroOut $eyeControl[0]`;
+	cr_lockAndHide $eyeControl[0] cr_locknHide "rot scale vis";
+	
+	select -r $leftEye;
+	string $leftEyeAimControl[0] = `cr_curveControl circleCross curve`;
+	$leftEyeAimControl[0] = `rename ($leftEye + "_aim_ctrl")`;
+	setAttr ($leftEyeAimControl[0] + ".r") 0 0 0;
+		cr_fixFacingAxis Z 1;
+		cr_resizeCurves {} 1 1 1 0.3;
+	string $leftEyeAimGrp[0] = `cr_quickZeroOut $leftEyeAimControl[0]`;
+	cr_lockAndHide $leftEyeAimControl[0] cr_locknHide "rot scale vis";
+	
+	select -r $rightEye;
+	string $rightEyeAimControl[0] = `cr_curveControl circleCross curve`;
+	$rightEyeAimControl[0] = `rename ($rightEye + "_aim_ctrl")`;
+	setAttr ($rightEyeAimControl[0] + ".r") 0 0 0;
+		cr_fixFacingAxis Z 1;
+		cr_resizeCurves {} 1 1 1 0.3;
+	string $rightEyeAimGrp[0] = `cr_quickZeroOut $rightEyeAimControl[0]`;
+	cr_lockAndHide $rightEyeAimControl[0] cr_locknHide "rot scale vis";
+
+//create space and rig....	
+	parent $leftEyeAimGrp[0] $eyeControl[0];
+	parent $rightEyeAimGrp[0] $eyeControl[0];
+	float $mainPos = `getAttr ($eyeConGrp[0] + ".tz")`;
+	setAttr ($eyeConGrp[0] + ".tz") ($mainPos + 5);
+
+//create two locator for up locator
+string $leftUploc[] = `spaceLocator -n($leftEye + "_upLoc")`;
+string $rightUploc[] = `spaceLocator -n($leftEye + "_upLoc")`;	
+
+snap $leftEye $leftUploc[0];
+snap $rightEye $rightUploc[0];
+setAttr ($leftUploc[0] + ".r") 0 0 0;
+setAttr ($rightUploc[0] + ".r") 0 0 0;
+	float $mainPos = `getAttr ($leftUploc[0] + ".ty")`;
+	setAttr ($leftUploc[0] + ".ty") ($mainPos + 0.5);
+	float $mainPos = `getAttr ($rightUploc[0] + ".ty")`;
+	setAttr ($rightUploc[0] + ".ty") ($mainPos + 0.5);
+
+hide $leftUploc $rightUploc;
+setAttr -lock true ($leftUploc[0] + ".v");
+setAttr -lock true ($rightUploc[0] + ".v");
+
+aimConstraint -offset 0 0 0 -weight 1 -aimVector 0 0 1 -upVector 0 1 0 -worldUpType "object" -worldUpObject $leftUploc $leftEyeAimControl[0] $leftEyeOriGrp[0];
+aimConstraint -offset 0 0 0 -weight 1 -aimVector 0 0 1 -upVector 0 1 0 -worldUpType "object" -worldUpObject $rightUploc $rightEyeAimControl[0] $rightEyeOriGrp[0];
+
+parentConstraint -mo -skipTranslate x -skipTranslate y -skipTranslate z -weight 1 $leftEyeOriControl[0] $leftEye;
+parentConstraint -mo -skipTranslate x -skipTranslate y -skipTranslate z -weight 1 $rightEyeOriControl[0] $rightEye;
+cr_curveGuide $leftEyeOriControl[0] $leftEyeAimControl[0];
+cr_curveGuide $rightEyeOriControl[0] $rightEyeAimControl[0]; 
+//cleanup
+
+parent $eyeConGrp[0] $partGrp;
+
+string $parentJoint[] = `listRelatives -parent $leftEye`;
+	if($parentJoint[0] != "")
+	{
+	string $oriParentGrp = `group -em -n($name + $side + "eyeOri_grp#")`;
+	snap $parentJoint[0] $oriParentGrp;
+	setAttr ($oriParentGrp + ".r") 0 0 0;
+	parent $leftEyeOriGrp $oriParentGrp;
+	parent $rightEyeOriGrp $oriParentGrp;
+	parentConstraint -mo -weight 1 $parentJoint[0] $oriParentGrp;
+	parent $leftUploc[0] $parentJoint[0];
+	parent $rightUploc[0] $parentJoint[0];
+	parent $oriParentGrp $partGrp;
+	}
+	else
+	{
+	parent $leftEyeOriControl[0] $partGrp;
+	parent $rightEyeOriControl[0] $partGrp;
+	}
+//create space switch
+string $charRigInfo = cr_getcharRigInfoNode($name);
+if($cr_buildWorld)
+	{
+	if(`attributeExists "neckHeadRig" $charRigInfo`)
+		{
+		string $headRigPart = getAttr($charRigInfo+".neckHeadRig");
+		string $headRigArray[] = stringToStringArray($headRigPart," ");
+		cr_buildSpaceSwitchSetup($eyeControl[0], $eyeConGrp[0],{$headRigArray[0],($name+"worldB_ctrl")}, {"head","world"}, 1);
+		}
+	}	
+
+select -r $eyeControl[0] $leftEyeOriControl[0] $leftEyeAimControl[0] $rightEyeOriControl[0] $rightEyeAimControl[0];
+cr_resizeCurves {} 1 1 1 $scale;
+select -cl;
+}

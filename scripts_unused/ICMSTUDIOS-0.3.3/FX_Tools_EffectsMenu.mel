@@ -1,0 +1,48 @@
+//////////////////////////////////////////////////////////////////////////////
+// FX TOOLS MENU
+//////////////////////////////////////////////////////////////////////////////
+//
+//	Copyright ©2013 Iskander Cathal Mellakh Comet All Rights Reserved
+//
+//	website: http://www.icmstudios.co.uk/
+//
+//	LICENCE DETAILS:
+//	This tool is free to use on private and commercial projects. 
+//	If used on a commercial project please credit ICM Studios for the tool.
+//	
+//	Enjoy :) 
+//	Iskander Mellakh
+//
+//////////////////////////////////////////////////////////////////////////////
+
+global string $gMainWindow;     
+
+// --------------------------------------------------------------------------
+    
+    // Get rid of existing menu in case it exists already...
+    //
+if (`menu -q -exists fxtEffectsMenu`)
+    {
+    menu -e -dai fxtEffectsMenu;
+    }
+else
+    {
+	setParent $gMainWindow;
+    menu -l "FX Tools" -p MayaWindow -to true fxtEffectsMenu ;
+    }
+
+setParent -menu fxtEffectsMenu ;
+
+    menuItem -l ("Bubbles") 
+					-c ("bubbles") 
+					-ann ("Loads the dynamics tools");
+
+	menuItem -divider true ;
+	    
+setParent; 
+
+global proc reload(){
+		rehash;
+		source "ICMSTUDIOS-0.3.3/FX_Tools_dynamics.mel";
+		source "ICMSTUDIOS-0.3.3/FX_Tools_bubbles.mel";
+}

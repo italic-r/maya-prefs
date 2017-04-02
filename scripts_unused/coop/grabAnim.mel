@@ -1,0 +1,267 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: grabAnim v1.0
+''    Author: Big Idea productions
+''    Last Updated: August 16, 2001
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=animation#1206
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+//----BEGINDOC----------------------------------------------------------------
+// Copyright (C) 2001, Big Idea Productions
+//
+//----------------------------------------------------------------------------
+// Name: grabAnim.mel - MEL Script
+//----------------------------------------------------------------------------
+//
+// Synopsis:	grabAnim()
+//
+// Description:	This script is used to "grab" a slave object to a master,
+//		even if the slave ALREADY has been keyed.  This will go
+//		through each selected frame from a range selected in the 
+//		time slider, and creates a breakdown keyframe on EACH frame
+//		so the slave is snapped to the master.  Existing keys inside
+//		the selected range are of course overwritten with newly 
+//		snapped keys.
+//
+// Arguments:	None : Select the master object, then the slave that will get
+//			moved and oriented to the master.  Select a range
+//			in the timeSlider by holding down shift and dragging.
+//
+// Returns:	Nothing.
+//
+// Examples:	grabAnim();
+//			(Select master, then slave, select a range in the
+//			timeSlider and off it goes!)
+//
+// Requires:	snaps.mel for snapping!!!
+//
+// Authors:	Mark Behm
+//
+// Known Bugs:	This is notoriously slow if more than one view is maximized
+//		when it is run.  The fix, maximize just one viewport and 
+//		then run it.  The script does try to hide the object while
+//		calculations are being done.
+//		Note also: things may APPEAR incorrect when it is processing,
+//		but once the script is completed, the objects should be
+//		grabbed correctly.
+//
+//----------------------------------------------------------------------------
+//----ENDDOC----
+
+
+global proc grabAnim()
+	{
+
+	source "snaps.mel";
+
+	int $daFrom,$daTo;
+	int $mode=1;
+	// get current panel
+	$panel = `getPanel -wf`;
+	
+	int $i=1;
+	// wait cursor
+	waitCursor -state on;
+	
+	// get selection
+	string $s[] = `ls -sl`;
+
+	// check for 2 objects selected
+	if (size($s)<2 || size($s)>24)
+		{
+		confirmDialog -title "grab error" -message "You have to pick at least two objects (no more than 24)\n a master(grabber) and then one or more slaves(grabbed)" -button "OK" -dismissString "OK";
+		waitCursor -state off;
+		isolateSelect -state 0 $panel;
+		return;
+		}
+	// time control	
+	global string $gPlayBackSlider;
+			float $range[];
+	if (`timeControl -q -rv $gPlayBackSlider`)
+    			{
+				$range=`timeControl -q -ra $gPlayBackSlider`;
+    			$daFrom = int($range[0]);
+    			$daTo = int($range[1]); 
+    			}
+			else
+				{
+				confirmDialog -title "grab error" -message "You need to select a range in the time slider (shift LEFT or MIDDLE drag)" -button "OK" -dismissString "OK";
+				waitCursor -state off;
+				isolateSelect -state 0 $panel;
+				return;
+				}
+
+	// assign master and slaves
+	string $master=$s[0];
+	string $slaves[];
+	for ($sl=0;$sl<size($s);$sl++)
+		if ($sl>0 ) $slaves[$sl-1]=$s[$sl];
+	
+	// isolateSelect (NONE YET)
+	select -cl;
+	isolateSelect -state 1 $panel;
+	string $A[24];
+	if ($mode==1)
+		{	
+		string $n2x[];
+		string $n1x[];
+		string $n1;
+		string $n2;
+
+		// go to first frame
+			currentTime -e $daFrom;
+			refresh;
+		int $count=0;
+		
+		for ($daSlave in $slaves)
+			{
+			// create a transform node	
+			$n1=`createNode transform`;
+				// snap it to the grabber
+				snap($master,$n1);
+			// create transform node for the slave
+			$n2=`createNode transform`; 
+				// snap it to the grabbed
+				snap($daSlave,$n2);
+			// parent the second xfm to the first
+			$n2x=`parent -a $n2 $n1`;
+			$A[$count] = $n2x[0];
+			// parent the first to the grabber
+			$n1x=`parent -a $n1 $master`;
+			$count++;
+			// sample to world xforms of the second
+			}
+			// do isolate select on two points
+			select $n1;	
+			isolateSelect -as $panel;
+
+			// sample $n2
+			int $method=1;
+			feedback ($daFrom+"   "+$daTo);
+			
+			for ($t=$daFrom;$t<$daTo;$t++)
+				{
+				// set frame head
+				currentTime -e $t;
+				refresh;
+				// for each slave	
+				$count = 0;	
+				for ($daSlave in $slaves)
+						{
+						// snap slave to curve
+						animSnap2 ($A[$count],$daSlave);		
+						// keyframe (set to breakdowns for easy spotting)
+						int $breakdownFlag;
+						
+						if ($t==$daFrom || $t==$daTo-1)
+							$breakdownFlag=0;
+						else
+							$breakdownFlag=1;
+							{
+							setKeyframe -t $t -at translateX -bd $breakdownFlag $daSlave;
+							setKeyframe -t $t -at translateY -bd $breakdownFlag $daSlave;
+							setKeyframe -t $t -at translateZ -bd $breakdownFlag $daSlave;
+							setKeyframe -t $t -at rotateX -bd $breakdownFlag $daSlave;
+							setKeyframe -t $t -at rotateY -bd $breakdownFlag $daSlave;
+							setKeyframe -t $t -at rotateZ -bd $breakdownFlag $daSlave;
+							}
+						// inc
+						$count++;
+						}
+				}
+
+			//cleanup (delete transform nodes)
+			delete $n1;
+			// go back to start time
+			currentTime -e $daFrom;
+		}
+/*
+	if ($mode==2)
+		{
+		// create a transform node
+		$n1=`curve -d 1 -p 0 0 0 -k 0`;	
+		// snap it to the grabber
+		snap($master,$n1);
+		// create transform node
+		$n2=`curve -d 1 -p 0 0 0 -k 0`;
+		// snap it to the grabbed
+		snap($slave,$n2);
+		// parent the second xfm to the first
+		string $n2x[]=`parent -a $n2 $n1`;
+		// parent the first to the grabber
+		string $n1x[]=`parent -a $n1 $master`;
+		// sample to world xforms of the second
+
+			global string $gPlayBackSlider;
+			float $range[];
+			// get time range selected    
+
+			if (`timeControl -q -rv $gPlayBackSlider`)
+    			{
+				$range=`timeControl -q -ra $gPlayBackSlider`;
+    			$daFrom = int($range[0]);
+    			$daTo = int($range[1]); 
+    			}
+			else
+				{
+				confirmDialog -title "grab error" -message "You need to select a range in the time slider (shift MIDDLE drag)" -button "OK" -dismissString "OK";
+				waitCursor -state off;
+				isolateSelect -state 0 $panel;
+				return;
+				}
+
+			// do isolate select on two points
+			select $n1;	
+			isolateSelect -as $panel;
+
+			// sample $n2
+			feedback ($daFrom+"   "+$daTo);
+			for ($t=$daFrom;$t<$daTo;$t++)
+				{
+
+				// METHOD 1 (XFORMS)
+				currentTime -e $t;
+				// get world positions
+						//float $matrix[] = eval ( "getAttr -t " + $t + " " + $n2 + ".worldMatrix"); 
+       					//string $xt = $matrix[12] + " " + $matrix[13] + " " + $matrix[14]; 
+				float $xt[] = `xform -q -a -ws -t $n2`;
+				float $xr[] = `xform -q -a -ws -ro $n2`;
+				// apply and key those to the grabbed
+						//eval("xform -ws -a -t "+$xt+" "+$slave);	
+				xform -ws -a -t $xt[0] $xt[1] $xt[2] $slave;	
+				xform -ws -a -ro $xr[0] $xr[1] $xr[2] $slave;
+
+				//float $xt[] = `getAttr -t $t ($n2+".worldMatrix")`;
+				//setAttr ($slave+".worldMatrix") -type "matrix" $xt[0] $xt[1] $xt[2] $xt[3] $xt[4] $xt[5] $xt[6] $xt[7] $xt[8] $xt[9] $xt[10] $xt[11] $xt[12] $xt[13] $xt[14] $xt[15];
+				// keyframe (set to breakdowns for easy spotting)
+				setKeyframe -t $t -at translateX -bd true $slave;
+				setKeyframe -t $t -at translateY -bd true $slave;
+				setKeyframe -t $t -at translateZ -bd true $slave;
+				setKeyframe -t $t -at rotateX -bd true $slave;
+				setKeyframe -t $t -at rotateY -bd true $slave;
+				setKeyframe -t $t -at rotateZ -bd true $slave;
+				}
+		}
+		*/
+	// remove isolate selcted
+	isolateSelect -state 0 $panel;
+	// reselect grabed
+	select $slaves;
+	// grab finished
+	waitCursor -state off;
+	print "OK, grab finished";
+
+	}
+
+global proc feedback(string $s)
+	{
+	print ($s);
+	print "\n";
+	}

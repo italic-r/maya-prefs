@@ -1,0 +1,166 @@
+/*
+//////////////////////////////////////////////////////////
+
+ackToggleCams 1.1
+8/6/07					
+Aaron Koressel			
+www.aaronkoressel.com
+
+Toggles the viewport under the cursor between one of two
+cameras.  Intended use is having a full screen viewport up
+and flipping between your shot cam and a perspective cam.
+
+The first time it's run, it guesses which
+two camera's to use (defaulting to the current camera
+and the "persp" camera).
+
+The setup window (ackToggleCams_setup) lets you change
+the two cameras.  Double-clicking in the camera list 
+switches the current view to that camera.
+The text box can also be used to type a camera's name
+in case something fancy is being done like looking
+through a camera shape node.
+
+SYNTAX:
+To toggle cameras:
+ackToggleCams;
+
+To enter the setup window:
+source ackToggleCams; ackToggleCams_setup;
+
+GLOBALS:
+If you want to change the options programmatically
+the following global variables are available to edit:
+string $ackToggleCams_camera1;
+string $ackToggleCams_camera2;
+
+EXAMPLE:
+Assign this commnad to "Alt `":  ackToggleCams;
+Drag this command to a shelf:  ackToggleCams_setup;
+
+CHANGELOG:
+8/6/07		1.1
+Guesses which two cameras to use on first run.
+Added setup window for changing cameras later.
+2/28/05		1.0
+First version
+//////////////////////////////////////////////////////////
+*/
+
+
+global proc ackToggleCams() {
+	global string $ackToggleCams_camera1;
+	global string $ackToggleCams_camera2;
+	
+	//set default value if doesn't exist
+	if ($ackToggleCams_camera1 == ""){
+		string $s_curPanel = `getPanel -withFocus`;
+		if ($s_curPanel != "") {
+			string $s_panelType = `getPanel -typeOf $s_curPanel`;
+			if ($s_panelType == "modelPanel") {
+				$s_curCam = `modelPanel -q -cam $s_curPanel`;
+				if ($s_curCam != "persp"){
+					$ackToggleCams_camera1 = $s_curCam;
+				}
+			}
+		}
+	}
+	if ($ackToggleCams_camera2 == ""){
+		$ackToggleCams_camera2 = "persp";
+	}
+	
+		//toggle cam
+	//check for empty values
+	if ($ackToggleCams_camera1 != "" && $ackToggleCams_camera2 != ""){
+		//check for cams exist
+		string $exists1[] = `ls $ackToggleCams_camera1`;
+		string $exists2[] = `ls $ackToggleCams_camera2`;
+		if ((size($exists1) != 0) && (size($exists2) != 0)){		
+				
+			string $curPanel = `getPanel -underPointer`;
+			if ($curPanel != "") {
+				string $panelType = `getPanel -typeOf $curPanel`;
+				if ($panelType == "modelPanel") {
+					$curCam = `modelPanel -q -cam $curPanel`;
+					if ($curCam == $ackToggleCams_camera1) {
+						lookThroughModelPanel $ackToggleCams_camera2 $curPanel;
+					} else if ($curCam == $ackToggleCams_camera2) {
+						lookThroughModelPanel $ackToggleCams_camera1 $curPanel;
+					}
+				}//end check model panel
+			}//end check panel under pointer
+		}//end check exists
+	}//end check empty
+}
+
+global proc ackToggleCams_setup(){
+	global string $ackToggleCams_camera1;
+	global string $ackToggleCams_camera2;
+	
+	//set default value if doesn't exist
+	if ($ackToggleCams_camera1 == ""){
+		string $s_curPanel = `getPanel -withFocus`;
+		if ($s_curPanel != "") {
+			string $s_panelType = `getPanel -typeOf $s_curPanel`;
+			if ($s_panelType == "modelPanel") {
+				$s_curCam = `modelPanel -q -cam $s_curPanel`;
+				if ($s_curCam != "persp"){
+					$ackToggleCams_camera1 = $s_curCam;
+				}
+			}
+		}
+	}
+	if ($ackToggleCams_camera2 == ""){
+		$ackToggleCams_camera2 = "persp";
+	}
+	
+	//setup window	
+	string $windowTitle = "ackToggleCams 1.0 Setup";
+	if ( `window -ex win_ackToggleCams` ) deleteUI win_ackToggleCams;
+	int $winWidth = 418;
+	int $winHeight = 215;		
+	window -maximizeButton off -sizeable 0 -title $windowTitle -width $winWidth -height $winHeight -resizeToFitChildren 1 win_ackToggleCams;
+		rowColumnLayout -numberOfColumns 2 -columnSpacing 2 4 -columnSpacing 1 4 -rowAttach 2 "both" 1
+			-columnWidth 1 200
+			-columnWidth 2 200;
+
+			text -label "Camera 1";					
+			text -label "Camera 2";	
+
+			textField
+				-changeCommand "{$temp1 = `textField -q -text ackToggleCams_txtCamera1`; $ackToggleCams_camera1 = $temp1;}"
+				ackToggleCams_txtCamera1;
+			textField
+				-changeCommand "{$temp2 = `textField -q -text ackToggleCams_txtCamera2`; $ackToggleCams_camera2 = $temp2;}"
+				ackToggleCams_txtCamera2;
+
+			textScrollList -height 120 
+				-selectCommand "{$temp3 = `textScrollList -q -selectItem ackToggleCams_lstCamera1`; $ackToggleCams_camera1 = $temp3[0]; textField -e -text $temp3[0] ackToggleCams_txtCamera1;}"
+				-doubleClickCommand "{lookThroughModelPanel $ackToggleCams_camera1 `getPanel -withFocus`;}"
+				ackToggleCams_lstCamera1;
+			textScrollList -height 120
+				-selectCommand "{$temp4 = `textScrollList -q -selectItem ackToggleCams_lstCamera2`; $ackToggleCams_camera2 = $temp4[0]; textField -e -text $temp4[0] ackToggleCams_txtCamera2;}"
+				-doubleClickCommand "{lookThroughModelPanel $ackToggleCams_camera2 `getPanel -withFocus`;}"
+				ackToggleCams_lstCamera2;
+				
+			button -label "Grab Current" -c "$btn1Panel = `getPanel -withFocus`; $btn1Cam = `modelPanel -q -cam $btn1Panel`; textField -e -text $btn1Cam ackToggleCams_txtCamera1; $ackToggleCams_camera1 = $btn1Cam;";
+			button -label "Grab Current" -c "$btn2Panel = `getPanel -withFocus`; $btn2Cam = `modelPanel -q -cam $btn2Panel`; textField -e -text $btn2Cam ackToggleCams_txtCamera2; $ackToggleCams_camera2 = $btn2Cam;";
+			
+
+	
+	//populate camera lists
+	string $allCams[] = `ls -cameras`;
+	for ($i = 0; $i < size($allCams); $i++){
+		textScrollList -e -append `listRelatives -parent($allCams[$i])` ackToggleCams_lstCamera1;
+		textScrollList -e -append `listRelatives -parent($allCams[$i])` ackToggleCams_lstCamera2;
+	}
+	
+	//set current settings
+	textField -e -text $ackToggleCams_camera1 ackToggleCams_txtCamera1;
+	textField -e -text $ackToggleCams_camera2 ackToggleCams_txtCamera2;
+	textScrollList -e -selectItem $ackToggleCams_camera1 ackToggleCams_lstCamera1;
+	textScrollList -e -selectItem $ackToggleCams_camera2 ackToggleCams_lstCamera2;
+	
+	showWindow;
+	window -e -width $winWidth -height $winHeight win_ackToggleCams;
+}

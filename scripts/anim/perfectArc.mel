@@ -1,0 +1,561 @@
+/*
+	.:|perfectArc|:. v. 1.0 created for Maya 5.0
+
+	Copyright (C) 2003 Simon Christen
+	www.simonchristen.com
+	me@simonchristen.com
+
+
+	Creation Date:	Nov/Dec, 2003
+
+	Description:	perfectArc is a animation tool. You can track any object
+			and see it's motion represented by a curve. In addition you
+			can use the Spacer function which allows you to check your
+			spacing. For more help check out the help.txt.
+
+	Installation:	- Copy perfectArc.mel and perfectArcSetup.mel into the Maya script folder.
+			  (usually found under ..\My Documents\maya\5.0\scripts)
+
+			- Copy perfectarc.bmp into the Maya icon folder.
+			  (usually found under ..\My Documents\maya\5.0\prefs\icons)
+
+			- In Maya type in the command line: perfectArcSetup ;
+			  This will create the perfectArc icon.
+			  This only has to be done once!
+
+			- Select a moving object and click on the newly created icon.
+
+
+	Please report bugs and suggestions to me@simonchristen.com. Thank you.
+
+	USE AND MODIFY AT YOUR OWN RISK
+	
+*/
+
+
+global proc perfectArc ()
+{
+
+	string $SeemoosWindow = "SeemoosArcWindow" ;
+	string $sel[] = `ls -sl` ;
+
+	if ( size($sel) == 0 )
+	{
+		print "//error : Please select an object.\n" ;
+		return ;	
+	}
+
+	else if (size($sel) > 1 )
+	{
+		print "//error : Please select ONLY one object.\n" ;
+		return ;
+	}
+
+	int $startCurve = `playbackOptions -q -min` ;
+	int $endCurve = `playbackOptions -q -max`;
+	
+	int $startLoc ;
+	int $endLoc ;
+	
+	if (`window -exists $SeemoosWindow`)
+		deleteUI $SeemoosWindow ;
+
+	window -tlb on -width 350 -height 215  -title ".:|Perfect Arc|:." $SeemoosWindow ;
+	scrollLayout
+    		-horizontalScrollBarThickness 0
+    		-verticalScrollBarThickness   10;
+ 
+	columnLayout -adjustableColumn true Base ;		
+				
+		rowLayout -nc 3 -cw3 160 80 80 -cl3 center center center ;
+	
+			
+// CREATE ARC and Delete Buttons
+			
+			button -en on -bgc 0.5 1 0.5 -w 160 -h 30 -l "Create Arc" -c ("SeemoosArcProc `intSliderGrp -q -v startCurveSLD` `intSliderGrp -q -v endCurveSLD` `radioButtonGrp -q -sl PivotPointrBG` `radioButtonGrp -q -sl PickColorrBG` `radioButtonGrp -q -sl SpacerOnOffrBG` `radioButtonGrp -q -sl SpacerTyperBG` `intSliderGrp -q -v startLocSLD` `intSliderGrp -q -v endLocSLD` `intSliderGrp -q -v spacingSLD` `floatSliderGrp -q -v spacerSizeSLD`");		
+			button -en off -bgc 1 0.5 0.5 -w 80 -h 30 -l "Delete Curves" -c "DeleteCurves" DeleteCurveBT ;
+			button -en off -bgc 1 0.5 0.5 -w 80 -h 30 -l "Delete Spacers" -c "DeleteSpacers" DeleteSpacerBT ;
+
+			setParent .. ;
+			separator -st none -h 5 ;			
+
+		rowLayout -nc 2 -cw2 92 230 ;
+
+			text -l "Selected Object:" -w 92 ;
+
+			textField -bgc 0.9 0.9 0.9 -en off -w 230 -tx $sel[0] selObject ;
+			
+			setParent .. ;
+			separator -st none -h 5 ;
+		
+// Curve Attributes
+
+		frameLayout -label "Check Arc" -collapse false -collapsable false ;
+			columnLayout ;
+			separator -st none -h 5 ;
+
+			rowLayout -nc 2 -cw2 90 100 ;
+
+			button -w 80 -l "Get Start Time" -c "intSliderGrp -e -v `currentTime -q` startCurveSLD" ;
+			intSliderGrp -cw2 50 100 -v $startCurve -min $startCurve -max ($endCurve - 1 ) -field true startCurveSLD ;
+			
+			setParent .. ;
+			separator -st none -h 5 ;
+			
+			rowLayout -nc 2 -cw2 90 100 ;
+
+			button -w 80 -l "Get End Time" -c "intSliderGrp -e -v `currentTime -q` endCurveSLD" ;
+			intSliderGrp -cw2 50 100 -v $endCurve -min ( $startCurve + 1) -max $endCurve -field true endCurveSLD ;
+			
+			setParent .. ;
+
+			separator -st none -h 5 ;
+
+			radioButtonGrp 	-cw3 90 75 75 -cl3 right left left -numberOfRadioButtons 2 -sl 2
+					-label "Arc at Object's:" -labelArray3 "Center" "Pivot Point" "Green" PivotPointrBG;
+
+			separator -st none -h 5 ;
+
+			radioButtonGrp 	-cw4 90 75 75 75 -cl4 right left left left -numberOfRadioButtons 3 -sl 1
+					-label "Color:" -labelArray3 "Brown" "Yellow" "Green" PickColorrBG;
+
+			separator -st none -h 5 ;
+			setParent .. ;
+		setParent Base ;
+
+// ScriptJobs
+
+		scriptJob -p $SeemoosWindow -e "SelectionChanged" "UpdateProc `intSliderGrp -q -v startCurveSLD` `intSliderGrp -q -v endCurveSLD` `intSliderGrp -q -v startLocSLD` `intSliderGrp -q -v endLocSLD`" ;
+		scriptJob -p $SeemoosWindow -e "playbackRangeChanged" "UpdateProc `intSliderGrp -q -v startCurveSLD` `intSliderGrp -q -v endCurveSLD` `intSliderGrp -q -v startLocSLD` `intSliderGrp -q -v endLocSLD`" ;
+		
+// Spacer Attributes
+
+		frameLayout -label "Check Spacing" -collapse false -collapsable false LocAtt ;
+			columnLayout ;
+			separator -st none -h 5 ;
+			
+			radioButtonGrp 	-cw3 90 75 75 -cl3 right left left -numberOfRadioButtons 2 -sl 2
+					-label "Use Spacer:" -labelArray2 "On" "Off" 
+					-on1 ("radioButtonGrp -e -en on SpacerTyperBG;" + "intSliderGrp -e -en on startLocSLD;" + "intSliderGrp -e -en on endLocSLD;" + "intSliderGrp -e -en on spacingSLD;" + "button -e -en on startLocBT;" + "button -e -en on endLocBT;" + "floatSliderGrp -e -en on spacerSizeSLD;")
+					-on2 ("radioButtonGrp -e -en off SpacerTyperBG;" + "intSliderGrp -e -en off startLocSLD;" + "intSliderGrp -e -en off endLocSLD;" + "intSliderGrp -e -en off spacingSLD;" + "button -e -en off startLocBT;"  + "button -e -en off endLocBT;" + "floatSliderGrp -e -en off spacerSizeSLD;") SpacerOnOffrBG ;
+			
+			separator -st none -h 5 ;
+						
+			rowLayout -nc 2 -cw2 90 100 ;
+
+			button -en off -w 80 -l "Get Start Time" -c "intSliderGrp -e -v `currentTime -q` startLocSLD" startLocBT;
+			intSliderGrp -en off -cw2 50 100 -v $startCurve -min $startCurve -max ($endCurve - 1 ) -field true startLocSLD ;
+			
+			setParent .. ;
+			separator -st none -h 5 ;
+			
+			rowLayout -nc 2 -cw2 90 100 ;
+
+			button -en off -w 80 -l "Get End Time" -c "intSliderGrp -e -v `currentTime -q` endLocSLD" endLocBT;
+			intSliderGrp -en off -cw2 50 100 -v $endCurve -min ( $startCurve ) -max $endCurve -field true  endLocSLD ;
+
+			setParent .. ;
+			separator -st none -h 15 ;
+
+// Spacer Advanced Attributes
+						
+			radioButtonGrp 	-en off -cw3 90 75 75 -cl3 right left left -numberOfRadioButtons 2 -sl 1
+				-label "Spacer Type:" -labelArray2 "Locator" "Sphere" SpacerTyperBG ;
+						
+			separator -st none -h 5 ;
+
+			floatSliderGrp -en off -cw3 90 50 100 -v 0.3 -min 0.1 -max 2 -field true -l "Spacer Size:" spacerSizeSLD ;
+						
+			separator -st none -h 5 ;
+
+			intSliderGrp -en off -cw3 90 50 100 -v 1 -min 1 -max 10 -field true -l "Spacing:" spacingSLD ;
+			
+			separator -st none -h 5 ;			
+			setParent .. ;
+			
+		setParent Base ;
+
+			
+	showWindow $SeemoosWindow ;
+	
+}
+
+
+
+
+
+global proc SeemoosArcProc (int $startCurve, int $endCurve, int $Pivot, int $Color, int $SpacerOnOff, int $spacerType, int $startLoc, int $endLoc, int $spacing, float $spacerSize)
+{	
+	string $sel[] = `ls -sl`;
+	string $spacerObject ;
+	string $MCurve ;
+	string $CenterLoc ;
+	string $SpacerGrp ;
+	string $Spacername ;
+	int $frame ;
+	int $mod ;	
+	int $time ;	
+	
+// Check if Object still selected when Create Button pressed
+
+	if ($sel[0] == "")
+	{		
+		print "//error : Please select an object.\n" ;
+		return ;
+	}
+	
+// Slider Time Check (Curve and Loc)
+
+	 if ($endCurve <= $startCurve || $endCurve - $startCurve < 2 )
+		{
+		 	int $endCurve = ($startCurve + 2) ;
+			intSliderGrp -e -v $endCurve endCurveSLD;
+			print "//error : End time must be at least 1 frame higher than start time\n" ;
+			return ;
+		}
+
+	if ($endCurve - $startCurve >= 500 )
+		{
+		 	int $endCurve = ($startCurve + 499) ;
+			intSliderGrp -e -v $endCurve endCurveSLD;
+			print "//error : Sequence too long\n" ;
+			return ;
+		}
+
+	else if ($SpacerOnOff == 1 && $startLoc < $startCurve)
+		{
+			int $startLoc = $startCurve ;
+			intSliderGrp -e -v $startLoc startLocSLD;
+			print "//error : Locators START outside the curve range\n" ;
+			return ;
+		}
+
+	else if ($SpacerOnOff == 1 && $endLoc > $endCurve)
+		{
+			int $endLoc = $endCurve ;
+			intSliderGrp -e -v $endLoc endLocSLD;
+			print "//error : Locators END outside the curve range\n" ;
+			return ;
+		}
+
+
+// Spacer Object Check (spacerType to spacerObec)
+
+	if ($spacerType == 1)
+		{
+			$spacerObject = "spaceLocator" ;
+		}
+
+	else if ($spacerType == 2)
+		{
+			$spacerObject = "sphere" ;
+		}
+
+// Time Check so it can return there after for loop
+
+	$time = `currentTime -q` ;
+
+// Parent Loc to objects center if Center is selected as "Arc at Object's".
+	
+	if ($Pivot == 1)
+	{			
+		float $originalPositionRot[] = `xform -q -r -rp $sel[0]` ;	
+		float $originalPositionSca[] = `xform -q -r -sp $sel[0]` ;
+
+		select $sel[0] ;
+		xform -cp ;
+
+		float $CenterLocPos[] = `xform -q -ws -rp $sel[0]` ;
+			
+		print $CenterLocPos ;
+		spaceLocator -p $CenterLocPos[0] $CenterLocPos[1] $CenterLocPos[2];
+		$CenterLoc = `rename Center_Locator` ;
+		parent $CenterLoc $sel[0] ;
+			
+		xform -cp ;
+		xform -rp $originalPositionRot[0] $originalPositionRot[1] $originalPositionRot[2] $sel[0] ;
+		xform -sp $originalPositionSca[0] $originalPositionSca[1] $originalPositionSca[2] $sel[0] ;
+	}
+
+	
+	
+	cycleCheck -e off;
+
+//LOOP START
+
+	for ($i=$startCurve;$i<=$endCurve;$i++)
+	{
+		currentTime $i ;		
+		
+//Setting $position according to where Line to draw
+		
+		float $position[] = `xform -q -ws -rp $sel[0]`;				
+
+		if ($Pivot == 1)
+		{			
+			$position = `xform -q -ws -rp $CenterLoc`;			
+		}
+				
+// Setting $mod depending on $spacing, $startLoc and currentTime.
+// If $mod = 0 it will create a Spacer.
+
+		if ($spacing > 1)
+		{
+			int $offset ;
+			
+			$offset = $startLoc - $spacing ;			
+
+			$frame = ((`currentTime -q`) - ($spacing*$startLoc) - $offset) ;
+			$mod = $frame % $spacing ;			
+		}
+
+// Creates first CV of Curve
+
+		if ($i==$startCurve)
+		{
+			curve -d 2 -p $position[0] $position[1] $position[2] ;
+			$MCurve = `rename perfectArc_Curve_1` ;
+			color -ud $Color ;
+
+			button -e -en on DeleteCurveBT ;
+
+// Creates Locator if $startLoc happens to be same as $startCurve 
+
+			if ($SpacerOnOff == 1 && $i == $startLoc )
+			{
+				eval $spacerObject -p $position[0] $position[1] $position[2] ;
+				$Spacername = `rename Spacer1` ;
+				xform -cp ;
+				scale -r $spacerSize $spacerSize $spacerSize ;
+				group ;
+				$SpacerGrp = `rename perfectArc_Spacer_Grp1` ;
+				color -ud ($Color+3) ;
+				
+				button -e -en on DeleteSpacerBT ;
+			}													
+		}
+		
+// Creates first Locator if $startLoc != $startCurve and adds CV to Curve (needed so it can create the Spacer Grp)		
+
+		else if ($SpacerOnOff == 1 && $i == $startLoc && $i != $startCurve)
+		{
+			eval $spacerObject -p $position[0] $position[1] $position[2] ;
+			$Spacername = `rename Spacer1` ;
+			xform -cp ;
+			scale -r $spacerSize $spacerSize $spacerSize ;
+			group ;
+			$SpacerGrp = `rename perfectArc_Spacer_Grp1` ;
+			color -ud ($Color+3);
+			curve -a -p $position[0] $position[1] $position[2] $MCurve ;
+
+			button -e -en on DeleteSpacerBT ;
+		}
+
+// Creates Spacers between Start of Spacer range ($startLoc) and end of Spacer range ($endLoc) and adds CV's to Curve
+// Spacing Checker
+
+		else if ($SpacerOnOff == 1 && $i > $startLoc && $i <= $endLoc)
+		{
+			curve -a -p $position[0] $position[1] $position[2] $MCurve ;
+			
+//Spacing: every frame
+
+			if ($spacing == 1)
+			{
+				eval $spacerObject -p $position[0] $position[1] $position[2] ;
+				$Spacername = `rename Spacer2` ;
+				xform -cp ;
+				scale -r $spacerSize $spacerSize $spacerSize ; 
+				parent $Spacername $SpacerGrp ;
+				color -ud ($Color+3) ;
+			}
+
+//Spacing: every 2nd, 3rd, 4th... ($spacing th) or what ever has been selcted in the Spacing SLD frame
+
+			if ($spacing > 1 )
+			{
+				if ($mod == 0)
+				{
+					eval $spacerObject -p $position[0] $position[1] $position[2] ;
+					$Spacername = `rename Spacer2` ;
+					xform -cp ;
+					scale -r $spacerSize $spacerSize $spacerSize ; 
+					parent $Spacername $SpacerGrp ;
+					color -ud ($Color+3) ;
+				}
+				
+// Creates a Spacer at end of Spacer range ($endLoc)
+
+				if ($i == $endLoc)
+				{
+					eval $spacerObject -p $position[0] $position[1] $position[2] ;
+					$Spacername = `rename Spacer2` ;
+					xform -cp ;
+					scale -r $spacerSize $spacerSize $spacerSize ; 
+					parent $Spacername $SpacerGrp ;
+					color -ud ($Color+3) ;
+				} 	 	
+			}
+
+				
+		}
+
+// Adds CV's to Curve (only used if no Locators have to be created)
+
+		else
+		{
+			curve -a -p $position[0] $position[1] $position[2] $MCurve ;					
+		}
+	}
+
+	currentTime $time ;
+	select $sel[0] ;
+
+// Delete the Locator created when Center selected at "Arc at Object's"
+
+	if ($Pivot == 1)
+	{
+		delete $CenterLoc ;
+	}
+	
+}
+
+
+
+
+
+
+
+
+global proc UpdateProc (int $startCurve, int $endCurve, int $startLoc, int $endLoc)
+{
+
+// Update Selection
+
+	string $sel[] = `ls -sl` ;
+
+	if ($sel[0] == "" )
+		return ;
+	
+	textField -e -tx $sel[0] selObject ;
+
+// Update Time Range
+
+	int $startCurvenew = `playbackOptions -q -min` ;
+	int $endCurvenew = `playbackOptions -q -max`;
+
+	
+	int $startLocnew = `playbackOptions -q -min` ;
+	int $endLocnew = `playbackOptions -q -max`;
+
+// Curve Range	
+
+	if ($startCurve < $startCurvenew )
+	{
+		intSliderGrp -e -v $startCurvenew -min $startCurvenew -max ($endCurvenew - 1 ) startCurveSLD ;
+		
+		if ($startCurvenew >= $endCurve)
+		{
+			intSliderGrp -e -v ($startCurvenew + 1) -min ( $startCurvenew + 1) -max $endCurvenew endCurveSLD ;
+		}		
+	}
+
+	else if ($endCurve > $endCurvenew )
+	{		
+		intSliderGrp -e -v $endCurvenew -min ( $startCurvenew + 1) -max $endCurvenew endCurveSLD ;
+
+		if ($endCurvenew <= $startCurve)
+		{
+			intSliderGrp -e -v ($endCurvenew - 1) -min ( $startCurvenew + 1) -max $endCurvenew startCurveSLD ;
+		}
+	}
+
+// Spacer Range
+
+	if ($startLoc < $startLocnew )
+	{
+		intSliderGrp -e -v $startCurvenew -min $startCurvenew -max ($endCurvenew - 1 ) startLocSLD ;
+		
+		if ($startLocnew >= $endLoc)
+		{
+			intSliderGrp -e -v ($startCurvenew + 1) -min ( $startCurvenew + 1) -max $endCurvenew endLocSLD ;
+		}		
+	}
+
+	else if ($endLoc > $endLocnew )
+	{		
+		intSliderGrp -e -v $endCurvenew -min ( $startCurvenew + 1) -max $endCurvenew endLocSLD ;
+
+		if ($endLocnew <= $startLoc)
+		{
+			intSliderGrp -e -v ($endCurvenew - 1) -min ( $startCurvenew + 1) -max $endCurvenew startLocSLD ;
+		}
+	}
+
+	else
+	{
+		intSliderGrp -e -min $startCurvenew -max ($endCurvenew - 1 ) startCurveSLD ;
+		intSliderGrp -e -min ( $startCurvenew + 1) -max $endCurvenew endCurveSLD ;
+
+		intSliderGrp -e -min $startCurvenew -max ($endCurvenew - 1 ) startLocSLD ;
+		intSliderGrp -e -min ( $startCurvenew + 1) -max $endCurvenew endLocSLD ;
+	}	
+}
+
+
+
+
+global proc DeleteCurves ()
+{
+	string $allCurves[]=`ls "perfectArc_Curve_*"` ; 
+	
+	$check = size($allCurves) ;
+
+	if ( $check == 0)
+	{
+		print "No Curves to delete\n" ;
+		button -e -en off DeleteCurveBT;
+	}
+
+	else
+	{
+		for($i=0; $i < (size($allCurves)/2);$i++)
+		{ 			 
+			delete $allCurves[$i] ;
+			
+			$CurveNumber = $i + 1 ;
+			print "Deleted perfectArc_Curve_" ;
+			print $CurveNumber ;
+									
+			button -e -en off DeleteCurveBT; 
+		}
+	}
+} 
+
+		 
+global proc DeleteSpacers ()
+{
+	string $allSpacers[]=`ls "perfectArc_Spacer_Grp*"` ; 
+	
+	$check = size($allSpacers) ;
+
+	if ( $check == 0)
+	{
+		print "No Spacers to delete\n" ;
+		button -e -en off DeleteSpacerBT;
+	}
+
+	else
+	{
+		for($i=0; $i < size($allSpacers);$i++)
+		{ 			 
+			delete $allSpacers[$i] ;
+			
+			$SpacerNumber = $i + 1 ;
+			print "Deleted perfectArc_Spacer_Grp" ;
+			print $SpacerNumber ;
+									
+			button -e -en off DeleteSpacerBT; 
+		}
+	}
+} 

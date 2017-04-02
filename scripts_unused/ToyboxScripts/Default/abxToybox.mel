@@ -1,0 +1,1024 @@
+// Toybox Maya Script
+// abxToybox.mel
+//
+// Version 1.5 (formerly jabToybox.mel)
+// Created by J. Adam Burke adam@adamburke.net
+// Modified : 18 Aug 2006
+
+
+// DESCRIPTION:
+// Toybox is a script manager and dynamic shelf interface for handling all those custom scripts you download.
+// It allows you to view and run a script from anywhere on your computer or network. You can create
+// favorite script folders and libraries where scripts are seperated into functional groups like animation
+// rendering, rigging, etc. Toybox also reads icons and annotation files with the same name of the mel script to
+// create colorful shelf butons which can be dragged to your shelf.
+
+// USAGE:
+// Source script and call "abxToybox;"
+// assign to shelf or hotkey as preferred
+
+
+// ©2006 J. Adam Burke 
+// http://www.adamburke.net
+
+// New in 1.5:
+// 1. Header files that can specify additional shelf icon options like help annotations and image overlay labels. 
+//    You can also define alternate main procedures and pre-source other files that have functions the script depends
+//    on to allow for library functions that can be shared accross scripts
+// 2. Mini-mode gives toybox a small footprint (window size) for frequent users who need to keep it visible
+// 3. Automatic image overlay labels for scripts without an image.
+
+ global proc abxToybox()
+{
+	if (`optionVar -exists "toyboxLoadedFolder"`)
+		toyboxSetOptionVars 0;
+	else
+		toyboxSetOptionVars 1;
+	// create the window and UI for the Toybox
+    if (`window -ex abxToyboxWindow` != true) {
+	window -w 441 -h 442 -ret -t "Toybox - Script Manager" -in "Toybox" -menuBar true -s true -tb true abxToyboxWindow;
+
+
+	// creates the interface menubar
+
+	//menuBarLayout abxToyboxMainMenu;
+	string $favFolders[] = `optionVar -q "toyboxFavFolder"`;
+	string $favLibraries[] = `optionVar -q "toyboxFavLib"`;
+
+	//string $currentTabName = `tabLayout -q -selectTab tabLyt`;
+	//string $currentShelfPath = eval(shelfLayout -q -ann `tabLayout -q -selectTab tabLyt`);
+
+	int $i = 0;
+	int $j = 0;
+	
+		menu -label "Edit";
+			menuItem -label "Options..." -c "abxToyboxOptions";
+			menuItem -d true;
+			menuItem -label "New Script..." -c ("abxCreateNewScript (eval(\"shelfLayout -q -ann `tabLayout -q -selectTab tabLyt`\"));");
+			menuItem -d true;
+			menuItem -label "Close" -c "window -e -vis 0 abxToyboxWindow";
+		menu -label "Load" toyboxLoadMenu;
+			// skip the first element of array by starting at 1
+			for ($i=1;$i<size($favLibraries);$i++){
+				if (endString($favLibraries[$i],1) != "/"){
+					$favLibraries[$i] = ($favLibraries[$i]+"/");
+				}
+				string $librarySubFolders[] = `getFileList -fld $favLibraries[$i] -fs "*.*"`;
+				menuItem -subMenu true -label (basenameEx($favLibraries[$i]));
+					for ($j=0;$j<size($librarySubFolders);$j++){
+						if (`filetest -d ($favLibraries[$i]+$librarySubFolders[$j])`){
+							menuItem -label (basenameEx($librarySubFolders[$j])) -c ("abxLoadCustomPath \""+$favLibraries[$i]+$librarySubFolders[$j]+"\";");
+						}
+					}
+					setParent -menu ..;				
+			}
+			menuItem -d true;
+			for ($i=1;$i<size($favFolders);$i++){
+				menuItem -label (basenameEx($favFolders[$i])) -c ("abxLoadCustomPath \""+$favFolders[$i]+"\";");
+			}
+			menuItem -d true;
+			menuItem -label "Browse..." -c "fileBrowserDialog -m 4 -fc \"abxToolboxBrowsePath\" -ft \"directory\" -an \"Select Custom Script Folder\" -ds 0;";
+			menuItem -d true;
+			menuItem -label "Unload Current Tab" -c "abxUnloadTab";
+		menu -label "View";
+			menuItem -label "Refresh" -c "abxRefreshShelf";
+			menuItem -d true;
+			menuItem -label "Icon" -c "abxToyboxChangeView 1";
+			menuItem -label "Icon/Text Below" -c "abxToyboxChangeView 2";
+			menuItem -label "Icon/Text Beside" -c "abxToyboxChangeView 3";
+			menuItem -d true;
+			menuItem -label "Open in Explorer" -c ("abxOpenScript (eval(\"shelfLayout -q -ann `tabLayout -q -selectTab tabLyt`\")) -1;");
+		menu -label "Help";
+			menuItem -label "How To Use..." -c "abxToyboxHelp";
+			menuItem -label "About" -c "abxToyboxAbout";
+	
+	setParent abxToyboxWindow;
+
+	formLayout mainForm;
+  	
+
+  	tabLayout -height 500 -imw 0 -imh 0 tabLyt;
+		setParent..;
+
+	button -l "Refresh" -c "abxRefreshShelf" -al "center" -h 26 btnRefresh ;
+	button -l "Unload" -c "abxUnloadTab" -dpc toyBoxDropScriptCB -al "center" -h 26 btnUnload;
+	button -l "Close" -c "window -e -vis 0 abxToyboxWindow" -dgc abxDragScriptCB -dpc toyBoxDropScriptCB -al "center" -h 26 btnClose ;
+	
+	formLayout -e
+
+	    -attachForm tabLyt "left" 0 
+	    -attachForm tabLyt "right" 0
+	    -attachForm tabLyt "top" 5
+	    -attachControl tabLyt "bottom" 5 btnRefresh
+
+	    -attachForm btnRefresh "left" 5 
+	    -attachPosition btnRefresh "right" 3 33
+	    -attachNone btnRefresh "top"
+	    -attachForm btnRefresh "bottom" 5
+
+	    -attachPosition btnUnload "left" 3 33 
+	    -attachPosition btnUnload "right" 3 66
+	    -attachNone btnUnload "top"
+	    -attachForm btnUnload "bottom" 5
+	    
+	    -attachPosition btnClose "left" 3 66
+	    -attachForm btnClose "right" 5
+	    -attachNone btnClose "top"
+	    -attachForm btnClose "bottom" 5
+	
+	    mainForm ;
+
+	abxLoadHomeShelf;
+
+	showWindow abxToyboxWindow;
+	}
+    	else
+    	{
+		showWindow abxToyboxWindow;
+	}
+}
+
+
+global proc abxToolboxBrowsePath (string $customMelPath, string $fileType) {
+	abxLoadCustomPath $customMelPath;	
+}
+
+
+global proc abxLoadCustomPath (string $customMelPath){
+	
+	int $i = 0;
+	
+	// gets the custom path from the UI path textfield
+	// string $customMelPath = `textField -q -text textPath`;
+	
+	// If the user didn't end the path with a slash, this will add the slash back in
+	if (endString($customMelPath,1) != "/" && endString($customMelPath,1) != "\\"){
+		$customMelPath = $customMelPath + "/";
+		//textField -e -text $customMelPath textPath;
+	}
+	
+	// checks to see if the directory exists
+	if (`filetest -d $customMelPath` == 1) {
+	
+		// creates an array of mel files with full pathnames
+		string $melFiles[] = `getFileList -folder $customMelPath -fs "*.mel"`;
+		$melFiles = sort($melFiles);
+	
+		for ($i=0;$i<size($melFiles);$i++)
+			$melFiles[$i] = ($customMelPath+$melFiles[$i]);
+	
+		// shelf title
+		string $shelfN = `basename $customMelPath ""`;
+		//print ($customMelPath+":"+$shelfN+":"+`basename $customMelPath ""`+ "\n");
+		
+		// calls local procedure to create the shelf
+		abxLoadShelf($shelfN,$melFiles,$customMelPath);
+	}
+	else {
+		error ("Custom Script Folder \""+$customMelPath+"\" not found.");
+	}
+}
+
+global proc abxToyboxLoadMenuPreset(string $melDept, string $melType){
+
+	string $presetPath1 = "C:/Documents and Settings/Adam/My Documents/maya/toybox scripts/";
+	string $presetPath2 = "C:/Documents and Settings/Adam/My Documents/maya/scripts/";
+	string $melTypeSuffix = ($melType+"/");
+	string $shelfName = $melType;
+	string $melFiles[];
+	
+	if ($melDept == "Curious"){
+		$melFiles = `getFileList -folder ($presetPath1+$melTypeSuffix) -fs "*.mel"`;
+		for ($i=0;$i<size($melFiles);$i++)
+			$melFiles[$i] = ($presetPath1+$melTypeSuffix+$melFiles[$i]);
+			
+		$melFiles = sort($melFiles);
+		abxLoadShelf($shelfName,$melFiles,($presetPath1+$melTypeSuffix));
+	}
+	else if ($melDept == "LE"){
+		$melFiles = `getFileList -folder ($presetPath2+$melTypeSuffix) -fs "*.mel"`;
+		for ($i=0;$i<size($melFiles);$i++)
+			$melFiles[$i] = ($presetPath2+$melTypeSuffix+$melFiles[$i]);
+			
+		$melFiles = sort($melFiles);	
+		abxLoadShelf($shelfName,$melFiles,($presetPath2+$melTypeSuffix));
+	}
+}
+
+
+global proc abxRefreshShelf () {
+	string $currentShelf = `tabLayout -q -st tabLyt`;
+	string $currentButtons[] = `shelfLayout -q -childArray $currentShelf`;
+	string $shelfFullPath1 = `shelfLayout -q -ann $currentShelf`;
+	
+	//remove all the buttons on the shelf
+	setParent $currentShelf;
+	int $j=0;
+	for ($j=0;$j<size($currentButtons);$j++)
+		deleteUI -control $currentButtons[$j];
+		
+	// if the shelf path is still valid reload all the buttons on the shelf
+	if (`filetest -d $shelfFullPath1` == 1) {
+	
+		// creates an array of mel files with full pathnames
+		string $melFiles[] = `getFileList -folder $shelfFullPath1 -fs "*.mel"`;
+		$melFiles = sort($melFiles);
+		
+		int $i=0;
+		for ($i=0;$i<size($melFiles);$i++)
+			$melFiles[$i] = ($shelfFullPath1+$melFiles[$i]);
+		
+		// calls local procedure to create the shelf
+		abxLoadShelfButtons($currentShelf,$melFiles);
+	}
+	else {
+		error "Custom Script Folder not found.";
+	}
+}
+
+global proc abxUnloadTab(){
+	string $currentTabName = `tabLayout -q -selectTab tabLyt`;
+	string $currentShelfPath = `shelfLayout -q -ann $currentTabName`;
+	string $toyboxLoadedShelves[] = `optionVar -q "toyboxLoadedFolder"`;
+	int $i;
+	
+
+	deleteUI -layout $currentTabName;	
+	
+	optionVar -clearArray "toyboxLoadedFolder";
+	for ($i=0;$i<size($toyboxLoadedShelves);$i++){
+		if ($toyboxLoadedShelves[$i] == $currentShelfPath);
+		else
+			optionVar -stringValueAppend "toyboxLoadedFolder" $toyboxLoadedShelves[$i];
+	}
+}
+
+global proc abxLoadHomeShelf(){
+	
+	string $loadedTabs[] = `optionVar -q "toyboxLoadedFolder"`;
+	optionVar -clearArray "toyboxLoadedFolder";
+
+	int $i =0;
+	int $j =0;
+	
+	for ($i=0;$i<size($loadedTabs);$i++){
+		string $melFiles[] = `getFileList -folder $loadedTabs[$i] -fs "*.mel"`;
+		$melFiles = sort($melFiles);
+		for ($j=0;$j<size($melFiles);$j++)
+			$melFiles[$j] = ($loadedTabs[$i]+$melFiles[$j]);
+		abxLoadShelf(basenameEx($loadedTabs[$i]),$melFiles,$loadedTabs[$i]);
+	}
+}
+
+// updates the view of the current shelf to the new settings
+global proc abxToyboxChangeView (int $style) {
+	
+	if ($style == 1){
+		optionVar -stringValue "toyboxDisplayStyle" "iconOnly";
+		optionVar -intValue "toyboxCellHeight" 36;
+		optionVar -intValue "toyboxCellWidth" 36;
+	}
+	else if ($style == 2){
+		optionVar -stringValue "toyboxDisplayStyle" "iconAndTextVertical";
+		optionVar -intValue "toyboxCellHeight" 80;
+		optionVar -intValue "toyboxCellWidth" 80;
+	}
+	else if ($style == 3){
+		optionVar -stringValue "toyboxDisplayStyle" "iconAndTextHorizontal";
+		optionVar -intValue "toyboxCellHeight" 60;
+		optionVar -intValue "toyboxCellWidth" 133;
+	}
+	
+	abxUpdateShelfLayout(`optionVar -q "toyboxDisplayStyle"`,`optionVar -q "toyboxCellWidth"`,`optionVar -q "toyboxCellHeight"`);
+
+
+		
+}
+
+global proc abxUpdateShelfLayout (string $shelfStyle, int $shelfWidth, int $shelfHeight) {
+	string $currentShelves[] = `tabLayout -q -childArray tabLyt`;
+	for ($currentShelf in $currentShelves)
+		shelfLayout -e -style $shelfStyle -cellWidth $shelfWidth -cellHeight $shelfHeight $currentShelf;
+}
+
+global proc abxLoadShelf (string $shelfName, string $melFiles[], string $shelfFullPath){
+	
+	int $i = 0;
+	int $shelfCellWidth = `optionVar -q "toyboxCellWidth"`;
+	int $shelfCellHeight = `optionVar -q "toyboxCellHeight"`;
+	string $shelfDisplayStyle = `optionVar -q "toyboxDisplayStyle"`;
+	optionVar -stringValueAppend "toyboxLoadedFolder" $shelfFullPath;
+
+	// add a shelf layout to the tabLayout
+	setParent tabLyt;
+	
+	
+	// if the shelf name is not unique then add a number to the end of the shelfname until a unique name is found
+	int $nameIncrement = 0;
+	while (`shelfLayout -exists $shelfName`==1){
+		// add number to shelfname
+		//print (`shelfLayout -exists $shelfName`+":shelf already exists\n");
+		$nameIncrement++;
+		$strippedName = `match "[a-zA-Z_]+" $shelfName`;
+		$shelfName = ($strippedName+$nameIncrement);
+	}
+	
+	// create the new shelf
+ 	$newShelf = `shelfLayout 
+		-style $shelfDisplayStyle 
+		-width 442
+		-height 442
+		-cellWidth $shelfCellWidth
+		-cellHeight $shelfCellHeight
+		-dgc abxDragScriptCB
+		-dpc toyBoxDropScriptCB
+		-ann $shelfFullPath
+		($shelfName)`;
+		
+		popupMenu -button 3;
+			menuItem -l "Open Directory" -c ("abxOpenScript \""+$shelfFullPath+"\" -1;");
+			menuItem -l "New Script" -c ("abxCreateNewScript \""+$shelfFullPath+"\";");
+			menuItem -l "Toggle MiniMode" -c("abxToyboxMini");
+		
+	abxLoadShelfButtons($newShelf, $melFiles);
+	shelfLayout -e -dpc "toyBoxDropScriptCB" $newShelf;
+		
+}
+
+global proc abxLoadShelfButtons (string $parentShelf, string $melFiles[]) {
+	
+	int $shelfCellWidth = `optionVar -q "toyboxCellWidth"`;
+	int $shelfCellHeight = `optionVar -q "toyboxCellHeight"`;
+	string $shelfDisplayStyle = `optionVar -q "toyboxDisplayStyle"`;
+	string $tboxScriptEditors[] = `optionVar -q "toyboxScriptEditor"`;
+	int $i =0;
+	int $j =0;
+	
+	
+	// for each mel file,
+	//     - add a button to the shelf
+	//     - set its command to "source file.mel"
+	//     - set its icon to "file.bmp" or "file.xpm" if it exists
+	
+	for ($i=0;$i<size($melFiles);$i++){
+		
+		string $melMinusExt;
+		string $melFileImage;
+		string $melFileAnn;
+		string $melLabel;
+		string $melAnnotation = "";
+		string $melSourceCommand = "";
+		string $melIOL="";
+		string $melMain="";
+		string $melPreSrc="";
+		
+		// look for an image file similarly named in the same directory
+		$melMinusExt = startString($melFiles[$i],size($melFiles[$i])-4);
+
+		//look for an annotation file similarly name in the same directory
+		if (`filetest -f ($melMinusExt+".txt")`){
+			string $headerData[] = `abxReadHeader ($melMinusExt+".txt")`;
+			//print ($headerData);
+			$melAnnotation = $headerData[0];
+			$melPreSrc = $headerData[1];
+			$melMain = $headerData[2];
+			$melIOL = $headerData[3];
+		}
+		else {
+			$melAnnotation = interToUI(basename($melFiles[$i],".mel"));
+		}
+		
+		// If there is a BMP or XPM
+		if (`filetest -f ($melMinusExt+".bmp")`)
+			$melFileImage = ($melMinusExt+".bmp");
+		else if (`filetest -f ($melMinusExt+".xpm")`)
+			$melFileImage = ($melMinusExt+".xpm");
+		// if there is a BMP or XPM in an icon subfolder
+		else if (`filetest -f ((dirname($melFiles[$i]))+"/icons/"+(basename($melFiles[$i],".mel"))+".bmp")`)
+			$melFileImage = ((dirname($melFiles[$i]))+"/icons/"+(basename($melFiles[$i],".mel"))+".bmp");
+		// if there is no image use the mel default icon with the Image overlay
+		else{
+			$melFileImage = (`getenv MAYA_LOCATION`+"/extras/icons/USERcommandButton.bmp");
+			if ($melIOL ==""){
+				if (size(basename($melFiles[$i],".mel"))>7){
+					$melIOL = toupper(startString(basename($melFiles[$i],".mel"),1));
+					for ($s=2;$s<size(basename($melFiles[$i],".mel"));$s++){
+						$melIOL	=($melIOL + match("[A-Z]",substring(basename($melFiles[$i],".mel"),$s,$s)));
+					}
+				}
+				else
+					$melIOL = startString(basename($melFiles[$i],".mel"),5);
+			}
+		}
+	
+		$melLabel = basename($melFiles[$i],".mel");
+		
+		// add a pre-souce command into the command
+		if ($melPreSrc != ""){
+			string $sourceToken[];
+			tokenize $melPreSrc "," $sourceToken;
+			for ($each in $sourceToken)
+				$melSourceCommand = ($melSourceCommand+"source \""+$each+"\";");
+		}
+		// change the main proc called if specified in the header
+		if ($melMain =="")
+			$melSourceCommand = ($melSourceCommand+"if (`exists "+$melLabel+"`==0) source \""+`fromNativePath $melFiles[$i]`+"\";if (`exists "+$melLabel+"`) "+$melLabel+";");
+		else
+			$melSourceCommand = ($melSourceCommand+"if (`exists "+$melMain+"`==0) source \""+`fromNativePath $melFiles[$i]`+"\";if (`exists "+$melMain+"`) "+$melMain+";");
+			
+
+			
+		// add the shelf button	
+		setParent $parentShelf;
+			shelfButton 
+				-label $melLabel
+				-annotation ($melAnnotation) 
+ 				-image ($melFileImage)
+ 				-image1 ($melFileImage)
+				-iol $melIOL
+ 				-command $melSourceCommand
+ 				-dgc "abxDragScriptCB"
+ 				-enableCommandRepeat 1
+				-enable 1
+				-width $shelfCellWidth
+				-height $shelfCellHeight
+				-manage 1
+				-visible 1
+				-style $shelfDisplayStyle 
+				-marginWidth 5
+				-marginHeight 3
+				-actionIsSubstitute 0;
+				popupMenu -button 3;
+					for ($j = 1;$j<size($tboxScriptEditors);$j++){
+						string $intToStringBuffer = $j;
+						menuItem -l ("Open in "+basenameEx($tboxScriptEditors[$j])) -c ("abxOpenScript \""+$melFiles[$i]+"\" "+$intToStringBuffer+";");
+					}
+					menuItem -d true;
+					menuItem -l "Edit Header Info" -c ("abxEditHeaderWin \""+$melMinusExt+".txt\";");
+					menuItem -l "Source/Re-Source Script" -c ("eval(\"source \\\"" + fromNativePath($melFiles[$i]) + "\\\"\");");
+				
+ 	}
+ 	shelfLayout -e -style $shelfDisplayStyle -cellWidth $shelfCellWidth -cellHeight $shelfCellHeight $parentShelf;
+	
+	// selects the new shelf tab as the current visible tab
+	tabLayout -e -st $parentShelf tabLyt;
+}
+
+global proc abxOpenScript (string $abxScriptPath, int $abxAppNum){
+	
+	string $tboxScriptEditors[] = `optionVar -q "toyboxScriptEditor"`;
+	string $tboxFileBrowser = `optionVar -q "toyboxFileBrowser"`;
+	
+	if ($abxAppNum == -1){
+		system ("start "+toNativePath($tboxFileBrowser)+" \""+toNativePath($abxScriptPath)+"\"");
+		print ("system start "+$tboxFileBrowser+" \""+toNativePath($abxScriptPath)+"\"\n");
+	}
+	else {
+		system ("start "+toNativePath($tboxScriptEditors[$abxAppNum])+" \""+toNativePath($abxScriptPath)+"\"");
+		print ("system start "+$tboxScriptEditors[$abxAppNum]+" \""+toNativePath($abxScriptPath)+"\"\n");
+	}
+	
+}
+
+global proc abxCreateNewScript (string $scriptPath) {
+	
+	string $scriptName;
+ 	string $result = `promptDialog 
+ 		-title "New Script"
+ 		-message "Filename"
+ 		-text "newScript.mel"
+ 		-button "OK" -button "Cancel"
+ 		-defaultButton "OK" -cancelButton "Cancel"
+ 		-dismissString "Cancel"`;
+ 
+ 	if ($result == "OK") {
+ 		$scriptName = `promptDialog -query -text`;
+ 	
+		$scriptPath = $scriptPath + $scriptName;
+ 	
+ 		if (fileExtension($scriptPath) != "mel")
+ 			$scriptPath = ($scriptPath + ".mel");
+ 	
+ 		$fileId=`fopen $scriptPath "w"`;
+ 		fprint $fileId ("// "+`basenameEx $scriptPath`+"\n");
+ 		fclose $fileId;
+ 		
+ 		abxRefreshShelf;
+ 	}
+	
+}
+
+// returns the header file data as an array of strings
+global proc abxWriteHeader(string $headerFile, string $hd1, string $hd2,string $hd3, string $hd4){
+
+	$fileId=`fopen $headerFile "w"`;
+		fprint $fileId ($hd1+" \n");
+		fprint $fileId ($hd2+" \n");
+		fprint $fileId ($hd3+" \n");
+		fprint $fileId ($hd4+" \n");
+ 	fclose $fileId;
+}
+
+global proc string[] abxReadHeader(string $headerFile){
+		
+	//print ("abxReadHeader function Started:"+$headerFile+"\n");
+
+	string $headerData="";
+	string $nextLine="";
+	string $tokenBuffer[];
+	//print "strings declared\n";
+
+	if (`filetest -f ($headerFile)`){
+		 $fileId=`fopen $headerFile "r"`;
+			$nextLine = `fgetline $fileId`;
+			$headerData = ($headerData+$nextLine);
+			while (size($nextLine) > 0){
+ 				$nextLine = `fgetline $fileId`;
+				$headerData = ($headerData+$nextLine);
+			}
+ 		fclose $fileId;
+		tokenize $headerData "\n" $tokenBuffer;
+		return {strip($tokenBuffer[0]),strip($tokenBuffer[1]),strip($tokenBuffer[2]),strip($tokenBuffer[3])};
+	}
+	else{
+		print "file not Found\n";
+		return {"","","",""};
+	}
+	
+}
+
+global proc abxEditHeaderWin(string $headerFile){
+	
+	string $txtAnn = "";
+	string $txtSrc = "";
+	string $txtMain = "";
+	string $txtIOL = "";
+	if ($headerFile != ""){
+		string $headerData[] = abxReadHeader($headerFile);
+		$txtAnn = $headerData[0];
+		$txtSrc = $headerData[1];
+		$txtMain = $headerData[2];
+		$txtIOL = $headerData[3];
+	}
+	// create window interface to enter header info
+	if (`window -ex abxToyboxHeaderWindow` == true) 
+		deleteUI -window abxToyboxHeaderWindow;
+
+	$windowTitle = (basename($headerFile,"")+" Header Info");
+	window -h 150 -w 500 -t $windowTitle abxToyboxHeaderWindow;
+	formLayout abxToyboxHeaderForm;
+	columnLayout -adj true -cat "both" 0 abxToyboxHeaderCol;
+		rowLayout -nc 2 -cw2 80 300 -cl2 "right" "left" -ct2 "right" "both" -adj 2 -rat 1 "bottom" 0;
+			text -label "Annotation: " ;
+			textField -text $txtAnn -ann "Help Tip to appear in the Toybox Window" tbxHdrAnnTxt;
+			setParent..;
+		rowLayout -nc 3 -cw3 80 300 20 -cl3 "right" "left" "left" -ct3 "right" "both" "left" -adj 2 -rat 1 "bottom" 0;
+			text -label "PreSource: ";
+			textField -text $txtSrc -ann "MEL files to pre source before running script. seperate with comma." tbxHdrSrcTxt;
+			symbolButton -h 20 -w 20 -image "navButtonBrowse.xpm" -c "fileBrowserDialog -m 0 -fc \"abxToyboxSourceBrowse\" -ft \"mel\" -an \"PreSource Script\";";
+			setParent..;
+		rowLayout -nc 2 -cw2 80 300 -cl2 "right" "left" -ct2 "right" "both" -adj 2 -rat 1 "bottom" 0;
+			text -label "Main Proc: ";
+			textField -text $txtMain -ann "Procedure to run when the Shelf Button is pressed. Default is the procedure that matches the filename." tbxHdrMainTxt;
+			setParent..;
+		rowLayout -nc 2 -cw2 80 60 -cl2 "right" "left" -ct2 "right" "both" -rat 1 "bottom" 0;
+			text -label "Overlay Label: ";
+			textField -text $txtIOL -ann "4-5 character label to appear over the icon image" tbxHdrIOLTxt;
+			setParent..;
+		setParent..;
+	$okCmd = ("abxWriteHeader(\""+$headerFile+"\",`textField -q -text tbxHdrAnnTxt`,`textField -q -fileName tbxHdrSrcTxt`,`textField -q -text tbxHdrMainTxt`,`textField -q -text tbxHdrIOLTxt`);");
+	print ($okCmd);
+	button -w 100 -label "OK" -c ($okCmd+"window -e -visible false abxToyboxHeaderWindow;abxRefreshShelf;") abxHeaderOKBtn ;
+	button  -w 100 -label "Cancel" -c "window -e -visible false abxToyboxHeaderWindow" abxHeaderCancelBtn ;
+	formLayout -e 
+		-af "abxToyboxHeaderCol" "left" 4 
+		-af "abxToyboxHeaderCol" "top" 4 
+		-af "abxToyboxHeaderCol" "right" 4 
+		-af "abxToyboxHeaderCol" "bottom" 32 
+
+		-an "abxHeaderOKBtn" "left"
+		-ac "abxHeaderOKBtn" "top" 4 "abxToyboxHeaderCol"
+		-ac "abxHeaderOKBtn" "right" 6 "abxHeaderCancelBtn"
+		-af "abxHeaderOKBtn" "bottom" 4
+
+		-an "abxHeaderCancelBtn" "left"
+		-ac "abxHeaderCancelBtn" "top" 4 "abxToyboxHeaderCol"
+		-af "abxHeaderCancelBtn" "right" 4
+		-af "abxHeaderCancelBtn" "bottom" 4
+		abxToyboxHeaderForm;
+	showWindow abxToyboxHeaderWindow;
+}
+
+global proc abxToyboxSourceBrowse (string $customPath, string $fileType){
+
+	textField -e -text ($customPath) tbxHdrSrcTxt;
+
+}
+
+global proc toyboxSetOptionVars (int $forceFactorySettings) {
+
+			if( $forceFactorySettings || !`optionVar -exists toyboxFavFolder` ) {
+				optionVar -clearArray "toyboxFavFolder";
+				optionVar -stringValue "toyboxFavFolder" "NULL";
+				optionVar -stringValueAppend "toyboxFavFolder" `internalVar -userScriptDir`;
+			}
+			if( $forceFactorySettings || !`optionVar -exists toyboxFavLib` ) {
+				optionVar -clearArray "toyboxFavLib";
+				optionVar -stringValue "toyboxFavLib" "NULL";
+				//optionVar -stringValueAppend "toyboxFavLib" "None";
+				optionVar -stringValueAppend "toyboxFavLib" (`internalVar -userScriptDir`+"/Toybox Scripts/");
+			}
+			if( $forceFactorySettings || !`optionVar -exists toyboxLoadedFolder` ) {
+				optionVar -clearArray "toyboxLoadedFolder";
+				
+				optionVar -stringValue "toyboxLoadedFolder" `internalVar -userScriptDir`;
+				//optionVar -stringValue "toyboxLoadedFolder" "None";
+				optionVar -stringValueAppend "toyboxLoadedFolder" (`internalVar -userScriptDir`+"/Toybox Scripts/Default/");
+			}
+			if( $forceFactorySettings || !`optionVar -exists toyboxScriptEditor` ) {
+				optionVar -clearArray "toyboxScriptEditor";
+				optionVar -stringValue "toyboxScriptEditor" "NULL";
+				optionVar -stringValueAppend "toyboxScriptEditor" "notepad.exe";
+			}
+			if( $forceFactorySettings || !`optionVar -exists toyboxDisplayStyle` ) {
+				optionVar -stringValue "toyboxDisplayStyle" "iconAndTextVertical";
+			}
+			if( $forceFactorySettings || !`optionVar -exists toyboxCellHeight` ) {
+				optionVar -intValue "toyboxCellHeight" 80;
+			}
+			if( $forceFactorySettings || !`optionVar -exists toyboxCellWidth` ) {
+				optionVar -intValue "toyboxCellWidth" 80;
+			}
+			if( $forceFactorySettings || !`optionVar -exists toyboxFileBrowserPath` ) {
+				optionVar -stringValue "toyboxFileBrowser" "explorer.exe";
+			}
+}
+
+
+global proc toyboxOptionSetup (string $parent, int $forceFactorySettings)
+{
+	// Retrieve the optionVar settings and apply to the UI
+	//
+	if ($forceFactorySettings) {
+		toyboxSetOptionVars( $forceFactorySettings );
+	}
+
+		setParent $parent;
+	
+		int $i = 0;
+		string $stringArrayBuffer[] = `optionVar -q "toyboxFavFolder"`;
+		textScrollList -e -ra txtLstFavFolder;
+		for ($i=1; $i<size($stringArrayBuffer); $i++){
+			textScrollList -e -append $stringArrayBuffer[$i] txtLstFavFolder;
+		}
+		
+		string $stringArrayBuffer2[] = `optionVar -q "toyboxFavLib"`;
+		textScrollList -e -ra txtLstFavLib;
+		for ($i=1; $i<size($stringArrayBuffer2); $i++){
+			textScrollList -e -append $stringArrayBuffer2[$i] txtLstFavLib;
+		}
+		
+		string $stringArrayBuffer3[] = `optionVar -q "toyboxScriptEditor"`;
+		textScrollList -e -ra txtLstScriptEditor;
+		for ($i=1; $i<size($stringArrayBuffer3); $i++){
+			textScrollList -e -append $stringArrayBuffer3[$i] txtLstScriptEditor;
+		}
+		
+		if (`optionVar -q "toyboxDisplayStyle"`=="textOnly")
+			optionMenuGrp -e -select 1 optToyboxDisplayStyle;
+		else if (`optionVar -q "toyboxDisplayStyle"`=="iconOnly")
+			optionMenuGrp -e -select 2 optToyboxDisplayStyle;
+		else if (`optionVar -q "toyboxDisplayStyle"`=="iconAndTextVertical")
+			optionMenuGrp -e -select 3 optToyboxDisplayStyle;
+		else if (`optionVar -q "toyboxDisplayStyle"`=="iconAndTextHorizontal")
+			optionMenuGrp -e -select 4 optToyboxDisplayStyle;
+		
+		intFieldGrp -e -value1 `optionVar -q "toyboxCellWidth"` intCellWidth;
+		
+		intFieldGrp -e -value1 `optionVar -q "toyboxCellHeight"` intCellHeight;
+		
+		textFieldGrp -e -text `optionVar -q "toyboxFileBrowser"` txtFileBrowser;
+	
+	
+}
+
+// updates the option variables to the UI control Values
+global proc toyboxOptionCallback (string $parent) {
+    	setParent $parent;
+	
+	int $i = 0;
+	int $j = 0;
+	// retrieve the Favorite Folder Text list and store in toyboxFavFolder option variable
+	optionVar -clearArray "toyboxFavFolder";
+	optionVar -stringValue "toyboxFavFolder" "NULL";
+	
+	string $textListBuffer[] = `textScrollList -q -allItems txtLstFavFolder`;
+	for ($i=0; $i < size($textListBuffer);$i++){
+		optionVar -stringValueAppend "toyboxFavFolder" $textListBuffer[$i];
+	}
+		
+	optionVar -clearArray "toyboxFavLib";
+	optionVar -stringValue "toyboxFavLib" "NULL";
+
+	string $textListBuffer2[] = `textScrollList -q -allItems txtLstFavLib`;
+	for ($i=0; $i < size($textListBuffer2);$i++){
+		optionVar -stringValueAppend "toyboxFavLib" $textListBuffer2[$i];
+	}
+	
+	optionVar -clearArray "toyboxScriptEditor";
+	optionVar -stringValue "toyboxScriptEditor" "NULL";
+
+	string $textListBuffer3[] = `textScrollList -q -allItems txtLstScriptEditor`;
+	for ($i=0; $i < size($textListBuffer3);$i++){
+		optionVar -stringValueAppend "toyboxScriptEditor" $textListBuffer3[$i];
+	}
+	
+	optionVar -stringValue "toyboxDisplayStyle" `optionMenuGrp -q -value optToyboxDisplayStyle`;
+	
+	optionVar -intValue "toyboxCellWidth" `intFieldGrp -q -value1 intCellWidth`;
+	
+	optionVar -intValue "toyboxCellHeight" `intFieldGrp -q -value1 intCellHeight`;
+	
+	optionVar -stringValue "toyboxFileBrowser" `textFieldGrp -q -text txtFileBrowser`;
+
+	// EDIT TOYBOX MENUS
+	string $loadMenuItem[] = `menu -q -ia toyboxLoadMenu`;
+	for ($i=0;$i<size($loadMenuItem);$i++){
+		deleteUI -menuItem $loadMenuItem[$i];
+	}
+
+	string $favFolders[] = `optionVar -q "toyboxFavFolder"`;
+	string $favLibraries[] = `optionVar -q "toyboxFavLib"`;
+
+	setParent -menu toyboxLoadMenu;
+
+	// skip the first element of array by starting at 1
+	for ($i=1;$i<size($favLibraries);$i++){
+		if (endString($favLibraries[$i],1) != "/"){
+			$favLibraries[$i] = ($favLibraries[$i]+"/");
+		}
+		string $librarySubFolders[] = `getFileList -fld $favLibraries[$i] -fs "*.*"`;
+		menuItem -subMenu true -label (basenameEx($favLibraries[$i]));
+			for ($j=0;$j<size($librarySubFolders);$j++){
+				if (`filetest -d ($favLibraries[$i]+$librarySubFolders[$j])`){
+					menuItem -label (basenameEx($librarySubFolders[$j])) -c ("abxLoadCustomPath \""+$favLibraries[$i]+$librarySubFolders[$j]+"\";");
+				}
+			}
+			setParent -menu ..;				
+	}
+	menuItem -d true;
+	for ($i=1;$i<size($favFolders);$i++){
+		menuItem -label (basenameEx($favFolders[$i])) -c ("abxLoadCustomPath \""+$favFolders[$i]+"\";");
+	}
+	menuItem -d true;
+	menuItem -label "Browse..." -c "fileBrowserDialog -m 4 -fc \"abxToolboxBrowsePath\" -ft \"directory\" -an \"Select Custom Script Folder\" -ds 0;";
+	menuItem -d true;
+	menuItem -label "Unload Current Tab" -c "abxUnloadTab";
+
+}
+
+// calls all the procedures necessary to display the option box
+global proc abxToyboxOptions ()
+{
+	// create the window and UI for the Toybox
+    	if (`window -ex abxToyboxOptionWindow` != true){
+		window -w 470 -h 340 -t "Toybox - Options" -in "Toybox Options" -menuBar true -s true -tb true abxToyboxOptionWindow;
+		
+		menu -label "Edit";
+			menuItem -label "Save Options" -c "toyboxOptionCallback \"toyboxOptionColumnLayout\";" btnToyboxOptionApply;;
+			menuItem -label "Reset Options" -c "toyboxOptionSetup toyboxOptionColumnLayout 1";
+			menuItem -d true;
+			menuItem -label "Close Without Saving" -c "deleteUI -window abxToyboxOptionWindow;" btnToyboxOptionClose;
+		menu -label "Help";
+			menuItem -label "Help on Toybox Options" -c "abxToyboxOptionHelp";
+			menuItem -label "About" -c "abxToyboxAbout";
+		
+		// OPTION UI CREATION
+		formLayout abxToyboxMainOptionForm;
+		columnLayout -cat "both" 5 -adjustableColumn true toyboxOptionColumnLayout;
+
+			// CREATE FAVORITE FOLDERS CONTROL GROUP
+			rowLayout -numberOfColumns 3 -rat 1 "both" 5 -rat 2 "both" 5 -rat 3 "both" 5 -cl3 "right" "left" "left" -cw3 135 150 50 -adjustableColumn 2 -ct3 "both" "both" "both" -co3 5 5 5 formFavFolder;
+				text -label "Favorite Folders" -al "right" tbxFavFoldLabel;
+				textScrollList -w 200 txtLstFavFolder;
+				columnLayout;
+					button -w 50 -label "Add" -c "abxToyboxOptionAddPath txtLstFavFolder 0" btnAddFavFolder ;
+					button -w 50 -label "Remove" -c "textScrollList -e -removeItem (`textScrollList -q -selectItem txtLstFavFolder`) txtLstFavFolder" btnRemFavFolder;
+					setParent ..;
+				setParent ..;
+
+			
+
+			// CREATE FAVORITE LIBRARIES CONTROL GROUP
+			rowLayout -numberOfColumns 3 -rat 1 "both" 5 -rat 2 "both" 5 -rat 3 "both" 5 -cl3 "right" "left" "left" -cw3 135 150 50 -adjustableColumn 2 -ct3 "both" "both" "both" -co3 5 5 5;
+				text -label "Script Libraries" -al "right";
+				textScrollList -w 200 txtLstFavLib;
+				columnLayout;
+					button -w 50 -label "Add" -c "abxToyboxOptionAddPath txtLstFavLib 0"btnAddFavLib;
+					button -w 50 -label "Remove" -c "textScrollList -e -removeItem (`textScrollList -q -selectItem txtLstFavLib`) txtLstFavLib" btnRemFavLib;
+					setParent ..;
+				setParent ..;
+
+
+			// CREATE SCRIPT EDITORS LIST	
+			rowLayout -numberOfColumns 3 -rat 1 "both" 5 -rat 2 "both" 5 -rat 3 "both" 5 -cl3 "right" "left" "left" -cw3 135 150 50 -adjustableColumn 2 -ct3 "both" "both" "both" -co3 5 5 5 formScriptEditor;
+				text -label "Script Editors" -al "right";
+				textScrollList -w 200 txtLstScriptEditor;
+				columnLayout;
+					button -w 50 -label "Add" -c "abxToyboxOptionAddPath txtLstScriptEditor 1" btnAddScriptEditor ;
+					button -w 50 -label "Remove" -c "textScrollList -e -removeItem (`textScrollList -q -selectItem txtLstScriptEditor`) txtLstScriptEditor" btnRemScriptEditor ;
+				setParent ..;
+				setParent ..;
+
+			separator -st "in";
+			
+			// CREATE DISPLAY STYLE UI
+			optionMenuGrp -label "Display Style" -cal 1 "right" optToyboxDisplayStyle;
+				menuItem -label "textOnly";
+				menuItem -label "iconOnly";
+				menuItem -label "iconAndTextVertical";
+				menuItem -label "iconAndTextHorizontal";
+				
+			intFieldGrp -label "Cell Width" intCellWidth;
+			intFieldGrp -label "Cell Height" intCellHeight;
+			
+			separator -st "in";
+
+			textFieldGrp -label "File Browser" txtFileBrowser;
+			setParent ..;
+			
+			button -l "OK" -al "center" -h 26 -c "toyboxOptionCallback \"toyboxOptionColumnLayout\";deleteUI -window abxToyboxOptionWindow;" btnToyboxOptionOK ;
+			button -l "Apply" -al "center" -h 26 -c "toyboxOptionCallback \"toyboxOptionColumnLayout\";" btnToyboxOptionApply;
+			button -l "Cancel" -al "center" -h 26 -c "deleteUI -window abxToyboxOptionWindow;" btnToyboxOptionClose;
+	
+			formLayout -e
+				-attachForm toyboxOptionColumnLayout "left" 0
+				-attachForm toyboxOptionColumnLayout "right" 0
+			
+	   			-attachForm btnToyboxOptionOK "left" 5 
+	    			-attachPosition btnToyboxOptionOK "right" 3 33
+	    			-attachNone btnToyboxOptionOK "top"
+	    			-attachForm btnToyboxOptionOK "bottom" 5
+
+	    			-attachPosition btnToyboxOptionApply "left" 3 33 
+	    			-attachPosition btnToyboxOptionApply "right" 3 66
+	    			-attachNone btnToyboxOptionApply "top"
+	    			-attachForm btnToyboxOptionApply "bottom" 5
+	    
+	    			-attachPosition btnToyboxOptionClose "left" 3 66
+	    			-attachForm btnToyboxOptionClose "right" 5
+	    			-attachNone btnToyboxOptionClose "top"
+	    			-attachForm btnToyboxOptionClose "bottom" 5
+	    			abxToyboxMainOptionForm;
+		
+		toyboxOptionSetup "toyboxOptionColumnLayout" 0;
+		showWindow abxToyboxOptionWindow;
+	}
+    	else	
+    	{
+		showWindow abxToyboxOptionWindow;
+	}
+}
+
+global proc abxToyboxOptionAddPath (string $scrollListName, int $addType){
+	if ($addType == 0) {
+		fileBrowserDialog -m 4 -fc ("abxToolboxBrowseCallback "+$scrollListName) -ft "directory" -an "Choose A Script Folder" -ds 0;		
+	}
+	else if ($addType == 1) {
+		fileBrowserDialog -m 0 -fc ("abxToolboxBrowseCallback "+$scrollListName) -ft "*.exe" -an "Choose A Program" -ds 0;		
+
+	}
+}
+
+global proc abxToolboxBrowseCallback (string $scrollListName, string $customPath, string $fileType) {
+	if (`filetest -d $customPath`)
+		$customPath = ($customPath + "/");
+	textScrollList -e -append $customPath $scrollListName;
+}
+
+global proc abxToyboxMini(){
+	if (`window -ex abxToyboxWindow` == true){
+		if(`window -q -mbv abxToyboxWindow` == true){
+			window -e -h 200 -w 312 -tlb true -mbv false -in "Toybox" -s true -tb true abxToyboxWindow;
+			setParent abxToyboxWindow;
+			formLayout -e
+
+			    -attachForm tabLyt "left" 0 
+			    -attachForm tabLyt "right" 0
+			    -attachForm tabLyt "top" 0
+			    -attachForm tabLyt "bottom" 0
+			
+			    -attachForm btnRefresh "left" 5 
+			    -attachPosition btnRefresh "right" 3 33
+			    -attachNone btnRefresh "top"
+			    -attachForm btnRefresh "bottom" -50
+			
+			    -attachPosition btnUnload "left" 3 33 
+			    -attachPosition btnUnload "right" 3 66
+			    -attachNone btnUnload "top"
+			    -attachForm btnUnload "bottom" -50
+				    
+			    -attachPosition btnClose "left" 3 66
+			    -attachForm btnClose "right" 5
+			    -attachNone btnClose "top"
+			    -attachForm btnClose "bottom" -50
+				
+			    mainForm ;
+			    abxUpdateShelfLayout("iconOnly",34,34);
+		}
+		else{
+			window -e -h 442 -w 442 -tlb false -mbv true -in "Toybox" -s true  abxToyboxWindow;
+			setParent abxToyboxWindow;
+			formLayout -e
+		
+			    -attachForm tabLyt "left" 0 
+			    -attachForm tabLyt "right" 0
+			    -attachForm tabLyt "top" 5
+			    -attachControl tabLyt "bottom" 5 btnRefresh
+		
+			    -attachForm btnRefresh "left" 5 
+			    -attachPosition btnRefresh "right" 3 33
+			    -attachNone btnRefresh "top"
+			    -attachForm btnRefresh "bottom" 5
+		
+			    -attachPosition btnUnload "left" 3 33 
+			    -attachPosition btnUnload "right" 3 66
+			    -attachNone btnUnload "top"
+			    -attachForm btnUnload "bottom" 5
+			    
+			    -attachPosition btnClose "left" 3 66
+			    -attachForm btnClose "right" 5
+			    -attachNone btnClose "top"
+			    -attachForm btnClose "bottom" 5
+			    mainForm ;
+			    abxUpdateShelfLayout(`optionVar -q "toyboxDisplayStyle"`,`optionVar -q "toyboxCellWidth"`,`optionVar -q "toyboxCellHeight"`);
+
+		}
+	}
+}
+
+
+global proc abxToyboxHelp () {
+	confirmDialog -t "How To Use Toybox" -message (
+"Toybox is a Maya Custom Script Manager and Dynamic Shelf.\n"
++"It lets you view and run scripts anywhere on your computer\n"
++"or network.\n\n"
+
++"To setup Toybox\n"
++"1. Go to Edit->Options\n"
++"2. Add any favorite script folders\n"
++"3. Add any favorite script libraries (A folder containing\n"
++"   several sub-folders of scripts)\n"
++"4. Add any script editors or word processors you want available\n"
++"   on context menus\n"
++"5. Press \"OK\" to save the options\n\n"
+
++"To Use Toybox\n"
++"1. Go to the Load menu and choose a Favorite Folder or Library\n"
++"   sub-folder to open a shelf for that folder.\n"
++"2. Middle click shelf buttons and drag them to your maya shelves\n"
++"   or Left Click to execute the script\n"
++"   or Right Click to open a context menu to edit or source\n\n"
+
++"Tips for organizing scripts\n"
++"- Scripts not stored in a MAYA_SCRIPT_PATH location cannot\n"
++"  have local procedures, or source other scripts not in a\n"
++"  MAYA_SCRIPT_PATH location.\n"
++"- Toybox will source scripts and only run code outside of\n"
++"  global procedures except the global procedure which matches\n"
++"  the filename of the script.\n"
++"- script collections which use common or lib script files should\n"
++"  be placed in a MAYA_SCRIPT_PATH location.\n"
++"- Script icons can be .bmp or .xpm but must have the same filename\n"
++"  as the mel script\n"
++"- Annotations files are simple .txt files with the same filename as\n"
++"  as the mel script"
+) -button "OK";
+}
+
+global proc abxToyboxOptionHelp(){
+	confirmDialog -t "Toybox Options Help" -message (
+		"Favorite Folders: Script Folders which will be visible on the Load Menu\n\n"
+		+"Script Libraries: Folders which contain a group of folders which will\n"
+		+"      will be visible on the Load Menu\n\n"
+		+"Script Editors: Programs which Toybox will open scripts in for editing\n\n"
+		+"Display Style: Script Shelf default display styles\n\n"
+		+"Cell Height: Script shelf Button Height\n\n"
+		+"Cell Width: Script shelf Button Width\n\n"
+		+"File Browser: External Program to view Folders" 
+			) -button "OK";
+}
+
+global proc abxToyboxAbout() {
+	confirmDialog -t "About Toybox" -message "Toybox Script v1.5\n© 2006 J. Adam Burke\nhttp://www.adamburke.net/" -button "OK" -defaultButton "OK";
+}
+
+global proc string[] abxDragScriptCB (string $dragControl, int $x, int $y, int $mods){
+	return {"nothing"};
+}
+
+global proc toyBoxDropScriptCB (string $dragControl, string $dropControl, string $msgs[], int $x, int $y, int $type){
+	print "CallBack Called\n";
+	print ($dragControl+"\n"+$dropControl+"\n"+$msgs[0]+"\n"+$type+"\n");	
+}
+ 

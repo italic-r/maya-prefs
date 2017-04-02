@@ -1,0 +1,523 @@
+/*
+TSM2 Menu in script form for buttons and hotkeys
+To run, paste each procedure name into a script editor or command line
+and run. This script must be in your scripts cache to run.
+
+FK/IK Switch: TSM2_FKIKSwitch
+Refresh Rig: TSM2_refreshRig
+Mirror Pose: TSM2_mirrorPose - Requires TSM2_FKIKSwitchNoKeyframe(), TSM2_getControlsForBodyPart()
+*/
+
+
+global proc TSM2_FKIKSwitch()
+{
+    int $cycleCheckState;
+
+    $cycleCheckState = `cycleCheck -q -e`;
+    if ($cycleCheckState == 1)
+        cycleCheck -e off;
+
+    int $i;
+
+    string $selNodes[] = `selectedNodes`;
+    string $buffer[];
+    int $numTokens = 0;
+
+    $numTokens = `tokenize $selNodes[0] "|" $buffer`;
+    string $theNode = $buffer[$numTokens-1];
+
+    string $ns = "";
+    $numTokens = `tokenize $theNode ":" $buffer`;
+    $theNode = $buffer[ $numTokens-1 ];
+
+    if( $numTokens > 1 )
+    {
+    	for( $i = 0; $i < (size($buffer) - 1); $i++ )
+    	{
+    		$ns += $buffer[$i];
+    		$ns += ":";
+    	}
+    }
+
+    $numTokens = `tokenize $theNode "_" $buffer`;
+    string $sysPref = $buffer[0];
+
+    string $switchAttribute = $sysPref + "_FKIK";
+    string $upperBody = $ns + "Upper_Body";
+    string $userswitch = $upperBody + "." + $switchAttribute;
+
+    int $currentMode = `getAttr $userswitch`;
+
+    string $controlSet;
+    if( $currentMode == 0 )
+    {
+    	$controlSet = $ns + $sysPref + "_IK_Controls";
+    }
+    else
+    {
+    	$controlSet = $ns + $sysPref + "_FK_Controls";
+    }
+
+    select $controlSet;
+    string $controls[] = `selectedNodes`;
+    for( $i = 0; $i < size($controls); $i++ )
+    {
+    	string $control = $controls[$i];
+    	$numTokens = `tokenize $control "|" $buffer`;
+    	$control = $buffer[$numTokens-1];
+
+    	string $switch = $control + "_SWITCH";
+
+    	if( `objExists $switch` )
+    	{
+    		string $controlAttributes[] = `listAttr -k $control`;
+    		string $switchAttributes[] = `listAttr -k $switch`;
+
+    		int $j;
+    		for( $j = 0; $j < size($controlAttributes); $j++ )
+    		{
+    			if( $controlAttributes[$j] == "Reposition" )
+    			{
+    				$j++;
+    			}
+    			string $attributeToSet = $control + "." + $controlAttributes[$j];
+    			int $foundAttribute = 0;
+    			int $k;
+    			for( $k = 0; $k < size($switchAttributes); $k++ )
+    			{
+    				if( $controlAttributes[$j] == $switchAttributes[$k] )
+    				{
+    					$foundAttribute = 1;
+    					string $attributeToGet = $switch + "." + $switchAttributes[$k];
+    					float $valueOfAttribute = `getAttr $attributeToGet`;
+    					setAttr $attributeToSet $valueOfAttribute;
+    				}
+    			}
+
+    			if( $foundAttribute == 0 )
+    			{
+    				setAttr $attributeToSet 0;
+    			}
+
+    			setKeyframe $attributeToSet;
+    		}
+    	}
+    }
+
+    if( $currentMode == 0 )
+    {
+    	$currentMode = 1;
+    }
+    else
+    {
+    	$currentMode = 0;
+    }
+    setAttr $userswitch $currentMode;
+    setKeyframe $userswitch;
+
+    $keytime = `findKeyframe -which previous -attribute $switchAttribute -animation objects $upperBody`;
+    $now = `currentTime -query`;
+    if( $keytime == $now )
+    {
+    	setKeyframe -time 0 $userswitch;
+    	$keytime = 0;
+    }
+    keyTangent -time $keytime -outTangentType step -attribute $switchAttribute -	animation objects $upperBody;
+
+    if ($cycleCheckState == 1)
+        cycleCheck -e on;
+
+    select -clear;
+}
+
+
+global proc TSM2_FKIKSwitchNoKeyframe()
+{
+	int $cycleCheckState;
+
+    $cycleCheckState = `cycleCheck -q -e`;
+    if ($cycleCheckState == 1)
+	    cycleCheck -e off;
+
+    int $i;
+
+    string $selNodes[] = `selectedNodes`;
+    string $buffer[];
+    int $numTokens = 0;
+
+    $numTokens = `tokenize $selNodes[0] "|" $buffer`;
+    string $theNode = $buffer[$numTokens-1];
+
+    string $ns = "";
+    $numTokens = `tokenize $theNode ":" $buffer`;
+    $theNode = $buffer[ $numTokens-1 ];
+
+    if( $numTokens > 1 )
+    {
+        for( $i = 0; $i < (size($buffer) - 1); $i++ )
+        {
+            $ns += $buffer[$i];
+            $ns += ":";
+        }
+    }
+
+    $numTokens = `tokenize $theNode "_" $buffer`;
+    string $sysPref = $buffer[0];
+
+    string $switchAttribute = $sysPref + "_FKIK";
+    string $upperBody = $ns + "Upper_Body";
+    string $userswitch = $upperBody + "." + $switchAttribute;
+
+    int $currentMode = `getAttr $userswitch`;
+
+    string $controlSet;
+    if( $currentMode == 0 )
+    {
+        $controlSet = $ns + $sysPref + "_IK_Controls";
+    }
+    else
+    {
+        $controlSet = $ns + $sysPref + "_FK_Controls";
+    }
+
+    select $controlSet;
+    string $controls[] = `selectedNodes`;
+    for( $i = 0; $i < size($controls); $i++ )
+    {
+        string $control = $controls[$i];
+        $numTokens = `tokenize $control "|" $buffer`;
+        $control = $buffer[$numTokens-1];
+
+        string $switch = $control + "_SWITCH";
+
+        if( `objExists $switch` )
+        {
+            string $controlAttributes[] = `listAttr -k $control`;
+            string $switchAttributes[] = `listAttr -k $switch`;
+
+            int $j;
+            for( $j = 0; $j < size($controlAttributes); $j++ )
+            {
+                if( $controlAttributes[$j] == "Reposition" )
+                {
+                    $j++;
+                }
+                string $attributeToSet = $control + "." + $controlAttributes[$j];
+                int $foundAttribute = 0;
+                int $k;
+                for( $k = 0; $k < size($switchAttributes); $k++ )
+                {
+                    if( $controlAttributes[$j] == $switchAttributes[$k] )
+                    {
+                        $foundAttribute = 1;
+                        string $attributeToGet = $switch + "." + $switchAttributes[$k];
+                        float $valueOfAttribute = `getAttr $attributeToGet`;
+                        setAttr $attributeToSet $valueOfAttribute;
+                    }
+                }
+
+                if( $foundAttribute == 0 )
+                {
+                    setAttr $attributeToSet 0;
+                }
+            }
+        }
+    }
+
+    if( $currentMode == 0 )
+    {
+        $currentMode = 1;
+    }
+    else
+    {
+        $currentMode = 0;
+    }
+    setAttr $userswitch $currentMode;
+
+	if ($cycleCheckState == 1)
+	    cycleCheck -e on;
+
+    select -clear;
+}
+
+
+global proc string[] TSM2_getControlsForBodyPart(string $part, int $ik)
+{
+	string $result[];
+
+	if (startsWith($part, "Head")) {
+		if ($ik == 1)
+			$result = {"_Head_IK"};
+		else
+			$result = {"_Neck", "_FK"};
+	} else if (startsWith($part, "LeftArm")) {
+		if ($ik == 1)
+			$result = {"_Arm_IK", "_Arm_Pole_Vector"};
+		else
+			$result = {"_Shoulder", "_Upper_Arm", "_Lower_Arm", "_HandTranslate", "_Hand"};
+	} else if (startsWith($part, "LeftLeg")) {
+		if ($ik == 1)
+			$result = {"_Leg_Pole_Vector", "_Standard_Pole_Vector", "_IK_Leg", "_Toe_Pivot", "_Heel_Pivot"};
+		else
+			$result = {"_Upper_Leg", "_Lower_Leg", "_Foot", "_Toe"};
+	} else if (startsWith($part, "RightArm")) {
+		if ($ik == 1)
+			$result = {"_Arm_IK", "_Arm_Pole_Vector"};
+		else
+			$result = {"_Shoulder", "_Upper_Arm", "_Lower_Arm", "_HandTranslate", "_Hand"};
+	} else if (startsWith($part, "RightLeg")) {
+		if ($ik == 1)
+			$result = {"_Leg_Pole_Vector", "_Standard_Pole_Vector", "_IK_Leg", "_Toe_Pivot", "_Heel_Pivot"};
+		else
+			$result = {"_Upper_Leg", "_Lower_Leg", "_Foot", "_Toe"};
+	} else if (startsWith($part, "Spine")) {
+		if ($ik == 0)
+			$result = {"_Pelvis_FK", "_Middle_FK", "_Torso_FK"};
+		else
+			$result = {"_Torso_IK", "_Middle_IK", "_Pelvis_IK"};
+	} else if (startsWith($part, "Tail")) {
+		$result = {"_Base_Control", "_Control"};
+
+
+	} else if (startsWith($part, "RightToe")) {
+		$result = {"_Toe_control", "_Toe_IK"};
+	} else if (startsWith($part, "LeftToe")) {
+		$result = {"_Toe_control", "_Toe_IK"};
+	} else if (startsWith($part, "LeftThumb")) {
+		$result = {"_finger_control", "_finger_IK"};
+	} else if (startsWith($part, "RightThumb")) {
+		$result = {"_finger_control", "_finger_IK"};
+	} else if (startsWith($part, "LeftFinger")) {
+		$result = {"_finger_control", "_finger_IK"};
+	} else if (startsWith($part, "RightFinger")) {
+		$result = {"_finger_control", "_finger_IK"};
+	}
+	return $result;
+}
+
+
+global proc TSM2_mirrorPose()
+{
+	string $selection[] = `ls -sl`;
+	string $strings[];
+	int $count;
+	string $bodyPartsToMirror[];
+	int $bodyPartsToMirrorCount = 0;
+	string $bodyPartTypes[] = {"RightArm", "RightFinger", "RightThumb", "LeftArm", "LeftFinger", "LeftThumb", "RightLeg", "RightToe", "LeftLeg", "LeftToe", "Spine", "Head", "Tail", "TailSeg"};
+	string $namespace = "";
+
+    int $autoKeyframeState = `autoKeyframe -q -state`;
+    if ($autoKeyframeState == 1)
+    	autoKeyframe -state 0;
+
+	if (size($selection) == 0) {
+		error "Select the TSM2 Controls for the body parts you want to mirror.";
+		return;
+	}
+
+	for($objWithNamespace in $selection) {
+
+		int $isTSM2Control = 0;
+		string $bodyPart = "";
+
+		$count = `tokenize $objWithNamespace ":" $strings`;
+		string $obj = $strings[$count-1];
+
+		// Extract the namespace
+		$namespace = "";
+		if ($count > 1)
+			$namespace = $strings[0] + ":";
+
+		if ($obj == "Character" || $obj == "Upper_Body")
+			continue;
+
+		// Figure out which body part this is
+
+		$count = `tokenize $obj "_" $strings`;
+		if ($count > 1) {
+			$bodyPart = $strings[0];
+
+			for($i = 0; $i < size($bodyPartTypes); ++$i) {
+				if (startsWith($bodyPart, $bodyPartTypes[$i])) {
+					$isTSM2Control = 1;
+					break;
+				}
+			}
+		}
+
+		if ($isTSM2Control == 0) {
+			error "Unknown TSM2 body part - only select TSM2 Controls for the body parts you want to mirror.";
+			return;
+		} else {
+
+			if (stringArrayContains(($namespace + $bodyPart), $bodyPartsToMirror) == 0) {
+				$bodyPartsToMirror[$bodyPartsToMirrorCount] = $namespace + $bodyPart;
+				++$bodyPartsToMirrorCount;
+			}
+		}
+	}
+
+
+	// Now we mirror the body parts, if possible.
+	for($bodyPart in $bodyPartsToMirror) {
+
+		$count = `tokenize $bodyPart ":" $strings`;
+		if ($count > 1) {
+			$namespace = $strings[0] + ":";
+			$bodyPart = $strings[1];
+		}
+
+		if (!startsWith($bodyPart, "Right") && !startsWith($bodyPart, "Left")) {
+			warning ("Can't mirror " + $bodyPart + " because it's not a right / left body part.");
+			continue;
+		}
+
+		string $otherBodyPart;
+		if (startsWith($bodyPart, "Right"))
+			$otherBodyPart = ("Left" + `substring $bodyPart 6 (size($bodyPart))`);
+		else
+			$otherBodyPart = ("Right" + `substring $bodyPart 5 (size($bodyPart))`);
+
+		string $controlsToMirror[];
+		string $set = ($namespace + $bodyPart + "_Controls");
+		string $contents1[] = `sets -q $set`;
+		int $ik = 0, $otherIk = 0;
+		int $ikMatters = 0;
+
+		if (`nodeType $contents1[0]` == "objectSet") {
+			$ikMatters = 1;
+			// Figure out if IK or FK is enabled on this body part
+			$ik = `getAttr ($namespace + "Upper_Body." + $bodyPart + "_FKIK")`;
+			$otherIk = `getAttr ($namespace + "Upper_Body." + $otherBodyPart + "_FKIK")`;
+		}
+
+		string $controlsToMirror[] = TSM2_getControlsForBodyPart($bodyPart, $ik);
+
+		if (`objExists ($namespace + $otherBodyPart + $controlsToMirror[0])` == 0) {
+			warning ("Can't mirror " + $bodyPart + " because there's no matching " + $otherBodyPart + ".");
+			continue;
+		}
+
+        // Put each relevant body part into FK mode so the mirroring works right:
+		if ($ikMatters == 1) {
+
+            if ($ik == 1) {
+            	select -cl;
+				for($control in $controlsToMirror)
+            		select -add ($namespace + $bodyPart + $control);
+                TSM2_FKIKSwitchNoKeyframe;
+
+            }
+            if ($otherIk == 1) {
+            	select -cl;
+				for($control in (TSM2_getControlsForBodyPart($otherBodyPart, $otherIk)))
+            		select -add ($namespace + $otherBodyPart + $control);
+            	TSM2_FKIKSwitchNoKeyframe;
+
+            }
+            $controlsToMirror = TSM2_getControlsForBodyPart($bodyPart, 0);
+		}
+
+
+    	if ($autoKeyframeState == 1 && $otherIk == 0)
+    		autoKeyframe -state 1;
+
+		for($control in $controlsToMirror) {
+
+			string $fullControl = ($namespace + $bodyPart + $control);
+			string $attrs[] = `listAttr -keyable $fullControl`;
+
+			for($attr in $attrs) {
+				string $type = `getAttr -type ($fullControl + "." + $attr)`;
+				if ($type != "doubleLinear" && $type != "doubleAngle" && $type != "double")
+					continue;
+
+				float $f;
+
+				if (`getAttr -keyable ($namespace + $otherBodyPart + $control + "." + $attr)` == 0)
+					continue;
+
+				$f = `getAttr ($fullControl + "." + $attr)`;
+
+				// List of attributes to mirror
+
+				if ($attr == "translateX") $f *= -1;
+
+				if ($control == "_Leg_Pole_Vector") {
+					if ($attr == "rotateZ") $f *= -1;
+				}
+				if ($control == "_IK_Leg") {
+					if ($attr == "rotateY") $f *= -1;
+				}
+				if ($control == "_middleJoint_control") {
+					if ($attr == "rotateY") $f *= -1;
+				}
+				if ($control == "_finger_control" || $control == "_Toe_control") {
+					if ($attr == "translateX") $f *= -1;
+					if ($attr == "translateZ") $f *= -1;
+					if ($attr == "rotateX") $f *= -1;
+					if ($attr == "rotateY") $f *= -1;
+					if ($attr == "Side_to_side") $f *= -1;
+				}
+				if ($control == "_finger_IK" || $control == "_Toe_IK") {
+					if ($attr == "translateX") $f *= -1;
+					if ($attr == "translateZ") $f *= -1;
+					if ($attr == "rotateY") $f *= -1;
+				}
+				if ($control == "_Arm_IK") {
+					if ($attr == "translateY") $f *= -1;
+					if ($attr == "translateZ") $f *= -1;
+				}
+				if ($control == "_Upper_Leg") {
+					if ($attr == "rotateX") $f *= -1;
+					if ($attr == "rotateY") $f *= -1;
+				}
+				if ($control == "_Foot") {
+					if ($attr == "rotateX") $f *= -1;
+					if ($attr == "rotateY") $f *= -1;
+				}
+
+				setAttr ($namespace + $otherBodyPart + $control + "." + $attr) $f;
+			}
+		}
+
+    	if ($autoKeyframeState == 1 && $otherIk == 0)
+    		autoKeyframe -state 0;
+
+        // Put things back into IK mode if that's how they were to begin with:
+		if ($ikMatters == 1) {
+
+            if ($ik == 1) {
+            	select -cl;
+				for($control in $controlsToMirror)
+            		select -add ($namespace + $bodyPart + $control);
+                TSM2_FKIKSwitchNoKeyframe;
+
+            }
+            if ($otherIk == 1) {
+    			if ($autoKeyframeState == 1)
+    				autoKeyframe -state 1;
+
+            	select -cl;
+				for($control in (TSM2_getControlsForBodyPart($otherBodyPart, $otherIk)))
+            		select -add ($namespace + $otherBodyPart + $control);
+            	TSM2_FKIKSwitchNoKeyframe;
+
+    			if ($autoKeyframeState == 1)
+    				autoKeyframe -state 0;
+            }
+		}
+	}
+
+    if ($autoKeyframeState == 1)
+    	autoKeyframe -state 1;
+
+    select $selection;
+}
+
+
+global proc TSM2_refreshRig()
+{
+    doEnableNodeItems false all;
+    doEnableNodeItems true all;
+}

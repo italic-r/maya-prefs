@@ -1,0 +1,81 @@
+global proc autoTileMe()
+{
+string $mySelection[] = `ls -sl`;
+int $maxNummy = `size($mySelection)`;
+string $longFileName = `getAttr ($mySelection[0] + ".ftn")`;
+string $bufferPathName[];
+string $bufferName[];
+$numTokensOne = `tokenize $longFileName "/" $bufferPathName`;//split out slashes
+$numTokensTwo = `tokenize $bufferPathName[$numTokensOne - 1] "." $bufferName`;//$bufferName[max - 1] contains number
+if ($numTokensTwo > 2)//if it has more than one part, it's mari and the number is $bufferName[1]
+	{
+	//for Mari, set UDIM offset value from file name number
+	for ($n=0 ; $n<($maxNummy); $n++)
+		{
+		string $longFileNamer = `getAttr ($mySelection[$n] + ".ftn")`;
+		string $bufferNamer[];
+		tokenize $longFileNamer "." $bufferNamer;
+		string $longNumber = `match "..$" $bufferNamer[1]`;//this gets the last numbers of the tile name
+		string $regularExpresV = ".$";//this is exactly its translated amount
+		string $regularExpresU = "^.";//this is over it's translated amount
+		string $justUNumber = `substitute $regularExpresU $longNumber ""`;
+		string $justVNumber = `substitute $regularExpresV $longNumber ""`;
+
+		int $unpadInt = $justUNumber;
+		int $unpadVInt = $justVNumber;
+	
+		string $twoDeeConnections[] = `listConnections -d 0 -s 1 -type "place2dTexture" $mySelection[$n]`;
+		setAttr ($twoDeeConnections[0] + ".translateFrameU") ($unpadInt - 1);//one less than udim file number
+		setAttr ($twoDeeConnections[0] + ".translateFrameV") ($unpadVInt);
+
+		setAttr ($twoDeeConnections[0] + ".wrapU") 0;
+		setAttr ($twoDeeConnections[0] + ".wrapV") 0;
+		}
+
+	//connect mari file textures:
+	for ($n=0 ; $n<($maxNummy - 1); $n++)
+		{
+		connectAttr ($mySelection[$n] + ".outColor") ($mySelection[$n + 1] + ".defaultColor") ;
+		}
+	select -r $mySelection[$maxNummy - 1];
+	print ("parent texture to connect is " + $mySelection[$maxNummy - 1] + ". It's selected.");
+	}
+
+else if ($numTokensTwo = 2)//if it has one part, it's Mudbox and name needs splitting into parts
+	{
+	for ($n=0 ; $n<($maxNummy); $n++)
+		{
+		string $longFileNamer = `getAttr ($mySelection[$n] + ".ftn")`;
+		string $bufferNamer[];
+		string $bufferPathNamer[];
+		$numTokensOne = `tokenize $longFileNamer "/" $bufferPathNamer`;//split out slashes
+		$numTokensTwo = `tokenize $bufferPathNamer[$numTokensOne - 1] "." $bufferNamer`;//$bufferNamer[0] is name without extension
+		//tokenize $longFileNamer "." $bufferNamer;
+		string $mudBufferNameSplitup[];
+		$numTokensMudMax = `tokenize $bufferNamer[0] "_" $mudBufferNameSplitup`;//u[tile] and v[tile] now [$numTokensMudMax - 2] and [$numTokensMudMax - 1]
+		////strip out letter prefix
+		string $regularExpres = "^.";
+		string $justUNumber = `substitute $regularExpres $mudBufferNameSplitup[$numTokensMudMax - 2] ""`;//u21 now 21
+		string $justVNumber = `substitute $regularExpres $mudBufferNameSplitup[$numTokensMudMax - 1] ""`;//v21 now 21
+		
+		int $unpadUInt = $justUNumber;
+		int $unpadVInt = $justVNumber;
+	
+		string $twoDeeConnections[] = `listConnections -d 0 -s 1 -type "place2dTexture" $mySelection[$n]`;
+		setAttr ($twoDeeConnections[0] + ".translateFrameU") ($unpadUInt - 1);//one less than uv tile number
+		setAttr ($twoDeeConnections[0] + ".translateFrameV") ($unpadVInt - 1);//one less than uv tile number
+		
+		setAttr ($twoDeeConnections[0] + ".wrapU") 0;
+		setAttr ($twoDeeConnections[0] + ".wrapV") 0;
+		}
+		
+		//do the connections
+	for ($n=0 ; $n<($maxNummy - 1); $n++)
+		{
+		connectAttr ($mySelection[$n] + ".outColor") ($mySelection[$n + 1] + ".defaultColor") ;
+		}
+
+		select -r $mySelection[$maxNummy - 1];
+		print ("parent texture to connect is " + $mySelection[$maxNummy - 1] + ". It's selected.");
+	}
+}

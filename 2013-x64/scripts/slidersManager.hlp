@@ -1,0 +1,320 @@
+INTRODUCTION
+------------
+
+The displayDriver framework consists of few layers built on top of each other.
+At the very bottom is the displayDriver node that does all the "heavy lifting" in OpenGL and Maya API mechanics.
+Part of its job is to draw animation sliders and selectors on screen.
+
+
+
+SLIDER, SELECTOR, PURPOSE, STRUCTURE, BRIEF DESCRIPTION
+-------------------------------------------------------
+
+Root is the "environment" where all elements of the SlidersManager exist. There can be one or multiple roots in the scene - each one of them storing different set of elements. The UI can "switch" between different roots and work with the elements inside.
+Control attributes:
+- on set command - mel or python command that gets executed every time the root is set (displayed) in the UI. Local variable NODE (python) or $NODE (mel) holds the name of the root node.
+
+Sliders are animation objects that can "remotely" control any numerical attributes in the Maya scene. Their primary purpose is to simplify and streamline the workflow when dealing with many attributes (located on one or multiple nodes). For example - complex facial and body rigs that consist of many animation controls and blend shape targets.
+Control attributes:
+- alias - alternative string that will be displayed in the viewport next to the slider instead of the default list with targets
+- min/max limits - the minimum and maximum values slider can reach
+- min/max output values - the minimum and maximum values applied to the target attributes
+- negative targets - set of attributes that receive new values when the slider's value is smaller than 0
+- positive targets - set of attributes that receive new values when the slider's value is bigger than 0
+- preserve animation curves - sliders control their targets (attributes) using driven keys (animCurves). The UI manager rebuilds these animCurve nodes on regular basis to ensure consistency and correct possible user errors. By default they are simple linear 0-to-1 "lines". While that is ok in most of the cases, sometimes we need more precise control. Then we can disable the auto-rebuilding routines on per-slider bases and fine tweak the animCurves to achieve some very specific blending of the target attributes.
+- on select/slide commands - mel or python commands that get executed every time the slider is selected/slided. Local variable NODE (python) or $NODE (mel) holds the name of the slider node.
+
+Selectors are simple objects that provide easy way for selecting different sets of nodes in the Maya scene. Their primary purpose is to provide interface for easy selection of animation controls in complex rigs.
+Control attributes:
+- targets - nodes that will be selected immediatelly after the selector gets selected
+- alias - string that will be displayed in the viewport next to the selector
+- on select command - mel or python command that gets executed every time the selector is selected. Local variable NODE (python) or $NODE (mel) holds the name of the selector node.
+
+
+
+SLIDERS MANAGER
+---------------
+
+SlidersManager is the third layer of the displayDriver framework, focused on managing animation sliders and selectors.
+It consists of 6 base classes - Common, Root, Slider, Selector, File, Gui. The public methods of the first 5 ones can be called directly from command line or other scripts.
+
+WORKFLOW
+
+The work process begins with the creation of new root. Drop-down menu "root" contains tools for creation, deletion and setting of roots.
+If there is no root available in the scene use the root->create to make new one. If there is root in the scene already use the root->set command to make it current. Only the contents of the current root are displayed in the UI.
+Newly created roots automatically get set as current.
+
+Drop-down menu "slider" contains tools for creation and zeroing-out of animation sliders.
+Use slider->create to create new slider. By default the slider is colored black because it has no targets (objects that i controls). Switch to the "edit" tab and use the "<<" button next to the "slider" field. Adjust the positive and negative limits, then select in the scene one or multiple nodes then in the channel box select one or multiple channels and press the "+" button next to the "neg targets" and/or "pos targets" fields. This should populate the fields with node.attribute pairs. Press the "set" button. The slider handle gets colored in green with yellow outline. When moved it will change the values of its targets. If one or more targets get deleted or renamed the slider bar gets colored in dark red. This is a visual clue indicating that user action is required to resolve a problem.
+The slider handle is green when in base position, red when in end position and transparent when in-between.
+The "channes" tab contains "references" to all targets controlled by sliders in the current root. Next to each value are located two buttons "0" and "S". The "0" one will zero-out the related slider, the "S" one will select it.
+Use slider->create from selection to create multiple sliders at once. Select one or more objects, select any of their attributes in the channel box and run the command.
+
+Drop-down menu "selector" contains tools for creation and activation/deactication of selectors.
+Use selector->create to create new selector. By detaul it is colored red. Go to the "edit" tab and us the "<<" button next to the "selector" field. Select one or multiple nodes in the scene, press the "+" button next to the "targets" field and then press the "set" button. The selector gets colored in orange with yellow outline. When selected the selector object will automatically change the selection to its targets. If one or more targets are deleted or renamed the selector will be colored in red indicating that user action is required to resolve a problem.
+The selector->active switch activates or deactivates all selectors in the current root. This way they can actually be selected if their properties has to be edited.
+
+When multiple sliders and/or selectors exist inside the root they have to be repositioned otherwise they will stay in the origin and overlap each other. To do that turn-on the common->edit_placement switch. Select one or multiple sliders and/or selectors and move/rotate/scale them.
+
+Command common-set_namespace can change the namespace of multiple slider/selector targets at once. This is very useful in many situations - especially when working with referenced assets.
+
+Command common->mirror copies the selected sliders/selector on the opposite side of the world X axis.
+
+Command common->delete delets selected sliders/selectors.
+
+Command common->refresh will force refresh the contents of the current root if changes in the scene have been made and the state of the sliders/selectors have to be updated for that.
+
+The view->display_numerical_data switch enables/disables the drawing of numerical data at the right side of the selected sliders.
+
+The view->display_manipulators switch enables/disables the drawing of manipulators to reduce the visual clutter. When in this mode selected sliders can be translated using the MMB.
+
+The view->display_outline switch enables/disables the drawing of brigh outline around the black slider/selector lines.
+
+Commands view->assign_background_image and view->remove_background_image are self explanatory.
+
+Once all necessary sliders selectors have been properly setup the contents of the root can be saved to disk.
+Command file->save will save the entire environment, file->export_all will export data for all sliders and selectors only, file->export_selected will export data only for the selected sliders/selectors.
+Command file->load will create new root and recreate inside it the environment stored in the file.
+Command file->import will import sliders and selectors from file into the current root.
+Command file->export all will export to file all sliders and selectors in the current root.
+Command file->export selected will export to file only the selected sliders and selectors in the current root.
+
+Takes->create will make snapshot of the values of all sliders in the current root and will save it them in the specified local directory.
+
+Takes->create from selection will make snapshot of the values of the selected sliders in the current root and will save it them in the specified local directory.
+
+Takes->set directories will open dialog to specify shared and local directories.
+
+Basic steps:
+- part 1
+    - bring some asset in the scene (rig or something else)
+    - create root
+    - create and setup sliders/selectors that operate on nodes.attributes from the asset
+    - save sliders/selectors data on disk, a good idea is to have repository that is accessible by all interested parties
+- part 2
+    - reference the asset in animation/light/etc scene
+    - load sliders/selectors data from file, targets will be out of sync - they were created from asset that didn't have namespace, use the common->set_namespace command to resolve that
+    - animate the sliders and use the selectors to easily get to the nodes you need
+
+
+
+API - USAGE
+-----------
+
+import sys; sys.path.append("/path/to/files/")
+import slidersManager as slidersManager; reload(slidersManager)
+slidersManager.Gui()
+
+r = slidersManager.Root()
+r.create()
+
+sld = slidersManager.Slider()
+sld.create()
+
+sel = slidersManager.Selector()
+sel.create()
+
+f = slidersManager.File()
+f.load("/path/to/file.sld")
+
+
+
+API - CLASSES
+-------------
+
+    class Common()
+     |
+     |  This class is inherited by the rest of the SlidersManager classes.
+     |  It provides basic low level methods for manipulation of the related
+     |  nodal structures and their properties.
+
+    class File()
+     |
+     |  load(sRoot, sFile)
+     |      Load or import data from file.
+     |      If first argument points to valid root node data is imported,
+     |      if set to None new root is created and data is loaded inside it.
+     |      Second argument points to valid file on disk.
+     |
+     |  save(sRoot, sFile, bExport=False, bSelectedOnly=False)
+     |      Save or export data to file.
+     |      First argument should point to valid root node.
+     |      Second argument should piont to valid writable location on disk.
+     |      Option argument bExport specifies if data will be exported for
+     |      the selectors/sliders only or the entire environment will be saved.
+     |      Optional argument bSelectedOnly is considered only if bExport=True
+     |      and specifies if only the selected sliders/selectors will be
+     |      exported.
+
+    class Root()
+     |
+     |  attach(sNode)
+     |      Attach the container to valid root node in the scene.
+     |
+     |  create()
+     |      Create new root node.
+     |
+     |  display(bState)
+     |      Turn on/off drawing of numerical data next to the selected slider(s).
+     |
+     |  edit(bState)
+     |      Turn on/off the edit placement mode for sliders/selectors.
+     |
+     |  get()
+     |      Return the path to the root node this container represents.
+     |
+     |  image(sFile)
+     |      Set background image. If argument is None the current image will be
+     |      removed.
+
+    class Selector()
+     |
+     |  attach(sNode)
+     |      Attach the container to valid selector in the scene.
+     |
+     |  create(sRoot, listTgts, fTX=0.0, fTZ=0.0, fRY=0.0, fSX=1.0, fSZ=1.0, fCR=1.0, fCG=0.85, fCB=0.0, bPreserveTargets=False, bState=False)
+     |      Create new selector. First argument is valid root node in the scene.
+     |      Second argument is list with valid nodes in the scene. Optional
+     |      arguments fTX, fTZ, fRY, fSX, fSZ specify placement, fCR, fCG, fCB
+     |      specifiy the R G B colors of the selector. Optional argument
+     |      bPreserveTargets is used only by the File::Load() method.
+     |      Optional argument bState specifies the edit placement state of the
+     |      selector upon creation.
+     |
+     |  edit(bState)
+     |      Turn on/off the edit placement mode.
+     |
+     |  get()
+     |      Return the path to the node represented by this container.
+     |
+     |  getTargets()
+     |      Return list of target nodes affected by the selector.
+     |
+     |  getTranslateRotateScale()
+     |      Returns 5 placement values - tx, tz, ry, sx, sz.
+     |
+     |  reset()
+     |      Reinitialize the container, setting all values to default and
+     |      effectively detatching it from the node in the scene (if it
+     |      used to represent one).
+     |
+     |  setTargets(listTgts, bPreserveTargets=False)
+     |      Set target nodes that will be selected by the selector.
+     |      First argument is list with valid nodes in the maya scene.
+     |      Second argument is used only by the File:Load() method.
+     |
+     |  setTranslateRotateScale(fTX, fTZ, fRY, fSX, fSZ)
+     |      Set placement values.
+     |
+     |  getColor(fCR, fCG, fCB)
+     |      Get R G B color values.
+     |
+     |  setColor(fCR, fCG, fCB)
+     |      Set R G B color values.
+     |
+     |  drawOutline(bState)
+     |      Turn on/off drawing of bright outlines around the selector.
+     |
+     |  setAlias(sAlias)
+     |      Set a string that will be displayed in the viewport
+     |      next to the selector.
+     |
+     |  getAlias()
+     |      Return the alias.
+     |
+     |  setCommand(sOnSelCmd)
+     |      Set the onSelect commands.
+     |
+     |  getCommand()
+     |      Return the onSelect command.
+     |
+     |  rename(sName)
+     |      Rename the selector.
+
+    class Slider()
+     |
+     |  attach(sNode)
+     |      Attach the container to valid slider in the scene.
+     |
+     |  create(sRoot, fInMin, fInMax, listNegTgts, listPosTgts, fOutNegMin=None, fOutNegMax=None, fOutPosMin=None, fOutPosMax=None, fTX=0.0, fTZ=0.0, fRY=0.0, fS=1.0, bPreserveTargets=False, bState=False)
+     |      Create new slider. First argument is valid root node in
+     |      the scene. Second and third arguments are the slider's
+     |      min/max limits. Fourth and fifth arguments are lists with
+     |      valid node.attribute pairs in the scene. Optional arguments
+     |      fOutNegMin, fOutNegMax, fOutPosMin, fOutPosMax specify the
+     |      negative min/max and positive min/max limits.
+     |      Optional arguments fTX, fTZ, fRY and fS specify placement
+     |      values. Optional argument bPreserveTargets is used only
+     |      by the File::Load() method. Optional argument bState
+     |      specifies the edit placement state of the slider upon
+     |      its creation.
+     |
+     |  edit(bState)
+     |      Turn on/off the edit placement mode.
+     |
+     |  getBg()
+     |      Return the path to the background slider node.
+     |
+     |  getFg()
+     |      Return the path to the foreground slider node.
+     |
+     |  getLimits()
+     |      Return 6 values for slider min/max and neg/pos min/max limits. 
+     |
+     |  getTargets()
+     |      Return two lists with node.attribute pairs. One with
+     |      negative and one with positive targets.
+     |
+     |  getTranslateRotateScale()
+     |      Return 4 placement values - tx, tz, ry, scale.
+     |
+     |  reset()
+     |      Reinitialize the container, setting all values to default and
+     |      effectively detatching it from the node in the scene (if it
+     |      used to represent one).
+     |
+     |  setLimits(fInMin, fInMax, fOutNegMin, fOutNegMax, fOutPosMin, fOutPosMax)
+     |      Set the input min/max and neg/pos min/max limits.
+     |
+     |  setTargets(listNegTgts, listPosTgts, bPreserveTargets=False)
+     |      Set negative and positive targets.
+     |      First two attributes are lists with valid node.attribute
+     |      pairs in the scene. Optional argument bPreserveTargets is
+     |      used only by the File::Load() method.
+     |
+     |  setTranslateRotateScale(fTX, fTZ, fRY, fS)
+     |      Set placement values.
+     |
+     |  setAlias(sAlias)
+     |      Set a string that will be displayed in the viewport next
+     |      to the slider instead of the default list with targets.
+     |
+     |  getAlias()
+     |      Return the alternative alias.
+     |
+     |  drawOutline(bState)
+     |      Turn on/off drawing of bright outlines around the slider.
+     |
+     |  setCommands(sOnSelCmd, sOnSldCmd)
+     |      Set the onSelect and onSlide commands.
+     |
+     |  getCommands()
+     |      Return the onSelect and onSlider commands.
+     |
+     |  rename(sName)
+     |      Rename the slider.
+     |
+     |  setPreserveAnimCurves(bState)
+     |      Turn on/off the auto-rebuilding of animCurve nodes.
+     |
+     |  getPreserveAnimCurves(self)
+     |      Return the state of the "auto-rebuild animCurve nodes" flag.
+
+    class Gui()
+     |
+     |  refresh()
+     |      Most GUI actions depend on specific execution order and if
+     |      data gets manipulated from outside by using API calls to
+     |      create/modify/delete objects things may get out of sync.
+     |      To compensate for that run this method as a last step in
+     |      the custom scripting session.

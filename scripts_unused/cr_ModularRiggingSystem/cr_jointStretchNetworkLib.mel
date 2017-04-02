@@ -1,0 +1,892 @@
+//---------------------------------------------------------------------------
+// cr_jointStretchNetworkLib.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:
+//      joint stretch network - library
+//
+// REQUIRES:
+//      cr_buildWorld.mel
+//      cr_charUtilsLib.mel
+//      libString.mel
+//      snaps.mel
+//
+// AUTHOR:
+//      Wasim Khan - wasim.cg@gmail.com
+//      cr_stretchNetwork() code based on Gregory Smith and Jason Schleifer
+//----------------------------------------------------------------------------
+
+
+eval("source \"cr_buildWorld.mel\";");
+source "snaps.mel";
+cr_charUtilsLib;
+libString;
+
+//dummy proc used to load this script without sourcing it
+global proc cr_jointStretchNetworkLib()
+{
+return;
+}
+
+/*
+	This proc creates stretch network for given joints.
+	code based on Gregory Smith's gsCreateSS.
+
+     INPUTS:
+        $n        			>> object hierarchy to create stretch  ("joint1")
+        $name						>> namine prefix
+        $controller  		>> object to add attribute
+        $type       		>> translate / scale
+				$midLock  			>> switch on / off for midlock proc
+				$midController	>> mid pole vector control to add mid lock switch
+
+(i.e) cr_stretchNetwork ("joint1" "R_arm" "cube1" "scale" 1 "loc1");
+*/
+
+global proc cr_stretchNetwork(string $name,string $side, string $startJoint, string $endJoint, string $controller, string $type, int $midLock, string $midController)
+{
+
+string $list[];
+float $chainLength = 0.0;
+float $defaultLength = 0.0;
+string $axis[];
+int $middleIndex;
+int $numJoints;
+string $dist[];
+string $nonScaleGrp = ($name+"non_scale_grp");
+string $scaleNode = ($name+"worldScaleCon_grp");
+
+$nonScaleGrp = cr_createScaleGrp($name);
+
+//get complete hierarchy of given joint
+$list = `cr_findJointArrey $startJoint $endJoint`;
+
+//get full chain length
+$chainLength = `cr_getChainLength $startJoint $endJoint`;
+//setermine the stretch axis of given chain (joint must be oriented)
+$axis = `cr_getStretchAxis $list[1] $type`;
+
+//get the middle index of given joint chain
+$middleIndex = ((`size $list`)/2);
+//hold total number of joints
+$numJoints = `size $list`;
+
+//create distance for start joint to controller
+$dist = `cr_createDistance $list[0] $controller`;
+$dist[0] = `rename ($dist[0]) ($name + $side + $startJoint + "_dis")`;
+$dist[1] = `rename ($dist[1]) ($name + $side + $startJoint + "Start_loc")`;
+$dist[2] = `rename ($dist[2]) ($name + $side + $startJoint + "End_loc")`;
+$defaultLength = `getAttr ($dist[0] + ".distance")`;
+
+pointConstraint -offset 0 0 0 -weight 1 $list[0] $dist[1];
+pointConstraint -offset 0 0 0 -weight 1 $controller $dist[2];
+setAttr ($dist[0] + ".v") 0;
+setAttr ($dist[1] + ".v") 0;
+setAttr ($dist[2] + ".v") 0;
+
+cr_lockAndHide $dist[0] lock "trans rot scale vis";
+cr_lockAndHide $dist[1] lock "trans rot scale vis";
+cr_lockAndHide $dist[2] lock "trans rot scale vis";
+
+string $distGrp = `group -em -n ($name + $side + $startJoint + "Distance_grp")`;
+parent $distGrp $nonScaleGrp;
+
+parent $dist[0] $distGrp;
+parent $dist[1] $distGrp;
+parent $dist[2] $distGrp;
+
+//////////
+       //  create two multiply divide nodes and two condition nodes and a clamp
+       //
+              // create a mult/divide node used for determining the ratio of the actual distance to the default length and place it in the ssMDN variable
+              string $ssMDN = `shadingNode -n ($name + $side + "sS_md") -asUtility multiplyDivide`;
+
+                     // set it to the divide function
+                     setAttr ($ssMDN + ".operation") 2;
+
+              // create a mult/divide node used for determing the default length when the character is scaled
+              string $scalerMDN = `shadingNode -n ($name + $side + "scaler_md") -asUtility multiplyDivide`;
+
+                     // set its value to multiply
+                     setAttr ($scalerMDN + ".operation") 1;
+
+              // create a condition node to determine if the ratio should bend the arm or stretch it
+              string $ssCND = `shadingNode -n ($name + $side + "sS_cnd") -asUtility condition`;
+
+                     //set its operation to greater than
+                     setAttr ($ssCND + ".operation") 2;
+                     //set its second term to 1
+                     setAttr ($ssCND + ".secondTerm") 1;
+
+              // create a clamp node which will allow the scaling to be restricted by the user through the specified controller
+              string $ssCLMP = `shadingNode -n ($name + $side + "sS_clamp") -asUtility clamp`;
+
+              // create a condition node to allow for the user turing on and off the stretching ability
+              string $ssONOFF = `shadingNode -n ($name + $side + "sS_ONOFF_cnd") -asUtility condition`;
+
+                     //set its operation to equals
+                     setAttr ($ssONOFF + ".operation") 0;
+                     //set its second term to 1
+                     setAttr ($ssONOFF + ".secondTerm") 1;
+
+              //create an add/subtract node to govern the artifical stretch on the clamp
+              string $clampASN = `shadingNode -n ($name + $side + "clamp_pma") -asUtility plusMinusAverage`;
+
+              //create an add/subtract node to govern the artifical stretch on the clamp
+              string $condASN = `shadingNode -n ($name + $side + "con_pma") -asUtility plusMinusAverage`;
+
+                     //add an attribute to the node to set the intial value to one
+                     addAttr -k 0 -ln offset -at long -dv 1 $condASN;
+
+       //////////
+       //  Add attributes to the controller for the ON/OFF functionality and the streching value
+       //
+       addAttr -k 1 -ln STRETCH -at "enum" -en "---------:"  $controller;
+               setAttr -keyable false -channelBox true ($controller + ".STRETCH");
+       addAttr -k 1 -ln autoExtend -at bool -dv 1 $controller;                 // add on off attribute
+       addAttr -k 1 -ln extendClamp -at double  -min 1 -dv 1.25 $controller;    // add limiter
+       addAttr -k 1 -ln manualExtend -at double -min -.99 -dv 0 $controller; // add the ability to stretch it artificially
+
+       //////////
+       //  connect the nodes and set the proper values
+       //
+              // connect the scaler attribute to the input 1X of the scalerMDN
+              connectAttr -f ($scaleNode + ".scaleX") ($scalerMDN + ".input1X");
+
+              // set the scalerMDN's 2X to the chain length's value
+              setAttr ($scalerMDN + ".input2X") $chainLength;
+
+              // connect its output X to the ssMDN's input 2X
+              connectAttr -f ($scalerMDN + ".outputX") ($ssMDN + ".input2X");
+
+              // connect the ddActShape.distance attribute to the input 1X of the ssMDN
+              connectAttr -f ($dist[0] + ".distance") ($ssMDN + ".input1X");
+              // --the result of this will be a ratio of the acutal length of the chain to the default length--
+
+              // connect the output X of the ssMDN to the first term of the sS condition node (will allow the IK to collapse instead of shrinking)
+              connectAttr -f ($ssMDN + ".outputX") ($ssCND + ".firstTerm");
+
+              // add the artificial stretch into the system to allow us to artifically change it
+              connectAttr -f ($condASN + ".offset") ($condASN + ".input1D[0]");  // add the offset value of 1 into the add subtract node
+              connectAttr -f ($controller + ".manualExtend") ($condASN + ".input1D[1]");
+
+              connectAttr -f ($condASN + ".output1D") ($ssONOFF + ".colorIfTrueG");
+
+              // connect the output X of the ssMDN to the input R of the clamp (this will clamp down the sS values
+              connectAttr -f ($ssMDN + ".outputX") ($ssCLMP + ".inputR");
+
+              // hook up the clamp add subtract node to the artifical stretch and clamp attributes and the ASN to the clamp itself
+              connectAttr -f ($controller + ".extendClamp") ($clampASN + ".input1D[0]");
+              connectAttr -f ($controller + ".manualExtend") ($clampASN + ".input1D[1]");
+
+              connectAttr -f ($clampASN + ".output1D") ($ssCLMP + ".maxR");
+
+              // connect the clamps output into the ONOFF condition node's color if true
+              connectAttr -f ($ssCLMP + ".outputR") ($ssONOFF + ".colorIfTrueR");
+              setAttr ($ssONOFF + ".colorIfFalseR") 1;
+
+              // connect the ssONOFF's first term to the ONOFF attr on the controller
+              connectAttr -f ($controller + ".autoExtend") ($ssONOFF + ".firstTerm");
+
+              // finally connect the ONOFF condition to the sS condition which will control the joints stretching
+              connectAttr -f ($ssONOFF + ".outColorR") ($ssCND + ".colorIfTrueR");
+              connectAttr -f ($ssONOFF + ".outColorG") ($ssCND + ".secondTerm");
+              connectAttr -f ($ssONOFF + ".outColorG") ($ssCND + ".colorIfFalseR");
+
+       //////////
+       // Create the offsetSystem for the middle joint
+       //
+              // create attribute
+              addAttr -k 1 -ln midPos -at double -min -.75 -max .75 -dv 0 $controller;                  // create an attribute to slide the middle joint back and fourth
+
+              //create some nodes which we will need for later
+              string $offInvMDN = `shadingNode -n ($name + $side + "offsetPreInv_md") -asUtility multiplyDivide`;   // used to invert the offset attribute
+                     setAttr ($offInvMDN + ".input2X") -1;                                                    // set the initial attribute to -1 to invert the numbers
+              string $offPreMDN = `shadingNode -n ($name + $side + "offsetPre_md") -asUtility multiplyDivide`;      // used to adjust the scale value for pre middle joints
+              string $offPostMDN = `shadingNode -n ($name + $side + "offsetPost_md") -asUtility multiplyDivide`;    // used to adjust the scale for post middle joints
+              string $offPreASN = `shadingNode -n ($name + $side + "offsetPre_pma") -asUtility plusMinusAverage`;    // used to offset the offset controls
+                     addAttr -ln offset -at double -dv 1 $offPreASN;                                          // add an attibute with a value of 1 to set the default scale value
+              string $offPostASN = `shadingNode -n ($name + $side + "offsetPost_pma") -asUtility plusMinusAverage`;  // used to offset the offset controls
+                     addAttr -ln offset -at double -dv 1 $offPostASN;                                         // add an attibute with a value of 1 to set the default scale value
+
+              //hook up the nodes to eachother
+              connectAttr -f ($controller + ".midPos") ($offInvMDN + ".input1X");
+
+              connectAttr -f ($offPreASN + ".offset") ($offPreASN + ".input1D[0]");
+              connectAttr -f ($offPostASN + ".offset") ($offPostASN + ".input1D[0]");
+              connectAttr -f ($offInvMDN + ".outputX") ($offPreASN + ".input1D[1]");
+              connectAttr -f ($controller + ".midPos") ($offPostASN + ".input1D[1]");
+
+              connectAttr -f ($offPreASN + ".output1D") ($offPreMDN + ".input1X");
+              connectAttr -f ($offPostASN + ".output1D") ($offPostMDN + ".input1X");
+              connectAttr -f ($ssCND + ".outColorR") ($offPreMDN + ".input2X");
+              connectAttr -f ($ssCND + ".outColorR") ($offPostMDN + ".input2X");
+
+
+       //////////
+       //  connect the output of the offset MDNs to the joints at the proper place
+       //
+       // connect the joints from the first up to the middle but not including it
+
+           	if ($type == "scale")
+         		{
+         			if ($midLock == 1)
+	            	{
+								addAttr -k 1 -ln midLock -at double -min 0 -max 1 -dv 0 $midController;
+
+								//duplicate stretch joint in order to get start to mid length
+								//string $preLength[] = `cr_dupId $startJoint prefix temp`;
+								string $preTemp[] = `cr_dupId $startJoint prefix temp`;
+
+								//select middle index joint and delete all child joints
+								select -r $preTemp[$middleIndex];
+								pickWalk -d down;
+								doDelete;
+
+								string $tempEndjoint = $preTemp[$middleIndex];
+								//get joint length from start to mid
+								float $preMidChainLength = `cr_getChainLength $preTemp[0] $tempEndjoint`;
+								//delete the temp create joint
+								delete $preTemp[0];
+
+								//duplicate stretch joint in order to get mid to end length
+								//string $postLength[] = `duplicate -rc $list[0]`;
+								string $postTemp[] = `cr_dupId $startJoint prefix temp`;
+
+								string $tempEndjoint = ("temp_" + $endJoint);
+								//get joint length from mid to end
+								float $postMidChainLength = `cr_getChainLength $postTemp[$middleIndex] $tempEndjoint`;
+								delete $postTemp[0];
+
+								//create distance node from start to mid
+								string $preMid[] = `cr_createDistance $list[0] $midController`;
+								$preMid[0] = `rename ($preMid[0]) ($name + $side + $midController + "_dis")`;
+								$preMid[1] = `rename ($preMid[1]) ($name + $side + $midController + "Start_loc")`;
+								$preMid[2] = `rename ($preMid[2]) ($name + $side + $midController + "End_loc")`;
+
+								pointConstraint -offset 0 0 0 -weight 1 $list[0] $preMid[1];
+								pointConstraint -offset 0 0 0 -weight 1 $midController $preMid[2];
+								setAttr ($preMid[0] + ".v") 0;
+								setAttr ($preMid[1] + ".v") 0;
+								setAttr ($preMid[2] + ".v") 0;
+
+								cr_lockAndHide $preMid[0] lock "trans rot scale vis";
+								cr_lockAndHide $preMid[1] lock "trans rot scale vis";
+								cr_lockAndHide $preMid[2] lock "trans rot scale vis";
+
+								parent $preMid[0] $distGrp;
+								parent $preMid[1] $distGrp;
+								parent $preMid[2] $distGrp;
+
+
+								//create multiply divide node for scaler and operation to divide
+								string $preMidScaler_MDN = `createNode multiplyDivide -n ($name + $side + "preMidScaler_md")`;
+								setAttr ($preMidScaler_MDN + ".operation") 2;
+
+								//create multiply divide node for actual distance and operation to divide
+								string $preMidNormalised_MDN = `createNode multiplyDivide -n ($name + $side + "preMidNormalised_md")`;
+								setAttr ($preMidNormalised_MDN + ".operation") 2;
+
+								//create blend node to blend between mid lock on off
+								string $preMid_BTA = `createNode blendTwoAttr -n ($name + $side + "preMid_bta")`;
+								connectAttr ($midController + ".midLock") ($preMid_BTA + ".attributesBlender");
+
+								//do all necessary connection for mid lock setup
+								connectAttr -f ($preMid[0] + ".distance") ($preMidScaler_MDN + ".input1X");
+								connectAttr -f ($scaleNode + ".scaleX") ($preMidScaler_MDN + ".input2X");
+
+								connectAttr -f ($preMidScaler_MDN + ".outputX") ($preMidNormalised_MDN + ".input1X");
+								setAttr ($preMidNormalised_MDN + ".input2X") $preMidChainLength;
+
+								connectAttr -f ($offPreMDN + ".outputX") ($preMid_BTA + ".input[0]");
+								connectAttr -f ($preMidNormalised_MDN + ".outputX") ($preMid_BTA + ".input[1]");
+
+								//create distance node from start to mid
+								string $postMid[] = `cr_createDistance $midController $controller`;
+								$postMid[0] = `rename ($postMid[0]) ($name + $side + $endJoint + "_dis")`;
+								$postMid[1] = `rename ($postMid[1]) ($name + $side + $endJoint + "Start_loc")`;
+								$postMid[2] = `rename ($postMid[2]) ($name + $side + $endJoint + "End_loc")`;
+
+								pointConstraint -offset 0 0 0 -weight 1 $midController $postMid[1];
+								pointConstraint -offset 0 0 0 -weight 1 $controller $postMid[2];
+								setAttr ($postMid[0] + ".v") 0;
+								setAttr ($postMid[1] + ".v") 0;
+								setAttr ($postMid[2] + ".v") 0;
+
+								cr_lockAndHide $postMid[0] lock "trans rot scale vis";
+								cr_lockAndHide $postMid[1] lock "trans rot scale vis";
+								cr_lockAndHide $postMid[2] lock "trans rot scale vis";
+
+								parent $postMid[0] $distGrp;
+								parent $postMid[1] $distGrp;
+								parent $postMid[2] $distGrp;
+
+								//create multiply divide node for scaler and operation to divide
+								string $postMidScaler_MDN = `createNode multiplyDivide -n ($name + $side + "postMidScaler_md")`;
+								setAttr ($postMidScaler_MDN + ".operation") 2;
+
+								//create multiply divide node for actual distance and operation to divide
+								string $postMidNormalised_MDN = `createNode multiplyDivide -n ($name + $side + "postMidNormalised_md")`;
+								setAttr ($postMidNormalised_MDN + ".operation") 2;
+
+								//create blend node to blend between mid lock on off
+								string $postMid_BTA = `createNode blendTwoAttr -n ($name + $side + "postMid_bta")`;
+								connectAttr ($midController + ".midLock") ($postMid_BTA + ".attributesBlender");
+
+								//do all necessary connection for mid lock setup
+								connectAttr -f ($postMid[0] + ".distance") ($postMidScaler_MDN + ".input1X");
+								connectAttr -f ($scaleNode + ".scaleX") ($postMidScaler_MDN + ".input2X");
+
+								connectAttr -f ($postMidScaler_MDN + ".outputX") ($postMidNormalised_MDN + ".input1X");
+								setAttr ($postMidNormalised_MDN + ".input2X") $postMidChainLength;
+
+								connectAttr -f ($offPostMDN + ".outputX") ($postMid_BTA + ".input[0]");
+								connectAttr -f ($postMidNormalised_MDN + ".outputX") ($postMid_BTA + ".input[1]");
+
+								//connect the joints from start to middle
+								for($i = 0; $i < $middleIndex; $i++)
+								connectAttr -f ($preMid_BTA + ".output") ($list[$i] + "." + $axis[0]);
+
+								// connect the joints from the middle on to the last one
+								for($i = $middleIndex; $i < ($numJoints - 1); $i++)
+								connectAttr -f ($postMid_BTA + ".output") ($list[$i] + "." + $axis[0]);
+	            	}
+
+            else
+            {
+            //connect the joints from start to middle
+            for($i = 0; $i < $middleIndex; $i++)
+            connectAttr -f ($offPreMDN + ".outputX") ($list[$i] + "." + $axis[0]);
+
+            // connect the joints from the middle on to the last one
+            for($i = $middleIndex; $i < ($numJoints - 1); $i++)
+            connectAttr -f ($offPostMDN + ".outputX") ($list[$i] + "." + $axis[0]);
+            }
+
+        }
+
+        else if ($type == "translate")
+        {
+        		if ($midLock == 1)
+            {
+						addAttr -k 1 -ln midLock -at double -min 0 -max 1 -dv 0 $midController;
+
+						//duplicate stretch joint in order to get start to mid length
+						//string $preLength[] = `duplicate -rc $list[0]`;
+						string $preTemp[] = `cr_dupId $startJoint prefix temp`;
+
+						//select middle index joint and delete all child joints
+						select -r $preTemp[$middleIndex];
+						pickWalk -d down;
+						doDelete;
+
+						string $tempEndjoint = $preTemp[$middleIndex];
+						//get joint length from start to mid
+						float $preMidChainLength = `cr_getChainLength $preTemp[0] $tempEndjoint`;
+						//delete the temp create joint
+						delete $preTemp[0];
+
+						//duplicate stretch joint in order to get mid to end length
+						//string $postLength[] = `duplicate -rc $list[0]`;
+						string $postTemp[] = `cr_dupId $startJoint prefix temp`;
+
+						string $tempEndjoint = ("temp_" + $endJoint);
+						//get joint length from mid to end
+						float $postMidChainLength = `cr_getChainLength $postTemp[$middleIndex] $tempEndjoint`;
+						delete $postTemp[0];
+
+						//create distance node from start to mid
+						string $preMid[] = `cr_createDistance $list[0] $midController`;
+						$preMid[0] = `rename ($preMid[0]) ($name + $side + $midController + "_dis")`;
+						$preMid[1] = `rename ($preMid[1]) ($name + $side + $midController + "Start_loc")`;
+						$preMid[2] = `rename ($preMid[2]) ($name + $side + $midController + "End_loc")`;
+
+						pointConstraint -offset 0 0 0 -weight 1 $list[0] $preMid[1];
+						pointConstraint -offset 0 0 0 -weight 1 $midController $preMid[2];
+						setAttr ($preMid[0] + ".v") 0;
+						setAttr ($preMid[1] + ".v") 0;
+						setAttr ($preMid[2] + ".v") 0;
+
+						cr_lockAndHide $preMid[0] lock "trans rot scale vis";
+						cr_lockAndHide $preMid[1] lock "trans rot scale vis";
+						cr_lockAndHide $preMid[2] lock "trans rot scale vis";
+
+						parent $preMid[0] $distGrp;
+						parent $preMid[1] $distGrp;
+						parent $preMid[2] $distGrp;
+
+						//create multiply divide node for scaler and operation to divide
+						string $preMidScaler_MDN = `createNode multiplyDivide -n ($name + $side + "preMidScaler_md")`;
+						setAttr ($preMidScaler_MDN + ".operation") 2;
+
+						//create multiply divide node for actual distance and operation to divide
+						string $preMidNormalised_MDN = `createNode multiplyDivide -n ($name + $side + "preMidNormalised_md")`;
+						setAttr ($preMidNormalised_MDN + ".operation") 2;
+
+						//create blend node to blend between mid lock on off
+						//string $preMid_BTA = `createNode blendTwoAttr -n ($name + $side + "_preMid_bta")`;
+						//connectAttr ($midController + ".midLock") ($preMid_BTA + ".attributesBlender");
+
+						//do all necessary connection for mid lock setup
+						connectAttr -f ($preMid[0] + ".distance") ($preMidScaler_MDN + ".input1X");
+						connectAttr -f ($scaleNode + ".scaleX") ($preMidScaler_MDN + ".input2X");
+
+						connectAttr -f ($preMidScaler_MDN + ".outputX") ($preMidNormalised_MDN + ".input1X");
+						setAttr ($preMidNormalised_MDN + ".input2X") $preMidChainLength;
+
+
+
+						//create distance node from start to mid
+						string $postMid[] = `cr_createDistance $midController $controller`;
+						$postMid[0] = `rename ($postMid[0]) ($name + $side + $endJoint + "_dis")`;
+						$postMid[1] = `rename ($postMid[1]) ($name + $side + $endJoint + "Start_loc")`;
+						$postMid[2] = `rename ($postMid[2]) ($name + $side + $endJoint + "End_loc")`;
+
+						pointConstraint -offset 0 0 0 -weight 1 $midController $postMid[1];
+						pointConstraint -offset 0 0 0 -weight 1 $controller $postMid[2];
+						setAttr ($postMid[0] + ".v") 0;
+						setAttr ($postMid[1] + ".v") 0;
+						setAttr ($postMid[2] + ".v") 0;
+
+						cr_lockAndHide $postMid[0] lock "trans rot scale vis";
+						cr_lockAndHide $postMid[1] lock "trans rot scale vis";
+						cr_lockAndHide $postMid[2] lock "trans rot scale vis";
+
+						parent $postMid[0] $distGrp;
+						parent $postMid[1] $distGrp;
+						parent $postMid[2] $distGrp;
+
+						//create multiply divide node for scaler and operation to divide
+						string $postMidScaler_MDN = `createNode multiplyDivide -n ($name + $side + "postMidScaler_md")`;
+						setAttr ($postMidScaler_MDN + ".operation") 2;
+
+						//create multiply divide node for actual distance and operation to divide
+						string $postMidNormalised_MDN = `createNode multiplyDivide -n ($name + $side + "postMidNormalised_md")`;
+						setAttr ($postMidNormalised_MDN + ".operation") 2;
+
+						//create blend node to blend between mid lock on off
+						//string $postMid_BTA = `createNode blendTwoAttr -n ($name + $side + "_postMid_bta")`;
+						//connectAttr ($midController + ".midLock") ($postMid_BTA + ".attributesBlender");
+
+						//do all necessary connection for mid lock setup
+						connectAttr -f ($postMid[0] + ".distance") ($postMidScaler_MDN + ".input1X");
+						connectAttr -f ($scaleNode + ".scaleX") ($postMidScaler_MDN + ".input2X");
+
+						connectAttr -f ($postMidScaler_MDN + ".outputX") ($postMidNormalised_MDN + ".input1X");
+						setAttr ($postMidNormalised_MDN + ".input2X") $postMidChainLength;
+
+						//connectAttr -f ($offPostMDN + ".outputX") ($postMid_BTA + ".input[0]");
+						//connectAttr -f ($postMidNormalised_MDN + ".outputX") ($postMid_BTA + ".input[1]");
+
+				for($i = 1; $i < ($middleIndex+1); $i++)
+				{
+				//create blend node to blend between mid lock on off
+				$preMid_BTA = `createNode blendTwoAttr -n ($name + $side + "preMid_bta")`;
+				connectAttr ($midController + ".midLock") ($preMid_BTA + ".attributesBlender");
+
+				//create two multiply divide to absolute the output value
+				$transA = `createNode multiplyDivide -n($name + $side + $list[$i] + "_transAbs_md")`;
+				$transB = `createNode multiplyDivide -n($name + $side + $list[$i] + "_transAbs_md")`;
+				//get translate Attr of given joint
+				$t = `getAttr ($list[$i] + "." + $axis[0])`;
+				setAttr ($transA + ".input2X") $t;
+				setAttr ($transB + ".input2X") $t;
+
+				// connecting stretch node output to newly creted node to normalise the value for translate stretch
+				connectAttr ($offPreMDN + ".outputX") ($transA + ".input1X");
+				connectAttr -f ($preMidNormalised_MDN + ".outputX") ($transB + ".input1X");
+
+				// connecting output of divide node to blend midlock attr
+				connectAttr -f ($transA + ".outputX") ($preMid_BTA + ".input[0]");
+				connectAttr -f ($transB + ".outputX") ($preMid_BTA + ".input[1]");
+
+				//connecting all joints except midjoint
+				connectAttr ($preMid_BTA + ".output") ($list[$i] + "." + $axis[0]);
+				}
+
+				for($i = ($middleIndex+1); $i < $numJoints; $i++)
+				{
+				//create blend node to blend between mid lock on off
+				$postMid_BTA = `createNode blendTwoAttr -n ($name + $side + "postMid_bta")`;
+				connectAttr ($midController + ".midLock") ($postMid_BTA + ".attributesBlender");
+
+				//create blend node to blend between mid lock on off
+				$transA = `createNode multiplyDivide -n($name + $side +$list[$i] + "_transAbs_md")`;
+				$transB = `createNode multiplyDivide -n($name + $side +$list[$i] + "_transAbs_md")`;
+				//get translate Attr of given joint
+				$t = `getAttr ($list[$i] + "." + $axis[0])`;
+				setAttr ($transA + ".input2X") $t;
+				setAttr ($transB + ".input2X") $t;
+
+				// connecting stretch node output to newly creted node to normalise the value for translate stretch
+				connectAttr ($offPostMDN + ".outputX") ($transA + ".input1X");
+				connectAttr -f ($postMidNormalised_MDN + ".outputX") ($transB + ".input1X");
+
+				// connecting output of divide node to blend midlock attr
+				connectAttr -f ($transA + ".outputX") ($postMid_BTA + ".input[0]");
+				connectAttr -f ($transB + ".outputX") ($postMid_BTA + ".input[1]");
+
+				//connecting all joints
+				connectAttr ($postMid_BTA + ".output") ($list[$i] + "." + $axis[0]);
+				}
+
+        }
+
+			else
+			{
+				for($i = 1; $i < ($middleIndex+1); $i++)
+				{
+				$t = `getAttr ($list[$i] + "." + $axis[0])`;
+				$trans = `createNode multiplyDivide -n($list[$i] + "_transAbs_md")`;
+				connectAttr ($offPreMDN + ".outputX") ($trans + ".input1X");
+				setAttr ($trans + ".input2X") $t;
+				connectAttr ($trans + ".outputX") ($list[$i] + "." + $axis[0]);
+				}
+
+				for($i = ($middleIndex+1); $i < $numJoints; $i++)
+				{
+				$t = `getAttr ($list[$i] + "." + $axis[0])`;
+				$trans = `createNode multiplyDivide -n($list[$i] + "_transAbs_md")`;
+				connectAttr ($offPostMDN + ".outputX") ($trans + ".input1X");
+				setAttr ($trans + ".input2X") $t;
+				connectAttr ($trans + ".outputX") ($list[$i] + "." + $axis[0]);
+				}
+			}
+  }
+       /*
+       print "\n";
+       print "======================================================\n";
+       print ($name + $side + "  Stretch Information\n");
+       print "------------------------------------------------------\n";
+       print ("Actual Joint Chain Length  >>\t" + $chainLength + "\n");
+       print ("Shortest Distance Length   >>\t" + $defaultLength + "\n");
+       print "======================================================\n";
+
+       print "Squash and Stretch Creation Successful! (see script editor for details)";
+      */
+
+}
+
+global proc string[] cr_buildIkStretch(string $name, string $side, string $startJoint, string $endJoint, string $controller, string $stretchType)
+{
+string $dist[];
+float $defualtLength = 0.0;
+string $stretchAxis[];
+
+string $nonScaleGrp = ($name+"non_scale_grp");
+string $scaleNode = ($name+"worldScaleCon_grp");
+
+$nonScaleGrp = cr_createNonScaleGrp($name);
+
+$stretchAxis = `cr_getStretchAxis $endJoint $stretchType`;
+$dist = `cr_createDistance $startJoint $endJoint`;
+$dist[0] = `rename ($dist[0]) ($name + $side +$startJoint + "_Ik")`;
+$dist[1] = `rename ($dist[1]) ($name + $side +$startJoint + "_Ik")`;
+$dist[2] = `rename ($dist[2]) ($name + $side +$startJoint + "_Ik")`;
+$defaultLength = `getAttr ($dist[0] + ".distance")`;
+
+pointConstraint -offset 0 0 0 -weight 1 $startJoint $dist[1];
+pointConstraint -offset 0 0 0 -weight 1 $controller $dist[2];
+setAttr ($dist[0] + ".v") 0;
+setAttr ($dist[1] + ".v") 0;
+setAttr ($dist[2] + ".v") 0;
+
+cr_lockAndHide $dist[0] lock "trans rot scale vis";
+cr_lockAndHide $dist[1] lock "trans rot scale vis";
+cr_lockAndHide $dist[2] lock "trans rot scale vis";
+
+string $distGrp = `group -em -n ($name + $side + $startJoint + "IkDistance_grp")`;
+parent $distGrp $nonScaleGrp;
+
+parent $dist[0] $distGrp;
+parent $dist[1] $distGrp;
+parent $dist[2] $distGrp;
+
+addAttr -k 1 -ln stretch -at double -min 0 -max 1 -dv 1 $controller;
+string $ikHandle[] = ikHandle ("-name", ($name + $side + $startJoint + "_ikhandle"), "-startJoint", $startJoint, "-endEffector", $endJoint, "-solver", "ikSCsolver");
+pointConstraint -offset 0 0 0 -weight 1 $controller $ikHandle[0];
+parent $ikHandle[0] $nonScaleGrp;
+setAttr ($ikHandle[0] + ".visibility") 0;
+cr_lockAndHide $ikHandle[0] lock "vis";
+
+//create node network fr stretch
+string $scalerMD = `createNode multiplyDivide -n($name + $side + "_scaler_md")`;
+	setAttr ($scalerMD + ".operation") 2;
+string $normalisedMD = `createNode multiplyDivide -n($name + $side + "_normalised_md")`;
+	setAttr ($normalisedMD + ".operation") 2;
+string $stretchBTA = `createNode blendTwoAttr -n ($name + $side + "_SsBlend_bta")`;
+	setAttr ($stretchBTA + ".input[0]") 1;
+	connectAttr ($controller + ".stretch") ($stretchBTA + ".attributesBlender");
+
+connectAttr ($dist[0] + ".distance") ($scalerMD + ".input1X");
+connectAttr ($scaleNode + ".scale") ($scalerMD + ".input2");
+
+connectAttr ($scalerMD + ".outputX") ($normalisedMD + ".input1X");
+	setAttr ($normalisedMD + ".input2X") $defaultLength;
+connectAttr -f ($normalisedMD + ".outputX") ($stretchBTA + ".input[1]");
+
+if($stretchType == "translate")
+  {
+  string $transNorMD = `createNode multiplyDivide -n($name + $side + "_transNor_md")`;
+  float $tempVal = `getAttr ($endJoint + "." + $stretchAxis[0])`;
+  setAttr ($transNorMD + ".input2X") $tempVal;
+  connectAttr ($normalisedMD + ".outputX") ($transNorMD + ".input1X");
+  connectAttr ($transNorMD + ".outputX") ($startJoint + "." + $stretchAxis[0]);
+  }
+if($stretchType == "scale")
+	connectAttr ($stretchBTA + ".output") ($startJoint + "." + $stretchAxis[0]);
+return $ikHandle;
+}
+
+/*
+cr_makeJointVolumeSetup ("loc1", "scale", `ls -sl`)
+string $controller = "loc1";
+string $stretchType = "translate";
+string $chain[] = `ls -sl`;
+*/
+global proc cr_makeJointVolumeSetup(string $name, string $side, string $controller, string $stretchType, string $chain[])
+{
+string $axis[];
+string $stretchAxis[];
+string $twistAxis[];
+string $childJoint;
+
+$stretchAxis = `cr_getStretchAxis $chain[0] $stretchType`;
+$twistAxis = `cr_getTwistAxis $chain[0]`;
+
+	//determine twist axis for further info distribution
+	if($twistAxis[0] == "rx") $axis = {"X","Y","Z"};
+	else if($twistAxis[0] == "ry") $axis = {"Y","Z","X"};
+	else if($twistAxis[0] == "rz") $axis = {"Z","X","Y"};
+
+if (!`attributeExists "volume" $controller`)
+addAttr -k on -at double -min -1 -max 1 -dv 1 -ln volume $controller;
+// select all joints of ik chain
+select $chain;
+cr_createCurveControl ($chain[0], "scalePower", "pow");
+	for ($c = 0; $c < size($chain); $c++)
+	{
+	string $norDiv = `createNode multiplyDivide -n ($name + $side + $chain[$c] +"_revPowInput_md")`;
+	setAttr ($norDiv + ".operation") 3;
+	setAttr ($norDiv + ".input2X") .5;
+		if ($stretchType == "translate")
+		{
+		string $transNor = `createNode multiplyDivide -n ($name + $side + $chain[$c]+"_transNor_md")`;
+		setAttr ($transNor + ".operation") 2;
+		$childJoint = `cr_getChildJoint $chain[$c]`;
+		float $tempVal = `getAttr ($childJoint + ".translate" + $axis[0])`;
+		setAttr ($transNor + ".input2X") $tempVal;
+		connectAttr ($childJoint + ".translate" + $axis[0]) ($transNor + ".input1X");
+		connectAttr ($transNor + ".outputX") ($norDiv + ".input1X");
+		}
+		else
+		connectAttr ($chain[$c] + ".scale" + $axis[0]) ($norDiv + ".input1X");
+
+	string $revPow1 = `createNode multiplyDivide -n ($name + $side + $chain[$c]+"_normalizes_rev_md")`;
+	setAttr ($revPow1 + ".operation") 2;
+	setAttr ($revPow1 + ".input1X") 1;
+	connectAttr ($norDiv + ".outputX") ($revPow1 + ".input2X");
+
+	string $revPow2 = `createNode multiplyDivide -n ($name + $side + $chain[$c] +"_revPowOutput_md")`;
+	setAttr ($revPow2 + ".operation") 3;
+	setAttr ($revPow2 + ".input1Y") 1;
+
+	connectAttr ($revPow1 + ".outputX") ($revPow2 + ".input1X");
+	connectAttr ($chain[$c] + ".pow") ($revPow2 + ".input2X");
+
+	string $vol_bta = `createNode blendTwoAttr -n ($name + $side + $chain[$c] + "_volume_bta")`;
+	connectAttr ($controller + ".volume") ($vol_bta + ".attributesBlender");
+	connectAttr ($revPow2 + ".outputX") ($vol_bta + ".input[1]");
+	connectAttr ($revPow2 + ".outputY") ($vol_bta + ".input[0]");
+
+	connectAttr -f ($vol_bta + ".output") ($chain[$c] + ".scale" +$axis[1]);
+	connectAttr -f ($vol_bta + ".output") ($chain[$c] + ".scale" +$axis[2]);
+	}
+}
+
+//cr_stretchySpline spline "" loc1 scale curve1 1 1 curve1
+global proc cr_stretchySpline(string $name, string $side, string $controller, string $stretchType, string $crv, int $worldScale , int $volume , string $scale)
+{
+string $shape[0];
+string $chain[];
+string $con[0];
+string $ikHandle;
+string $stretchAxis[];
+
+addAttr -k on -at double -min 0 -max 1 -dv 1 -ln stretching $controller;
+
+string $rev = `createNode reverse -n ($name + $side + "stretchAttr_rev")`;
+connectAttr ($controller + ".stretching") ($rev + ".inputX");
+string $info = `createNode curveInfo -name ($name + $side + $crv + "_info")`;
+connectAttr -f ($crv + ".worldSpace[0]") ($info + ".inputCurve");
+float  $len = `getAttr ($info + ".arcLength")`;
+
+string $div = `createNode multiplyDivide -n ($name + $side + "lenDivide_md")`;
+setAttr ($div + ".operation") 2;
+connectAttr ($info + ".arcLength") ($div + ".input1X");
+
+string $divA = `createNode multiplyDivide -n ($name + $side + "scaleFactor_md")`;
+setAttr ($divA + ".operation") 2;
+connectAttr ($div + ".outputX") ($divA + ".input1X");
+setAttr ($divA + ".input2X") $len;
+setAttr ($divA + ".input1Y") 1;
+setAttr ($divA + ".input2Y") 1;
+
+string $bta = `createNode blendTwoAttr -n ($name + $side + "stretchBlend_bta")`;
+connectAttr ($rev + ".outputX") ($bta + ".attributesBlender");
+connectAttr ($divA + ".outputX") ($bta + ".input[0]");
+connectAttr ($divA + ".outputY") ($bta + ".input[1]");
+
+string $divB = `createNode multiplyDivide -n ($name + $side + "absMulti_md")`;
+setAttr ($divB + ".operation") 2;
+setAttr ($divB + ".input2X") 1;
+connectAttr ($bta + ".output") ($divB + ".input1X");
+
+//get all information for stretching
+$shape = `listRelatives -fullPath -shapes $crv`;
+$con = `listConnections -type ikHandle ($shape[0]+".worldSpace[0]")`;
+$ikHandle = $con[0];
+$chain = `ikHandle -q -jointList $ikHandle`;
+int $tempCount = `size $chain`;
+$childJoint = `cr_getChildJoint $chain[$tempCount-1]`;
+string $fullchain[] = $chain;
+stringArrayInsertAtIndex ($tempCount,$fullchain,$childJoint);
+$stretchAxis = `cr_getStretchAxis $chain[1] $stretchType`;
+
+	if($stretchAxis[0] == "tx") $axis = {"X","Y","Z"};
+	else if($stretchAxis[0] == "ty") $axis = {"Y","Z","X"};
+	else if($stretchAxis[0] == "tz") $axis = {"Z","X","Y"};
+
+	if (($worldScale == 0) && ($volume == 0))
+	{
+		//connect scaleAttr for all joints
+		if($stretchType == "scale")
+		{
+		for ($c = 0; $c < size($chain); $c++)
+		connectAttr ($divB + ".outputX") ($chain[$c] + "." + $stretchAxis[0]);
+		}
+		else
+		{
+		for ($c = 0; $c < size($chain); $c++)
+			{
+			string $transNor = `createNode multiplyDivide -n ($name + $side + $chain[$c]+"_transNor_md")`;
+			$childJoint = `cr_getChildJoint $chain[$c]`;
+			float $tempVal = `getAttr ($childJoint + ".translate" + $axis[0])`;
+			setAttr ($transNor + ".input2X") $tempVal;
+			connectAttr ($divB + ".outputX") ($transNor + ".input1X");
+				connectAttr ($transNor + ".outputX") ($fullchain[$c+1] + "." + $stretchAxis[0]);
+			}
+		}
+	}
+	else
+	{
+		if (($worldScale == 1) && ($volume == 0))
+			{
+			// connectAttr for global scalling
+			connectAttr ($scale + ".scale") ($div + ".input2");
+
+			//connect scaleAttr for all joints
+			if($stretchType == "scale")
+				{
+				for ($c = 0; $c < size($chain); $c++)
+				connectAttr ($divB + ".outputX") ($chain[$c] + "." + $stretchAxis[0]);
+				}
+			else
+				{
+				for ($c = 0; $c < size($chain); $c++)
+					{
+					string $transNor = `createNode multiplyDivide -n ($name + $side + $chain[$c]+"_transNor_md")`;
+					$childJoint = `cr_getChildJoint $chain[$c]`;
+					float $tempVal = `getAttr ($childJoint + ".translate" + $axis[0])`;
+					setAttr ($transNor + ".input2X") $tempVal;
+					connectAttr ($divB + ".outputX") ($transNor + ".input1X");
+						connectAttr ($transNor + ".outputX") ($fullchain[$c+1] + "." + $stretchAxis[0]);
+					}
+				}
+			}
+		else
+			{
+			// connectAttr for global scalling
+			connectAttr ($scale + ".scale") ($div + ".input2");
+
+			if($stretchType == "scale")
+				{
+				for ($c = 0; $c < size($chain); $c++)
+				connectAttr ($divB + ".outputX") ($chain[$c] + "." + $stretchAxis[0]);
+				}
+			else
+				{
+				for ($c = 0; $c < size($chain); $c++)
+					{
+					string $transNor = `createNode multiplyDivide -n ($name + $side + $chain[$c]+"_transNor_md")`;
+					$childJoint = `cr_getChildJoint $chain[$c]`;
+					float $tempVal = `getAttr ($childJoint + ".translate" + $axis[0])`;
+					setAttr ($transNor + ".input2X") $tempVal;
+					connectAttr ($divB + ".outputX") ($transNor + ".input1X");
+						connectAttr ($transNor + ".outputX") ($fullchain[$c+1] + "." + $stretchAxis[0]);
+					}
+				}
+			cr_makeJointVolumeSetup ($name, $side, $controller, $stretchType, $chain);
+			}
+	}
+}
+
+//based of Jason Schleifer's code 
+global proc cr_createCurveControl(string $controlObj, string $controlAttribute, string $destinationAttribute)
+{
+    if (!`objExists $controlObj`)
+        error ($controlObj + " does not exist.  Exiting..\n");
+
+    if (!`attributeQuery -node $controlObj -exists $controlAttribute`)
+        {
+        addAttr -ln $controlAttribute -at double $controlObj;
+        setAttr -k 1 ($controlObj + "." + $controlAttribute);
+        }
+    string $objs[0];
+    $objs = `ls -sl`;
+
+    if (size($objs) == 0)
+        error ("Nothing Selected.\n");
+
+    $numControls = size($objs);
+    $objAttr = ($controlObj + "." + $controlAttribute);
+    setKeyframe -at $controlAttribute -t 1 -v 0 $controlObj;
+    setKeyframe -at $controlAttribute -t  $numControls -v 0 $controlObj;
+
+    keyTangent -wt 1 -at $controlAttribute $controlObj;
+    keyTangent -weightLock off -at $controlAttribute $controlObj;
+
+    keyTangent -e -a -t 1 -outAngle 50 $objAttr;
+    keyTangent -e -a -t $numControls -inAngle -50 $objAttr;
+    for ($x = 0; $x < $numControls; $x++)
+    {
+        $fc = `createNode frameCache`;
+        $fc = `rename $fc ($objs[$x] + "_frameCache")`;
+        connectAttr $objAttr ($fc + ".stream");
+        setAttr ($fc + ".vt") ($x+1);
+        if (!`attributeQuery -exists -node $objs[$x] $destinationAttribute`)
+        {
+            addAttr -ln $destinationAttribute -at double $objs[$x];
+            setAttr -k 1 ($objs[$x] + "."+$destinationAttribute);
+        }
+        connectAttr -f ($fc + ".v") ($objs[$x] + "." + $destinationAttribute);
+    }
+}

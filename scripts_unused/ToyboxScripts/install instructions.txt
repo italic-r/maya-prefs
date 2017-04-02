@@ -1,0 +1,26 @@
+AUTO INSTALL:
+right-click on installAbxToybox.mel and choose "Open in Maya"
+this will copy all files to their appropriate folders
+
+type "showToybox" in the script editor to show the toybox
+
+Once the Toybox is loaded you can copy the abxToybox shelf button found 
+in the "Default" tab to your shelf to load the toybox in the future.
+
+You can then sort your scripts into the Toybox Scripts folders. 
+
+=========================================================================
+MANUAL INSTALL:
+extract "Toybox Scripts" folder to your maya home directory (user app director):
+ex: "c:\documents and settings\USER\my documents\maya"
+
+extract showToybox.mel into your maya user script directory:
+ex: "c:\documents and settings\USER\my documents\maya\7.0\scripts"
+
+Restart maya if already running and run "showToybox" in the command line
+
+Once the Toybox is loaded you can copy the abxToybox shelf button found 
+in the "Default" tab to your shelf to load the toybox in the future.
+
+You can then sort your scripts into the Toybox Scripts folders. 
+

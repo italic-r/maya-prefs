@@ -1,0 +1,30 @@
+// orientBetween
+global proc orientBetween(){
+	string $selectedObj[] = `ls -sl`;
+	int $i = 0;
+	
+	$orientA = $selectedObj[0];
+	$orientB = $selectedObj[1];
+	
+	float $objCount = size($selectedObj) - 2;
+	
+	for($i=2;$i<size($selectedObj);$i++){
+		$currentObj = $selectedObj[$i];
+		float $weightRatio = ($i-2.0)/($objCount-1);	
+		$result = `orientConstraint -w 1 -mo $orientA $currentObj`;
+		
+		for ($constraintName in $result)
+			setAttr ($constraintName+".interpType") 2;
+			
+		orientConstraint -mo $orientB $currentObj;
+		//print ($result)q;
+
+		//orientConstraint -e -mo -w (1.0-$weightRatio ) $orientA $currentObj;
+		//orientConstraint -e -mo -w $weightRatio $orientB $currentObj;
+		
+		
+			
+		orientConstraint -e -mo -w (1.0-$weightRatio ) $orientA $currentObj;
+		orientConstraint -e -mo -w $weightRatio $orientB $currentObj;
+	}
+}

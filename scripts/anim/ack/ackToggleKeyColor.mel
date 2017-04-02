@@ -1,0 +1,20 @@
+//////////////////////////////////////////////////////////
+//	ackToggleKeyColor 1.0
+//	08/05/05					
+//	Aaron Koressel						
+//							
+//	Toggles the display of the special key color 
+//	of selected keys.
+//////////////////////////////////////////////////////////
+
+
+global proc ackToggleKeyColor() {
+	global int $ackToggleKeyColorFlag;
+	if ($ackToggleKeyColorFlag==0){
+		keyframe -tds 1;
+		$ackToggleKeyColorFlag = 1;
+	} else {
+		keyframe -tds 0;
+		$ackToggleKeyColorFlag = 0;
+	}
+}

@@ -1,0 +1,75 @@
+/*
+TITLE: jbMorpheusAddHair
+VERSION: 1.5
+AUTHOR:Josh Burton
+	   www.joshburton.com
+DATE: August 27, 2010
+
+DESCRIPTION:
+Script for adding hair for the Morpheus Rig.
+
+DISCLAIMER:
+If your computer explodes, I didn't do it.
+
+HOW TO USE:
+
+1. Make sure Morphy's face is set to default both with facial poses and customization options 
+2. Select any of the face controls
+3. Select the hair meshes to be added
+
+
+LIMITATIONS:
+
+HISTORY:
+08.27.10 - BIRTH!
+
+Acknowledgements - 
+
+*/
+global proc jbMorpheusProcessHair() {
+string $selected[] = `ls -sl`;
+string $faceSkinCluster;
+string $refPrefix;
+
+//checks for referencing
+int $isReferenced = `referenceQuery -isNodeReferenced $selected[0]`;
+
+if ($isReferenced == 1){
+	string $buffer[] ; // Create Empty Array To Hold Tokens  
+	tokenize $selected[0] ":" $buffer ; // Split $objectName by ":" 
+	$refPrefix = $buffer[0]+":";
+} else {}
+
+//checks for necessary quick select set
+
+
+string $hairSkinJoints = $refPrefix + "qssHairSkinJoints";
+print $hairSkinJoints;
+//pulling out the control selection from the array
+//stringArrayRemoveAtIndex (0, $selected);
+print $selected;
+
+for ($hair in $selected) {
+	//checks if the $hair was already added
+	if(`attributeExists "customGeofied" $hair`){ 
+			warning ($hair + " geo is already connected") ;	 
+	}	else { 
+
+	$tempHairSkinName = `findRelatedSkinCluster($hair)`;
+	$faceSkinCluster = $refPrefix + "face_skinCluster";
+
+	//copy the skin weights from the deformer geo to the custom geo
+	copySkinWeights -ds $tempHairSkinName -ss $faceSkinCluster -noMirror -surfaceAssociation closestPoint -influenceAssociation name;
+
+	addAttr -ln "customGeofied"  -dt "string" $hair;
+	addAttr -ln "skinName" -dt "string" $hair;
+	addAttr -ln "skinTemplate" -dt "string" $hair;
+
+	setAttr -type "string" ($hair+".skinName") $tempHairSkinName;
+	setAttr -type "string" ($hair+".skinTemplate") $faceSkinCluster;
+	}
+	}
+print "Done. See warnings in script editor for hair that didn't add.";
+
+}
+jbMorpheusProcessHair;

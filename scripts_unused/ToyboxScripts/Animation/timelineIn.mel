@@ -1,0 +1,7 @@
+// timelineIn
+
+global proc timelineIn() {
+	$theTime = `currentTime -q`;
+	playbackOptions -e -minTime $theTime;
+
+}

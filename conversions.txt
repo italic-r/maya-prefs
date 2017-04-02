@@ -1,0 +1,123 @@
+How to convert hotkeys and runtime commands from 2016 to 2015/earlier:
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Hotkeys (userHotkeys.mel (2015-) OR hotkeys/userHotkeys*.mel (2016+))
+////////////////////////////////////////////////////////////////////////////////
+
+Remove hotkeySet line
+
+	hotkeySet -source "Maya_Default" -current JH_Anim;
+
+
+remove all hotkeyCtx lines
+
+	hotkeyCtx -type "Editor" -addClient "hyperShadePanel";
+
+
+Replace hotkey with capital letter to use shift modifier
+
+	hotkey -keyShortcut "g" -alt -sht -name ("EulerFilterNameCommand");
+						 ^		 ^^^^
+
+ -> hotkey -keyShortcut "G" -alt -name ("EulerFilterNameCommand");
+						 ^
+
+
+Invalid flags:
+	-ctxClient
+	-dragPress
+	-sht
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// nameCommand (userNamedCommands.mel)
+////////////////////////////////////////////////////////////////////////////////
+
+nameCommand commands are equal (no new or removed lines)
+
+nameCommand
+	-annotation "AckPushKeysNameCommand"
+	-sourceType "mel"
+	-command ("AckPushKeys")
+	AckPushKeysNameCommand;
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// runTimeCommand (userRunTimeCommands.mel)
+////////////////////////////////////////////////////////////////////////////////
+
+runTimeCommand
+	-annotation "Scale Selected Keys"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("ackPushPull \"push\";")
+	AckPushKeys;
+
+
+Invalid flags:
+	-hotkeyCtx
+	-showInHotkeyEditor
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Shelf files
+////////////////////////////////////////////////////////////////////////////////
+
+2016[.5]:
+shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Edit the references for the current scene"
+        -enableBackground 0
+  ->    -highlightColor 0.321569 0.521569 0.65098
+        -align "center"
+        -label "Reference Editor"
+        -labelOffset 0
+  ->    -rotation 0
+  ->    -flipX 0
+  ->    -flipY 0
+  ->    -useAlpha 1
+        -font "plainLabelFont"
+        -imageOverlayLabel "RE"
+        -overlayLabelColor 0.8 0.8 0.8
+        -overlayLabelBackColor 0 0 0 0.25
+        -image "menuIconFile.png"
+        -image1 "menuIconFile.png"
+        -style "iconOnly"
+        -marginWidth 1
+        -marginHeight 1
+        -command "ReferenceEditor"
+        -sourceType "mel"
+        -commandRepeatable 1
+        -flat 1
+    ;
+
+Invalid flags:
+	-highlightColor
+	-rotation
+	-flipX
+	-flipY
+	-useAlpha
+	-menuItem
+	-scaleIcon
+	-noDefaultPopup
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Marking menus (markingMenus/*)
+////////////////////////////////////////////////////////////////////////////////
+
+Invalid flags:
+	-longDivider

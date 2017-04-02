@@ -1,0 +1,42 @@
+global proc makeQss() { 
+string $baseObjectSets[] = {"cornerCompress_left_anim mouthEmote_left_anim mouthMove_anim tongueBase_anim tongue01_anim tongue03_anim tongueMid_anim tongueShape_anim jaw_anim mouthSeal_anim browInner_left_anim browOuter_left_anim browMidTweak_left_anim browInner_right_anim browOuter_right_anim browMidTweak_right_anim uprLip_left_anim uprLip_right_anim mouthEmote_right_anim cornerCompress_right_anim uprLip_center_anim lwrLip_left_anim lwrLip_right_anim lwrLip_center_anim cheek_left_anim cheek_right_anim sneer_left_anim sneer_right_anim eyeSqueeze_left_anim eyeSqueeze_right_anim uprTeeth_anim lwrTeeth_anim blink_left_anim eyeFK_right_anim iris_right_anim pupil_right_anim eye_right_fkikSwitch_anim uprLidAll_right_anim inner_uprLid_right_anim center_uprLid_right_anim outer_uprLid_right_anim lwrLidAll_right_anim outer_lwrLid_right_anim center_lwrLid_right_anim inner_lwrLid_right_anim blink_right_anim eye_masterIK_anim eyeIK_left_anim eyeIK_right_anim eyeFK_left_anim iris_left_anim pupil_left_anim eye_left_fkikSwitch_anim uprLidAll_left_anim center_uprLid_left_anim inner_uprLid_left_anim outer_uprLid_left_anim lwrLidAll_left_anim outer_lwrLid_left_anim inner_lwrLid_left_anim center_lwrLid_left_anim", "eye_left_mover_ctrl_anim lwrFace_mover_ctrl_anim nose_mover_ctrl mouth_mover_ctrl sideHead_left_mover_ctrl_anim uprHead_mover_ctrl_anim lwrSide_left_mover_ctrl_anim brow_left_mover_ctrl_anim ear_left_mover_ctrl_anim uprTeeth_anim lwrTeeth_anim NoseCircleCtrl_anim LipsCircleCtrl_anim JawLineCircleCtrl_anim lwrTeethCircleCtrl_anim teethBreakerCircleCtrl lwrEarCircleCtrl_anim BrowLCircleCtrl_anim BrowRCircleCtrl_anim FacialHairCircleCtrl_anim NoseBridgeCircleCtrl_anim uprTeethCircleCtrl_anim BrowCircleCtrl_anim HeavyCircleCtrl_anim NeckCircleCtrl_anim CheekCircleCtrl_anim NoseTipCircleCtrl_anim LidsCircleCtrl_anim ChinCircleCtrl_anim uprEarCircleCtrl_anim", "eyeFK_right_anim iris_right_anim pupil_right_anim eye_right_fkikSwitch_anim eye_masterIK_prop_anim eyeIK_left_anim eyeIK_right_anim eyeFK_left_anim iris_left_anim pupil_left_anim eye_left_fkikSwitch_anim", "cornerCompress_left_anim mouthEmote_left_anim mouthMove_anim jaw_anim mouthSeal_anim uprLip_left_anim uprLip_right_anim mouthEmote_right_anim cornerCompress_right_anim uprLip_center_anim lwrLip_left_anim lwrLip_right_anim lwrLip_center_anim cheek_left_anim cheek_right_anim sneer_left_anim sneer_right_anim uprTeeth_anim lwrTeeth_anim", "browInner_left_anim browOuter_left_anim browMidTweak_left_anim browInner_right_anim browOuter_right_anim browMidTweak_right_anim eyeSqueeze_left_anim eyeSqueeze_right_anim blink_left_anim uprLidAll_right_anim inner_uprLid_right_anim center_uprLid_right_anim outer_uprLid_right_anim lwrLidAll_right_anim outer_lwrLid_right_anim center_lwrLid_right_anim inner_lwrLid_right_anim blink_right_anim uprLidAll_left_anim center_uprLid_left_anim inner_uprLid_left_anim outer_uprLid_left_anim lwrLidAll_left_anim outer_lwrLid_left_anim inner_lwrLid_left_anim center_lwrLid_left_anim", "tongue01_anim tongue03_anim tongueMid_anim tongueShape_anim"}; 
+string $qssNames[] = {"qssFaceAll", "qssFaceCustomize", "qssFaceEyes", "qssFaceLwr", "qssFaceUpr", "qssTongue"}; 
+string $qssObjects[]; 
+string $qssMissingObjects[]; 
+string $prefix; 
+int $i = 0; 
+int $n = 0; 
+int $m = 0; 
+string $result = `promptDialog -title "Prefix Object Names?" 
+                       -message "Insert any prefix you would like to add" 
+                         -button "Confirm" -button "Cancel" 
+                        -defaultButton "Confirm" -cancelButton "Cancel" 
+                        -dismissString "Cancel"`; 
+    if ($result == "Confirm") { 
+       $prefix = `promptDialog -query -text`; 
+     } 
+ for ($set in $baseObjectSets) { 
+	$i = 0;	 
+    string $currentSet[]; 
+    int $numTokens = tokenize($baseObjectSets[$n], $currentSet); 
+       	for($object in $currentSet) { 
+       		string $prefixedObject = $prefix + $object; 
+      		$qssObjects[$i] = $prefixedObject; 
+      			if(! `objExists $prefixedObject`) { 
+                 print ($prefixedObject + " not found from " + $qssNames[$n] + "\n");   
+					$qssMissingObjects[$m] = $prefixedObject ;  
+					$m++; 
+        		}  
+			$i++; 
+        }  
+	string $qssFoundObjects[]= stringArrayRemove($qssMissingObjects, $qssObjects); 
+	string $nameBuffer = $prefix + $qssNames[$n]; 
+	sets -text "gCharacterSet" -name $nameBuffer $qssFoundObjects; 
+	int $size = size($qssObjects); 
+		for($z=0;$z<$size;$z++){ 
+			stringArrayRemoveAtIndex(0, $qssObjects); 
+		} 
+	$n++; 
+    } 
+ } 
+ makeQss; 

@@ -1,0 +1,59 @@
+//---------------------------------------------------------------------------
+// cr_help.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:
+//      help
+//
+// REQUIRES:
+//      Nothing
+//
+// AUTHOR:
+//      Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+//dummy proc used to load this script without sourcing it
+global proc cr_help() 
+{
+return;
+}
+
+
+global proc cr_helpWindow()
+    {
+    if (`window -exists cr_helpWindow`)
+        deleteUI cr_helpWindow;
+    
+    window -title "\"creatureRigs Tools\" Help"
+           -w 200
+           -tlb 1 cr_helpWindow;
+        columnLayout -adjustableColumn true;
+        separator -st "none" -h 5;
+        text -al "center" -label "help coming soon.";
+        separator -st "none" -h 5;
+        text -al "center" -label "for more information please visit";
+        separator -st "none" -h 5;
+        separator -st "in" -h 5;
+        iconTextButton -style "iconOnly" -i "creatureRigs.png" -ann ("Copyright ©2010 Wasim Khan creaturerigs.com") -c ("showHelp -a \"http://creaturerigs.com/\"") -h 30 ;
+        separator -st "in" -h 5;
+        setParent ..;
+        showWindow cr_helpWindow;
+    }

@@ -1,0 +1,150 @@
+{
+	string $windowName = "zooTriggeredWindow";
+	string $windowTitle = "zooTriggered!    ::macaroniKazoo::";
+	int $cmdViewMode = `optionVar -q zooTrigViewMode`;
+
+	if( `window -exists $windowName` ) deleteUI $windowName;
+	window -title $windowTitle -resizeToFitChildren 0 -maximizeButton 1 -sizeable 1 -widthHeight 500 350 $windowName;
+		scriptJob -p $windowName -e "SceneOpened" "zooTriggeredWindowFunctions -clear;";
+		menuBarLayout;
+			menu -label "Shelf";
+				menuItem -l "Install Shelf Button" -c ( "zooTriggeredSetup" );
+				menuItem -divider 1;
+				menuItem -l "Remove Shelf Button" -c ( "deleteUI `zooShelveItGetShelfButton zooTriggered`" );
+			menu -label "View";
+				menuItem -l "edit zooTriggered command" -cb( $cmdViewMode==0?1:0 ) -c( "zooTriggeredWindowFunctions -switchToTriggered;" ) zooTrigViewMode0;
+				menuItem -l "edit zooObjMenu commands" -cb( $cmdViewMode==1?1:0 ) -c( "zooTriggeredWindowFunctions -switchToObjMenu;" ) zooTrigViewMode1;
+				menuItem -l "trigger highlighting" -cb( `optionVar -q zooTrigHighlighting` ) -c( "optionVar -iv zooTrigHighlighting #1; if( #1 ) zooHighlightTriggers; else zooUnhighlightAllTriggers;" ) zooTrigHighlighting;
+				menuItem -divider 1;
+				menuItem -l "Force UI Update" -c ( "zooTriggeredWindowFunctions -clear;" );
+			menu -label "Presets";
+				menuItem -l "export trigger preset" -c( "zooTriggeredWindowFunctions -export;" );
+				menuItem -d 1;
+				menuItem -l "import trigger preset" -sm 1 -pmc( "zooBuildTriggeredPresetMenu zooTriggeredMenuImport;" ) zooTriggeredMenuImport;
+				setParent -m ..;
+			menu -label "Help";
+				menuItem -l "Donate Now" -c( "showHelp -a \"http://www.macaronikazoo.com/donate.html\";" );
+				menuItem -l "Help..." -c ( "zooHelp zooTriggered 1" );
+				menuItem -l "How it Works" -c ( "zooHelp zooTriggered 2" );
+
+		string $masterForm = `formLayout`;
+			string $pane = `paneLayout -configuration horizontal2`;
+				string $upperForm = `formLayout`;
+					string $row1 = `rowColumnLayout -numberOfColumns 4
+						-columnWidth 1 80
+						-columnWidth 2 80
+						-columnWidth 3 100
+						-columnWidth 4 80
+						-columnAttach 1 "both" 1
+						-columnAttach 2 "both" 1
+						-columnAttach 3 "both" 1
+						-columnAttach 4 "both" 1`;
+						button -l "load" -height 18 -c ( "zooTriggeredLoad;" );
+						button -l "unLoad" -height 18 -c ( "zooTriggeredUnload;" );
+						text -l "load status ->" -align center -height 18;
+						palettePort -ed 0 -height 18 -dim 1 1 -rgb 0 0 0 0 zooTriggeredPaletteStatus;
+						setParent ..;
+
+					string $triggerText = `text -l "zooTriggered! Objects:" zooTrigObjListLbl`;
+					string $selSelected = `button -l ">" -c( "zooTriggeredWindowFunctions -loadSelected" )`;
+					string $trigList = `textScrollList -ams 0 -sc( "zooTriggeredWindowFunctions -updateTrigger;" ) -dcc( "zooTriggeredWindowFunctions -selectTrigger;" ) zooTriggeredScrollObjects`;
+					string $targetText = `text -l "connects:"`;
+					string $connectList = `textScrollList -ams 1 -sc( "if( `checkBox -q -v zooTriggeredCheckFiltered` ) zooTriggeredWindowFunctions -updateCmd;" ) -dcc( "select `textScrollList -q -si zooTriggeredScrollTargets`;" ) zooTriggeredScrollTargets`;
+				setParent ..;
+
+				string $lowerForm = `formLayout zooTrigEditCmdForm`;
+					string $lowerLbl = `text -l "" zooTrigTextLowerCmdStrLbl`;
+					string $cmdNameLbl = `text -l "" zooTrigTextLowerCmdNameLbl`;
+					string $cmdScroll = `scrollField -ed 1 -nl 6 -cc( "zooTriggeredWindowFunctions -saveCmd;" ) zooTriggeredTextCustom`;
+					string $previewCheck = `checkBox -l "preview command string" -cc( "zooTriggeredWindowFunctions -updateCmd;" ) zooTriggeredCheckPreview`;
+					string $filteredCheck = `checkBox -l "show cmd relevant to selected connects" -cc( "zooTriggeredWindowFunctions -updateCmd;" ) zooTriggeredCheckFiltered`;
+					string $cmdName = `textField -en 0 -tx "" -cc( "zooTriggeredWindowFunctions -saveName;" ) zooTriggeredTextCmdName`;
+					string $cmdNameSlots = `textScrollList -ams 0 -sc( "zooTriggeredWindowFunctions -updateCmd;" ) -dcc( "zooTriggeredWindowFunctions -executeCmd;" ) zooTriggeredScrollCmdNameList`;
+					string $killState = `checkBox -en 0 -ann "turning the kill state on will stop all the usual alias rubbish in the dag menu go away - ie the menu build procedure is killed after the objMenu items are added" -cc( "zooTriggeredWindowFunctions -setKillState;" ) zooTriggeredKillState`;
+				setParent ..;
+			setParent ..;
+
+			string $image = `image -width 340 -height 8 -backgroundColor ((float)96/255) ((float)100/255) ((float)146/255) -image(zooGetFileLocation(zooListEnv("XBMLANGPATH"),"zoo_sig","tga") +"zoo_sig.tga" )`;
+
+	formLayout -e
+		-af $pane "top" 0
+		-af $pane "left" 0
+		-af $pane "right" 0
+		-ac $pane "bottom" 0 $image
+
+		-af $image "left" 0
+		-af $image "right" 0
+		-af $image "bottom" 0
+		$masterForm;
+
+	formLayout -e
+		-af $row1 "top" 2
+		-af $row1 "left" 2
+		-af $row1 "right" 2
+
+		-ac $triggerText "top" 2 $row1
+		-af $triggerText "left"	23
+
+		-ac $selSelected "top" 2 $triggerText
+		-af $selSelected "left" 2
+		-af $selSelected "bottom" 0
+
+		-ac $trigList "top" 2 $triggerText
+		-ac $trigList "left" 2 $selSelected
+		-ap $trigList "right" 2 50
+		-af $trigList "bottom" 0
+
+		-ac $targetText "top" 2 $row1
+		-ac $targetText "left"	2 $trigList
+
+		-ac $connectList "top" 2 $targetText
+		-ac $connectList "left" 2 $trigList
+		-af $connectList "right" 2
+		-af $connectList "bottom" 0
+		$upperForm;
+
+	formLayout -e
+		-af $lowerLbl "top" 2
+		-af $lowerLbl "left" 2
+
+		-af $cmdNameLbl "top" 2
+		-ac $cmdNameLbl "right" 2 $cmdName
+
+		-ac $cmdScroll "top" 2 $lowerLbl
+		-af $cmdScroll "left" 0
+		-ap $cmdScroll "right" 0 100
+		-ac $cmdScroll "bottom" 3 $previewCheck
+
+		-af $previewCheck "left" 5
+		-af $previewCheck "bottom" 3
+
+		-ac $filteredCheck "left" 10 $previewCheck
+		-af $filteredCheck "bottom" 3
+
+		-af $cmdName "top" 0
+		-ac $cmdName "left" 2 $cmdScroll
+		-af $cmdName "right" 0
+
+		-ac $cmdNameSlots "top" 2 $cmdName
+		-ac $cmdNameSlots "left" 2 $cmdScroll
+		-af $cmdNameSlots "right" 2
+		-ac $cmdNameSlots "bottom" 3 $killState
+
+		-ac $killState "left" 2 $cmdScroll
+		-af $killState "bottom" 3
+		$lowerForm;
+
+	popupMenu -p zooTriggeredScrollObjects -pmc( "zooBuildTrigTriggersPopup zooTrigTriggersPopup" ) zooTrigTriggersPopup;
+	popupMenu -p zooTriggeredScrollTargets -pmc( "zooBuildTrigConnectsPopup zooTrigConnectsPopup" ) zooTrigConnectsPopup;
+	popupMenu -p zooTriggeredTextCustom -pmc( "zooBuildTrigPresetPopup zooTrigPresetPopup" ) zooTrigPresetPopup;
+	popupMenu -p zooTriggeredScrollCmdNameList -pmc( "zooBuildTrigCmdPopup zooTrigCmdNamePopup" ) zooTrigCmdNamePopup;
+	popupMenu -p $image -b 1 -pmc ( "showHelp -a \"http://www.macaronikazoo.com/\"" );
+	showWindow $windowName;
+	zooTriggeredWindowFunctions -clear;
+	zooTriggeredWindowFunctions -updateFrame;
+	zooTrigInstallShelfPopup;
+	zooTrigUpdateUIState;
+	}
+
+
+//zoo.end

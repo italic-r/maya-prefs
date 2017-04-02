@@ -1,0 +1,96 @@
+global proc zzReduceKeys ( float $threshold, string $obj ) {
+	//discover turning points
+	int $turningPointKeys[] = `zzReduceKeysTurningPoints`;
+	}
+
+
+global proc int[] zzReduceKeysTurningPoints ( string $obj ) {
+	int $numKeys = `keyframe -q -kc $obj`;
+
+	for ( $n; $n < $numKeys; $n++ ) {
+
+		float $keyValue01[] = {};
+		float $keyValue02[] = {};
+		float $keyTime01[] = {};
+		float $keyTime02[] = {};
+
+		$keyValue01 = `keyframe -in ( $n ) -q -vc $obj`;
+		$keyValue02 = `keyframe -in ( $n + $iteration ) -q -vc $obj`;
+		$keyTime01 = `keyframe -in ( $n ) -q $obj`;
+		$keyTime02 = `keyframe -in ( $n + $iteration ) -q $obj`;
+
+		$keyGradient = ( $keyValue02[0] - $keyValue01[0] ) / ( $keyTime02[0] - $keyTime01[0] );
+
+		}
+	return $turningPointKeys;
+	}
+
+
+
+
+
+
+/*
+global proc zzReduceKeys ( float $threshold, string $obj ) {
+	int $reduceKeyArray[] = {};
+	int $numKeys = `keyframe -q -kc $obj`;
+	int $count = 0;
+
+	for ( $count = 0; $count < $numKeys; ) {
+		print ( "--loop count--\n" );
+
+		float $keyGradient = 0;
+		int $nextInArray = `size $reduceKeyArray`;
+		int $base = $count;
+		int $iteration = 1;
+
+		//discover the gradient between the first two keys.  this is the initial gradient
+		float $initKeyValue01[] = {};
+		float $initKeyValue02[] = {};
+		float $initKeyTime01[] = {};
+		float $initKeyTime02[] = {};
+		float $initialGradient;
+
+		$initKeyValue01 = `keyframe -in ( $base ) -q -vc $obj`;
+		$initKeyValue02 = `keyframe -in ( $base + $iteration ) -q -vc $obj`;
+		$initKeyTime01 = `keyframe -in ( $base ) -q $obj`;
+		$initKeyTime02 = `keyframe -in ( $base + $iteration ) -q $obj`;
+
+		$initialGradient = ( $initKeyValue02[0] - $initKeyValue01[0] ) / ( $initKeyTime02[0] - $initKeyTime01[0] );
+
+		$iteration++;
+
+		print ( "entering while loop with values of:  base " + $base + " gradient " + $initialGradient + "\n" );
+		//as long as consequent keys lie between the initial gradient and the threshold range, they are deletable.  continue check until this condition fails
+		while ( $keyGradient <= $initialGradient + $threshold && $keyGradient >= $initialGradient - $threshold && $base + $iteration < $numKeys ) {
+			float $keyValue01[] = {};
+			float $keyValue02[] = {};
+			float $keyTime01[] = {};
+			float $keyTime02[] = {};
+
+			$keyValue01 = `keyframe -in ( $base ) -q -vc $obj`;
+			$keyValue02 = `keyframe -in ( $base + $iteration ) -q -vc $obj`;
+			$keyTime01 = `keyframe -in ( $base ) -q $obj`;
+			$keyTime02 = `keyframe -in ( $base + $iteration ) -q $obj`;
+
+			$keyGradient = ( $keyValue02[0] - $keyValue01[0] ) / ( $keyTime02[0] - $keyTime01[0] );
+
+			$reduceKeyArray[$nextInArray] = $base + $iteration;
+			$nextInArray++;
+			$iteration++;
+			}
+
+		$count = $count + $iteration;
+		print ( "finishing while loop with values of:  base " + $base + " count " + $count + "\n" );
+		}
+
+	int $n = 0;
+
+	selectKey -clear;
+	for ( $entry in $reduceKeyArray ) {
+		print ( "key index: " + $reduceKeyArray[$n] + " added\n" );
+		selectKey -add -k -in $reduceKeyArray[$n] $obj;
+		$n++;
+		}
+	}
+*/

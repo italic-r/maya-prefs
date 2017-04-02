@@ -1,0 +1,25 @@
+Changelog
+=========
+
+1.1.0 - 19 Septembre 2016
+-------------------------
+
+	**New Features**
+	  * Better search algorithm.
+	  * Ranks the commands you use the most higher in the list. So if you execute the 'Cube' command more often than the 'NURBS Cube', it will appear first.
+	  * The last command you executed is now remembered by Helios and automatically shows up when you open it.
+	  * Added support for 'Advanced' scripts (add -advanced after the name of the command to create an advanced version).
+
+	**Bug Fixes**
+	  * You can now start your search with any of the word of a command. Searching for 'Transformation' will therefore find 'Freeze Transformations' and 'Reset Transformations'.
+	  * Added compatibility with Maya 2017 and Linux.
+
+	**Changes**
+	  * The commands are now listed as separate python scripts (previously they were all listed inside the same python file which quickly became really messy for longer scripts).
+
+
+1.0.0 - 15 August 2016
+----------------------
+
+  * First release of Helios
+

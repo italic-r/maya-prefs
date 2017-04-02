@@ -1,0 +1,9 @@
+// deleteUnknownNodes
+
+if (`confirmDialog -t "Delete Unknown Nodes" -message "Are You Sure?" -button "No" -defaultButton "No" -button "Yes"` == "Yes"){
+
+	$unknownNodes = `lsType unknown`;
+	$command = "delete %s";
+	executeForEachObject $unknownNodes $command;
+
+}

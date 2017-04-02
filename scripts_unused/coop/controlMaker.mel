@@ -1,0 +1,1216 @@
+//==================================================================
+//
+// script: controlMaker.mel
+//
+// Author: 		Sean Nolan
+//	   	   		sean@snolan.net
+//	
+//
+// Usage: A simple but handy little script that will allow you
+//        to snap a control to a joint(or any object) and preserve 
+//		  zeored values. All the translate and rotation data will be
+//        inherited by the group node that is created.
+//		  
+//
+//	
+//	Select one or as many objects.
+//	Select a control type (all nurbs curves)
+//	Select a type of snap you want (orient, point, point/orient, shape ...)
+//	Use the color slider to change the controls color
+//	Use the rotate control to flip the control in either X, Y or Z
+//	Group all your controls under a group that exists or will create it for you
+//  Create an extra group. Helpfull for SDK's on groups
+//	Auto lock and hide of channels
+//
+//	
+//==================================================================
+
+global proc controlMaker()
+{
+	
+
+	if(`window -ex controlMakerWin`) deleteUI controlMakerWin ;
+		
+	int $winH = 550;
+	int $winW = 253;
+	
+	window -t "Control Maker" -w $winH -h $winW controlMakerWin;
+			
+	columnLayout;	
+	frameLayout -l "Prefix" 
+				-w 245
+				-collapsable true 
+				-collapse true
+				-cc ("window -e -h " + $winH + " controlMakerWin")
+				-ec ("window -e -h " + ($winH + 20) + " controlMakerWin") fmPrefix;
+	
+	rowColumnLayout -nc 2 -cw 1 40 -cw 2 200;
+	text -l "Prefix:";
+	
+	textField -tx "" txtPrefix;
+	
+	setParent..;setParent..;
+	columnLayout;
+	
+	//---------------------------------------------------
+		rowColumnLayout -nc 2 -cw 1 245 -cw 2 75;
+		text -l "Group Controls Under Name:" ; 
+		text -l""; 
+		textField -tx "" txtGrpName;
+		text -l "" ;
+		checkBox -l "Create Extra Group for Control" ckXtraGroup;
+		text -l""; 
+		button -l "Toggle Selection Handles" -command "toggle -selectHandle";
+		setParent..;setParent..;
+		
+	//---------------------------------------------------
+		
+	//---------------------------------------------------
+		rowColumnLayout -nc 3 -cw 1 95 -cw 2 95 -cw 3 95;
+		text -l "Lock and Hide:" ; text -l""; text -l"";
+		checkBox -l "Translate" -v 1 ckTrans;
+		checkBox -l "Rotate" -v 0 ckRot;
+		checkBox -l "Scale" -v 1 ckScale;
+		
+		setParent..;setParent..;
+	//---------------------------------------------------
+	
+	rowColumnLayout -nc 2 -cw 1 200 -cw 2 80;
+		optionMenu -l "Shapes:" optShapes;
+			menuItem -l "Circle";
+			menuItem -l "Arrow on Ball Lrg";
+			menuItem -l "Arrow on Ball Sml";
+			menuItem -l "Single Arrow";
+			menuItem -l "4 Lrg Arrow";
+			menuItem -l "180 Arrow";
+			menuItem -l "Pin";
+			menuItem -l "2 Pin";
+			menuItem -l "4 Pin";
+			menuItem -l "Sphere";
+			menuItem -l "Dumbbell";
+			menuItem -l "Cylinder";
+			menuItem -l "Cone";
+			//New Ones
+			menuItem -l "Root";
+			menuItem -l "Translate";
+			menuItem -l "Rotation";
+			menuItem -l "poleVector";
+			menuItem -l "Special";
+			menuItem -l "handHeld";
+			menuItem -l "COG";
+			menuItem -l "Square";
+
+			
+		text -l"";	
+		
+		radioCollection;
+		//make default button
+		radioButton -label "Orient Constraint" 
+					-onCommand "checkBox -e -v true ckTrans; checkBox -e -v true ckScale;checkBox -e -en true cbStretch;" 
+					-offCommand "checkBox -e -v false ckTrans; checkBox -e -v false ckRot;" 
+					-select rbOri;
+		
+		
+		text -l"";
+		
+		radioButton -label "Point Constraint" 
+					-onCommand "checkBox -e -v true ckRot; checkBox -e -v false cbStretch;checkBox -e -en false cbStretch;" 
+					-offCommand "checkBox -e -v false ckTrans; checkBox -e -v false ckRot;" rbPoint;
+		
+		text -l"";
+		
+		radioButton -label "Point/Orient Constraint" 
+					-onCommand "checkBox -e -v true ckScale;checkBox -e -v false cbStretch;checkBox -e -en false cbStretch;" 
+					-offCommand "checkBox -e -v false ckTrans; checkBox -e -v false ckRot;" rbPointOri;
+		
+		text -l"";
+		
+		radioButton -label "Shape Parent" 
+					-onCommand "checkBox -e -v false ckScale;checkBox -e -v false cbStretch;checkBox -e -en false cbStretch;" 
+					-offCommand "checkBox -e -v false ckTrans; checkBox -e -v false ckRot;checkBox -e -v false ckScale;" rbShape;
+		
+		text -l"";
+		
+		radioButton -label "Just Snap" 
+					-onCommand "checkBox -e -v false ckTrans; checkBox -e -v false ckRot;checkBox -e -en true cbStretch;" 
+					-offCommand "checkBox -e -v false ckTrans; checkBox -e -v false ckRot;checkBox -e -v false ckScale" rbSnap;
+					
+		text -l"";
+		
+		radioButton -label "Advanced FK" 
+					-onCommand "checkBox -e -v true ckTrans; checkBox -e -v true ckScale;checkBox -e -en false cbStretch;" 
+					-offCommand "checkBox -e -v false ckTrans; checkBox -e -v false ckRot;" 
+          rbAdvFK;
+		text -l"";			
+	separator -st "double";separator -st "double";
+	checkBox -l "Add Stretch" cbStretch;
+	text -l"";
+	checkBox -l "Add User Control Attrs" cbUserControl;
+	popupMenu;
+	   menuItem -l "Add User Control to Existing" -c "userPositionControl `ls -sl` ";
+	text -l"";
+	separator -st "double";separator -st "double";
+	text -l " Controller Scale:";
+	text -l"";
+	floatSliderGrp  -pre 4 -cw2 50 40 -field true -minValue 0.0001 -maxValue 50 -fieldMinValue 0.0001 -fieldMaxValue 50 -value 1.0 conSize;
+	setParent..;setParent..;
+	
+	columnLayout -adj true;
+	button -w 244 -l "Rotate Control Shape" -ann "Rotate without affecting children" -command snRotWin;
+	button -w 244 -l "Select Control Shape" -command "string $sel[] = `ls -sl`; string $shape[] = `listRelatives -s $sel[0]`; select -r $shape[0];";
+	setParent..;setParent..;
+	frameLayout -l "Color" 
+				-w 245
+				-h 120
+				-collapsable false fmColor;
+				popupMenu;
+				  menuItem -l "Apply Current Color" -c "snUpdateCurrentColor";
+				  menuItem -l "Get Current Color on Control" -c "snGetCurrentColor";
+				  
+				gridLayout -numberOfRows 4 -numberOfColumns 8 -cellWidthHeight 30 20;
+				iconTextButton -bgc .627 .627 .627 -command "updateSlider 0";
+				iconTextButton -bgc .467 .467 .467 -command "updateSlider 1";
+				iconTextButton -bgc .000 .000 .000 -command "updateSlider 2";
+				iconTextButton -bgc .247 .247 .247 -command "updateSlider 3";
+				iconTextButton -bgc .498 .498 .498 -command "updateSlider 4";
+				iconTextButton -bgc 0.608 0 0.157 -command "updateSlider 5";
+				iconTextButton -bgc 0 0.016 0.373 -command "updateSlider 6";
+				iconTextButton -bgc 0 0 1 -command "updateSlider 7";
+				iconTextButton -bgc 0 0.275 0.094 -command "updateSlider 8";
+				iconTextButton -bgc  0.145 0 0.263 -command "updateSlider 9";
+				iconTextButton -bgc 0.78 0 0.78 -command "updateSlider 10";
+				iconTextButton -bgc 0.537 0.278 0.2 -command "updateSlider 11";
+				iconTextButton -bgc 0.243 0.133 0.122 -command "updateSlider 12";
+				iconTextButton -bgc 0.6 0.145 0 -command "updateSlider 13";
+				iconTextButton -bgc 1 0 0 -command "updateSlider 14";
+				iconTextButton -bgc 0 1 0  -command "updateSlider 15";
+				iconTextButton -bgc 0 0.255 0.6 -command "updateSlider 16";
+				iconTextButton -bgc 1 1 1 -command "updateSlider 17";
+				iconTextButton -bgc 1 1 0 -command "updateSlider 18";
+				iconTextButton -bgc 0.388 0.863 1 -command "updateSlider 19";
+				iconTextButton -bgc 0.263 1 0.635 -command "updateSlider 20";
+				iconTextButton -bgc 1 0.686 0.686 -command "updateSlider 21";
+				iconTextButton -bgc 0.89 0.675 0.475 -command "updateSlider 22";
+				iconTextButton -bgc 1 1 0.384 -command "updateSlider 23";
+				iconTextButton -bgc 0 0.6 0.325 -command "updateSlider 24";
+				iconTextButton -bgc 0.627 0.412 0.188 -command "updateSlider 25";
+				iconTextButton -bgc 0.62 0.627 0.188 -command "updateSlider 26";
+				iconTextButton -bgc 0.408 0.627 0.188 -command "updateSlider 27";
+				iconTextButton -bgc 0.188 0.627 0.365 -command "updateSlider 28";
+				iconTextButton -bgc 0.188 0.627 0.627 -command "updateSlider 29";
+				iconTextButton -bgc 0.188 0.404 0.627 -command "updateSlider 30";
+				iconTextButton -bgc 0.435 0.188 0.627 -command "updateSlider 31";
+				
+        
+      
+	colorIndexSliderGrp  -min 0 -max 31 -value 0 conColor;
+	setParent..;
+	setParent..;
+setParent..;
+	//---------------------------------------------------
+	
+	rowColumnLayout -nc 2 -cw 1 122 -cw 2 122;
+	
+		button -l "Build" -command snSnapControl;
+		button -l "Close" -c "deleteUI controlMakerWin" ;
+	setParent..;setParent..;
+	
+	rowColumnLayout -nc 2 -cw 1 250 -cw 2 50;
+	
+	
+	window -e -w $winW -h $winH controlMakerWin;
+	showWindow controlMakerWin;
+	
+} 
+
+
+global proc snSnapControl()
+{
+	string $inherit;
+	int $makeStretch = `checkBox -q -v cbStretch`;
+	int $makeUserControl = `checkBox -q -v cbUserControl`;
+	float $conScale = `floatSliderGrp -q -v conSize`;
+	$objects = `ls -sl`;
+	string $master;
+	int $lockAndHideTrans = `checkBox -q -v ckTrans`;
+	int $lockAndHideRot = `checkBox -q -v ckRot`;
+	int $lockAndHideScale = `checkBox -q -v ckScale`;
+	string $mainGrpName = `textField -q -text txtGrpName`;
+	int $extraGrp = `checkBox -q -v ckXtraGroup`;
+	string $prefix = `textField -q -tx txtPrefix`;
+	string $ctrl;
+	string $shape[];
+	string $grpNode;
+	int $i = 0;
+	int $rotateOrder;
+	int $numOfObj = `size($objects)`;
+	
+	int $oriState = `radioButton -q -select rbOri`;
+	int $pointState = `radioButton -q -select rbPoint`;
+	int $pointOriState = `radioButton -q -select rbPointOri`;
+	int $shapeState = `radioButton -q -select rbShape`;
+	int $snapState = `radioButton -q -select rbSnap`;
+	int $advanFK = `radioButton -q -select rbAdvFK`;
+	
+	string $shapeSelected = `optionMenu -q -v optShapes`;
+	
+	for ($obj in $objects)
+	{		
+		
+		
+		if($prefix == "")
+		{
+			$inherit = "CON" + $obj + "INH";
+		}
+		else
+		{
+			$inherit = $prefix + $obj + "INH";
+		}
+		
+		// create empty groups
+		group -em -n $inherit;
+		
+		
+		//select parent joint and constrain inherit//
+		string $parent[] = `listRelatives -p $obj `;
+		
+		string $objType = `objectType $obj`;
+		if($objType == "")
+		{
+			error "Must select a joint";
+			
+		}
+		
+		switch($shapeSelected){
+      
+      case "Circle":
+          $ctrl = "circle -c 0 0 0 -nr 1 0 0 -sw 360 -r 1 -d 3 -ut 0 -tol 0.01 -s 8 -ch 0 -n \"ctrl\"; " ;
+          break;
+      case "Arrow on Ball Lrg":
+          $ctrl = "curve -d 1 -p 0 0.35 -1.001567 -p -0.336638 0.677886 -0.751175 -p -0.0959835 0.677886 -0.751175 -p -0.0959835 0.850458 -0.500783 -p -0.0959835 0.954001 -0.0987656 -p -0.500783 0.850458 -0.0987656 -p -0.751175 0.677886 -0.0987656 -p -0.751175 0.677886 -0.336638 -p -1.001567 0.35 0 -p -0.751175 0.677886 0.336638 -p -0.751175 0.677886 0.0987656 -p -0.500783 0.850458 0.0987656 -p -0.0959835 0.954001 0.0987656 -p -0.0959835 0.850458 0.500783 -p -0.0959835 0.677886 0.751175 -p -0.336638 0.677886 0.751175 -p 0 0.35 1.001567 -p 0.336638 0.677886 0.751175 -p 0.0959835 0.677886 0.751175 -p 0.0959835 0.850458 0.500783 -p 0.0959835 0.954001 0.0987656 -p 0.500783 0.850458 0.0987656 -p 0.751175 0.677886 0.0987656 -p 0.751175 0.677886 0.336638 -p 1.001567 0.35 0 -p 0.751175 0.677886 -0.336638 -p 0.751175 0.677886 -0.0987656 -p 0.500783 0.850458 -0.0987656 -p 0.0959835 0.954001 -0.0987656 -p 0.0959835 0.850458 -0.500783 -p 0.0959835 0.677886 -0.751175 -p 0.336638 0.677886 -0.751175 -p 0 0.35 -1.001567 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -k 30 -k 31 -k 32 -n \"ctrl\"; " ;
+          break;
+      case "Arrow on Ball Sml":
+          $ctrl = "curve -d 1 -p 0 0 0 -p 0.025 0 0.002 -p 0.05 0 0.008 -p 0.074 0 0.018 -p 0.074 -0.015 0.018 -p 0.097 0 0.031 -p 0.074 0.015 0.018 -p 0.074 0 0.018 -p 0.074 0.015 0.018 -p 0.097 0 0.031 -p 0.074 -0.015 0.018 -p 0.074 0 0.018 -p 0.05 0 0.008 -p 0.025 0 0.002 -p 0 0 0 -p -0.025 0 0.001 -p -0.05 0 0.007 -p -0.074 0 0.017 -p -0.074 0.015 0.017 -p -0.097 0 0.03 -p -0.074 -0.015 0.017 -p -0.074 0 0.017 -p -0.074 -0.015 0.017 -p -0.097 0 0.03 -p -0.074 0.015 0.017 -p -0.074 0 0.017 -p -0.05 0 0.007 -p -0.025 0 0.001 -p 0 0 0 -p 0 -0.025 0.002 -p 0 -0.05 0.008 -p 0 -0.074 0.017 -p -0.014 -0.074 0.019 -p 0 -0.097 0.031 -p 0.015 -0.074 0.02 -p 0 -0.074 0.017 -p 0.015 -0.074 0.02 -p 0 -0.097 0.031 -p -0.014 -0.074 0.019 -p 0 -0.074 0.017 -p 0 -0.05 0.008 -p 0 -0.025 0.002 -p 0 0 0 -p 0 0.025 0.002 -p 0 0.05 0.008 -p 0 0.074 0.017 -p 0.014 0.074 0.02 -p 0 0.097 0.031 -p -0.015 0.074 0.019 -p 0 0.074 0.017 -p -0.015 0.074 0.019 -p 0 0.097 0.031 -p 0.014 0.074 0.02 -p 0 0.074 0.017 -p 0 0.05 0.008 -p 0 0.025 0.002  -n \"ctrl\"; " ;
+          break;
+      case "Single Arrow":
+          $ctrl = "curve -d 1 -p -0.66 0 -0.33 -p 0 0 -0.33 -p 0 0 -0.66 -p 0.99 0 0 -p 0 0 0.66 -p 0 0 0.33 -p -0.66 0 0.33 -p -0.66 0 -0.33 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -n \"ctrl\"; " ;
+          break;
+      case "4 Lrg Arrow":
+          $ctrl = "curve -d 1 -p 0 0 -1.1025 -p -0.33 0 -0.6075 -p -0.165 0 -0.6075 -p -0.165 0 -0.165 -p -0.6075 0 -0.165 -p -0.6075 0 -0.33 -p -1.1025 0 0 -p -0.6075 0 0.33 -p -0.6075 0 0.165 -p -0.165 0 0.165 -p -0.165 0 0.6075 -p -0.33 0 0.6075 -p 0 0 1.1025 -p 0.33 0 0.6075 -p 0.165 0 0.6075 -p 0.165 0 0.165 -p 0.6075 0 0.165 -p 0.6075 0 0.33 -p 1.1025 0 0 -p 0.6075 0 -0.33 -p 0.6075 0 -0.165 -p 0.165 0 -0.165 -p 0.165 0 -0.6075 -p 0.33 0 -0.6075 -p 0 0 -1.1025 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -n \"ctrl\"; " ;
+          break;
+      case "180 Arrow":
+          $ctrl = "curve -d 1 -p -1.084005 0 -0.092136 -p -0.791121 0 -0.955956 -p -0.707107 0 -0.707107 -p -0.570265 0 -0.843948 -p -0.205819 0 -1.040044 -p 0.405223 0 -0.978634 -p 0.881027 0 -0.588697 -p 1.059487 0 0 -p 0.881027 0 0.588697 -p 0.405223 0 0.978634 -p -0.205819 0 1.040044 -p -0.570265 0 0.843948 -p -0.707107 0 0.707107 -p -0.791121 0 0.955956 -p -1.084005 0 0.092136 -p -0.315189 0 0.413069 -p -0.540989 0 0.540989 -p -0.436294 0 0.645682 -p -0.157467 0 0.79571 -p 0.310025 0 0.748727 -p 0.67405 0 0.450396 -p 0.810585 0 0 -p 0.67405 0 -0.450396 -p 0.310025 0 -0.748727 -p -0.157467 0 -0.79571 -p -0.436294 0 -0.645682 -p -0.540989 0 -0.540989 -p -0.315189 0 -0.413069 -p -1.084005 0 -0.092136 -p -0.791121 0 -0.955956 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -n \"ctrl\"; " ;
+          break;
+      case "Pin":
+          $ctrl  = "curve -d 1 -p 0 0 0 -p 0 1.2 0 -p -0.235114 1.276393 0 -p -0.380423 1.476393 0 -p -0.380423 1.723607 0 -p -0.235114 1.923607 0 -p 0 2 0 -p 0.235114 1.923607 0 -p 0.380423 1.723607 0 -p 0.380423 1.476393 0 -p 0.235114 1.276393 0 -p 0 1.2 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -n \"ctrl\"; " ;
+          break;
+      case "2 Pin":   
+          $ctrl  = "curve -d 1 -p 0 -1.2 0 -p -0.235114 -1.276393 0 -p -0.380423 -1.476393 0 -p -0.380423 -1.723607 0 -p -0.235114 -1.923607 0 -p 0 -2 0 -p 0.235114 -1.923607 0 -p 0.380423 -1.723607 0 -p 0.380423 -1.476393 0 -p 0.235114 -1.276393 0 -p 0 -1.2 0 -p 0 1.2 0 -p -0.235114 1.276393 0 -p -0.380423 1.476393 0 -p -0.380423 1.723607 0 -p -0.235114 1.923607 0 -p 0 2 0 -p 0.235114 1.923607 0 -p 0.380423 1.723607 0 -p 0.380423 1.476393 0 -p 0.235114 1.276393 0 -p 0 1.2 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21  -n \"ctrl\"; " ;
+          break;
+      case "4 Pin":
+          $ctrl  = "curve -d 1 -p -1.2 0 0 -p -1.276393 0.235114 0 -p -1.476393 0.380423 0 -p -1.723607 0.380423 0 -p -1.923607 0.235114 0 -p -2 0 0 -p -1.923607 -0.235114 0 -p -1.723607 -0.380423 0 -p -1.476393 -0.380423 0 -p -1.276393 -0.235114 0 -p -1.2 0 0 -p 0 0 0 -p 1.2 0 0 -p 1.276393 0.235114 0 -p 1.476393 0.380423 0 -p 1.723607 0.380423 0 -p 1.923607 0.235114 0 -p 2 0 0 -p 1.923607 -0.235114 0 -p 1.723607 -0.380423 0 -p 1.476393 -0.380423 0 -p 1.276393 -0.235114 0 -p 1.2 0 0 -p 0 0 0 -p 0 -1.2 0 -p -0.235114 -1.276393 0 -p -0.380423 -1.476393 0 -p -0.380423 -1.723607 0 -p -0.235114 -1.923607 0 -p 0 -2 0 -p 0.235114 -1.923607 0 -p 0.380423 -1.723607 0 -p 0.380423 -1.476393 0 -p 0.235114 -1.276393 0 -p 0 -1.2 0 -p 0 0 0 -p 0 1.2 0 -p -0.235114 1.276393 0 -p -0.380423 1.476393 0 -p -0.380423 1.723607 0 -p -0.235114 1.923607 0 -p 0 2 0 -p 0.235114 1.923607 0 -p 0.380423 1.723607 0 -p 0.380423 1.476393 0 -p 0.235114 1.276393 0 -p 0 1.2 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -k 30 -k 31 -k 32 -k 33 -k 34 -k 35 -k 36 -k 37 -k 38 -k 39 -k 40 -k 41 -k 42 -k 43 -k 44 -k 45 -k 46  -n \"ctrl\"; " ;
+          break;
+      case "Sphere":    
+          $ctrl  = "curve -d 1 -p 0 1 0 -p -0.382683 0.92388 0 -p -0.707107 0.707107 0 -p -0.92388 0.382683 0 -p -1 0 0 -p -0.92388 -0.382683 0 -p -0.707107 -0.707107 0 -p -0.382683 -0.92388 0 -p 0 -1 0 -p 0.382683 -0.92388 0 -p 0.707107 -0.707107 0 -p 0.92388 -0.382683 0 -p 1 0 0 -p 0.92388 0.382683 0 -p 0.707107 0.707107 0 -p 0.382683 0.92388 0 -p 0 1 0 -p 0 0.92388 0.382683 -p 0 0.707107 0.707107 -p 0 0.382683 0.92388 -p 0 0 1 -p 0 -0.382683 0.92388 -p 0 -0.707107 0.707107 -p 0 -0.92388 0.382683 -p 0 -1 0 -p 0 -0.92388 -0.382683 -p 0 -0.707107 -0.707107 -p 0 -0.382683 -0.92388 -p 0 0 -1 -p 0 0.382683 -0.92388 -p 0 0.707107 -0.707107 -p 0 0.92388 -0.382683 -p 0 1 0 -p -0.382683 0.92388 0 -p -0.707107 0.707107 0 -p -0.92388 0.382683 0 -p -1 0 0 -p -0.92388 0 0.382683 -p -0.707107 0 0.707107 -p -0.382683 0 0.92388 -p 0 0 1 -p 0.382683 0 0.92388 -p 0.707107 0 0.707107 -p 0.92388 0 0.382683 -p 1 0 0 -p 0.92388 0 -0.382683 -p 0.707107 0 -0.707107 -p 0.382683 0 -0.92388 -p 0 0 -1 -p -0.382683 0 -0.92388 -p -0.707107 0 -0.707107 -p -0.92388 0 -0.382683 -p -1 0 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -k 30 -k 31 -k 32 -k 33 -k 34 -k 35 -k 36 -k 37 -k 38 -k 39 -k 40 -k 41 -k 42 -k 43 -k 44 -k 45 -k 46 -k 47 -k 48 -k 49 -k 50 -k 51 -k 52 -n \"ctrl\"; " ;
+          break;
+      case "Dumbbell":    
+          $ctrl  = "curve -d 1 -p 0 0.5 0 -p -1 0.5 0 -p -0.707107 0.5 -0.707107 -p 0 0.5 -1 -p 0 0.5 0 -p 0 0.5 -1 -p 0.707107 0.5 -0.707107 -p 1 0.5 0 -p 0 0.5 0 -p 1 0.5 0 -p 0.707107 0.5 0.707107 -p 0 0.5 1 -p 0 0.5 0 -p 0 0.5 1 -p -0.707107 0.5 0.707107 -p -1 0.5 0 -p 0 0.5 0 -p 0 -0.5 0 -p -1 -0.5 0 -p -0.707107 -0.5 -0.707107 -p 0 -0.5 -1 -p 0 -0.5 0 -p 0 -0.5 -1 -p 0.707107 -0.5 -0.707107 -p 1 -0.5 0 -p 0 -0.5 0 -p 1 -0.5 0 -p 0.707107 -0.5 0.707107 -p 0 -0.5 1 -p 0 -0.5 0 -p 0 -0.5 1 -p -0.707107 -0.5 0.707107 -p -1 -0.5 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -k 30 -k 31 -k 32 -n \"ctrl\"; " ;
+          break;
+      case "Cylinder": 
+          $ctrl  = "curve -d 1 -p -1 -0.5 0 -p -0.707107 -0.5 -0.707107 -p -0.707107 0.5 -0.707107 -p -1 0.5 0 -p -1 -0.5 0 -p -0.707107 -0.5 0.707107 -p -0.707107 0.5 0.707107 -p -1 0.5 0 -p -0.707107 0.5 0.707107 -p 0 0.5 1 -p 0 -0.5 1 -p -0.707107 -0.5 0.707107 -p 0 -0.5 1 -p 0.707107 -0.5 0.707107 -p 0.707107 0.5 0.707107 -p 0 0.5 1 -p 0.707107 0.5 0.707107 -p 1 0.5 0 -p 1 -0.5 0 -p 0.707107 -0.5 0.707107 -p 1 -0.5 0 -p 1 0.5 0 -p 0.707107 0.5 -0.707107 -p 0.707107 -0.5 -0.707107 -p 1 -0.5 0 -p 0.707107 -0.5 -0.707107 -p 0 -0.5 -1 -p 0 0.5 -1 -p 0.707107 0.5 -0.707107 -p 0 0.5 -1 -p -0.707107 0.5 -0.707107 -p -0.707107 -0.5 -0.707107 -p 0 -0.5 -1 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -k 30 -k 31 -k 32 -n \"ctrl\"; " ;
+          break;
+      case "Cone":    
+          $ctrl  = "curve -d 1 -p 0 0 -1 -p 0 2 0 -p 0 0 -1 -p -0.707107 0 -0.707107 -p 0 2 0 -p -0.707107 0 -0.707107 -p -1 0 0 -p 0 2 0 -p -1 0 0 -p -0.707107 0 0.707107 -p 0 2 0 -p -0.707107 0 0.707107 -p 0 0 1 -p 0 2 0 -p 0 0 1 -p 0.707107 0 0.707107 -p 0 2 0 -p 0.707107 0 0.707107 -p 1 0 0 -p 0 2 0 -p 1 0 0 -p 0.707107 0 -0.707107 -p 0 2 0 -p 0.707107 0 -0.707107 -p 0 0 -1 -p 0 2 0 -p 0 0 -1 -p -0.707107 0 -0.707107 -p 0 2 0 -p -0.707107 0 -0.707107 -p -1 0 0 -p 0 2 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -k 30 -k 31 -n \"ctrl\"; " ;
+          break;
+      case "Root":
+         $ctrl = "curve -d 1 -p 0 0 1 -p -0.866025 0 -0.5 -p 0 0 0 -p 0.866025 0 -0.5 -p 0 0 1 -k 0 -k 1.732051 -k 2.732051 -k 3.732051 -k 5.464102 -n \"ctrl\"; " ;
+         break;
+      case "Translate":
+          $ctrl = "curve -d 1 -p 0.5 0.5 -0.5 -p -0.5 0.5 -0.5 -p -0.5 0.5 0.5 -p -0.5 -0.5 0.5 -p -0.5 0.5 0.5 -p 0.5 0.5 0.5 -p 0.5 0.5 -0.5 -p 0.5 -0.5 -0.5 -p -0.5 -0.5 -0.5 -p -0.5 0.5 -0.5 -p -0.5 -0.5 -0.5 -p -0.5 -0.5 0.5 -p 0.5 -0.5 0.5 -p 0.5 0.5 0.5 -p 0.5 -0.5 0.5 -p 0.5 -0.5 -0.5 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -n \"ctrl\"; " ;
+          break;
+      case "Rotation":
+         $ctrl = "curve -d 3 -p 0 0.3535535 0.3535535 -p 0 0.5 0 -p 0.3535535 0.3535535 0 -p 0.5 0 0 -p 0.3535535 0 0.3535535 -p 0 0 0.5 -p 0 0.3535535 0.3535535 -p 0 0.5 0 -p 0.3535535 0.3535535 0 -p 0.5 0 0 -p 0.3535535 0 -0.3535535 -p 0 0 -0.5 -p 0 0.3535535 -0.3535535 -p 0 0.5 0 -p -0.3535535 0.3535535 0 -p -0.5 0 0 -p -0.3535535 0 -0.3535535 -p 0 0 -0.5 -p 0 -0.3535535 -0.3535535 -p 0 -0.5 0 -p -0.3535535 -0.3535535 0 -p -0.5 0 0 -p -0.3535535 0 0.3535535 -p 0 0 0.5 -p 0 -0.3535535 0.3535535 -p 0 -0.5 0 -p 0.3535535 -0.3535535 0 -p 0.5 0 0 -p 0.3535535 0 0.3535535 -p 0 0 0.5 -p 0 -0.3535535 0.3535535 -p 0 -0.5 0 -p -0.3535535 -0.3535535 0 -p -0.5 0 0 -p -0.3535535 0 -0.3535535 -p 0 0 -0.5 -p 0 -0.3535535 -0.3535535 -p 0 -0.5 0 -p 0.3535535 -0.3535535 0 -p 0.5 0 0 -p 0.3535535 0 -0.3535535 -p 0 0 -0.5 -p 0 -0.3535535 -0.3535535 -p 0 -0.5 0 -p 0.3535535 -0.3535535 0 -p 0.5 0 0 -p 0.3535535 0 -0.3535535 -p 0 0 -0.5 -p 0 0.3535535 -0.3535535 -p 0 0.5 0 -p 0.3535535 0.3535535 0 -p 0.5 0 0 -p 0.3535535 0 -0.3535535 -p 0 0 -0.5 -p 0 0.3535535 -0.3535535 -p 0 0.5 0 -p -0.3535535 0.3535535 0 -p -0.5 0 0 -p -0.3535535 0 0.3535535 -p 0 0 0.5 -p 0 0.3535535 0.3535535 -p 0 0.5 0 -p -0.3535535 0.3535535 0 -p -0.5 0 0 -p -0.3535535 0 -0.3535535 -p 0 0 -0.5 -p 0 0.3535535 -0.3535535 -p 0 0.5 0 -k -1.530734 -k -0.765367 -k 0 -k 0.765367 -k 1.530734 -k 2.296101 -k 3.061467 -k 3.826834 -k 4.592201 -k 5.357568 -k 6.122935 -k 6.888302 -k 7.653669 -k 8.419036 -k 9.184402 -k 9.949769 -k 10.715136 -k 11.480503 -k 12.24587 -k 13.011237 -k 13.776604 -k 14.54197 -k 15.307337 -k 16.072704 -k 16.838071 -k 17.603438 -k 18.368805 -k 19.134172 -k 19.899538 -k 20.664905 -k 21.430272 -k 22.195639 -k 22.961006 -k 23.726373 -k 24.49174 -k 25.257107 -k 26.022473 -k 26.78784 -k 27.553207 -k 28.318574 -k 29.083941 -k 29.849308 -k 30.614675 -k 31.380041 -k 32.145408 -k 32.910775 -k 33.676142 -k 34.441509 -k 35.206876 -k 35.972243 -k 36.73761 -k 37.502976 -k 38.268343 -k 39.03371 -k 39.799077 -k 40.564444 -k 41.329811 -k 42.095178 -k 42.860544 -k 43.625911 -k 44.391278 -k 45.156645 -k 45.922012 -k 46.687379 -k 47.452746 -k 48.218112 -k 48.983479 -k 49.748846 -k 50.514213 -k 51.27958 -n \"ctrl\"; " ;
+         break;
+      case "poleVector":
+          $ctrl = "curve -d 1 -p 0 0 0 -p -0.5 -1 0.5 -p 0.5 -1 -0.5 -p 0 0 0 -p 0.5 -1 0.5 -p -0.5 -1 -0.5 -p 0 0 0 -p 0 -1 0 -k 0 -k 1.224745 -k 2.638958 -k 3.863703 -k 5.088448 -k 6.502662 -k 7.727407 -k 8.727407 -n \"ctrl\"; " ;
+          break;
+      case "Special":
+          $ctrl = "curve -d 3 -p 0 0 0 -p 0 1 0 -p 0 0 0 -p -1 0 0 -p 0 0 0 -p 0 -1 0 -p 0 0 0 -p 1 0 0 -p 0 0 0 -p 0 1 0 -p 0 0 0 -p 0 0 -1 -p 0 0 0 -p 0 1 0 -p 0 0 0 -p 0 -1 0 -p 0 0 0 -p 0 0 -1 -p 0 0 0 -p 0 -1 0 -p 0 0 0 -p 0 0 1 -p 0 0 0 -p 0 1 0 -p 0 0 0 -p 0 0 1 -p 0 0 0 -p 1 0 0 -p 0 0 0 -p 0 0 -1 -p 0 0 0 -p -1 0 0 -p 0 0 0 -p 0 0 1 -p 0 0 0 -k -2 -k -1 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -k 30 -k 31 -k 32 -k 33 -k 34 -n \"ctrl\"; " ;
+          break;
+      case "handHeld":
+          $ctrl = "curve -d 1 -p 0.003 -0.012 0.002 -p -0.003 -0.012 0.002 -p -0.003 -0.012 -0.006 -p 0.003 -0.012 -0.006 -p 0.003 -0.012 0.002 -p 0.003 0.036 0.002 -p 0.003 0.036 -0.006 -p 0.003 -0.012 -0.006 -p -0.003 -0.012 -0.006 -p -0.003 0.036 -0.006 -p -0.003 0.036 0.002 -p -0.003 -0.012 0.002 -p 0.003 -0.012 0.002 -p 0.003 0.036 0.002 -p -0.003 0.036 0.002 -p -0.003 0.036 -0.006 -p 0.003 0.036 -0.006 -p 0.003 0.036 0.002 -p 0 0.036 -0.006 -p 0 0.097 -0.006 -p 0 0.109 -0.004 -p 0 0.116 0 -p 0 0.12 0.002 -p 0 0.115 0.004 -p 0 0.109 0.005 -p 0 0.091 0.006 -p 0 0.036 0.006 -p 0 0.036 -0.006 -n \"ctrl\"; " ;
+          break;
+      case "COG":
+          $ctrl = "curve -d 1 -p -0.5 0.1 -0.5 -p -0.3 0.1 -0.5 -p -0.3 0.1 -0.4 -p 0.3 0.1 -0.4 -p 0.3 0.1 -0.5 -p 0.5 0.1 -0.5 -p 0.5 0 -0.5 -p 0.3 0 -0.5 -p 0.3 0 -0.4 -p -0.3 0 -0.4 -p -0.3 0 -0.5 -p -0.5 0 -0.5 -p -0.5 0.1 -0.5 -p -0.5 0.1 -0.3 -p -0.4 0.1 -0.3 -p -0.4 0.1 0.3 -p -0.5 0.1 0.3 -p -0.5 0.1 0.5 -p -0.5 0 0.5 -p -0.3 0 0.5 -p -0.3 0 0.4 -p 0.3 0 0.4 -p 0.3 0 0.5 -p 0.5 0 0.5 -p 0.5 0.1 0.5 -p 0.5 0.1 0.3 -p 0.4 0.1 0.3 -p 0.4 0.1 -0.3 -p 0.5 0.1 -0.3 -p 0.5 0.1 -0.5 -p 0.5 0 -0.5 -p 0.5 0 -0.3 -p 0.4 0 -0.3 -p 0.4 0 0.3 -p 0.5 0 0.3 -p 0.5 0 0.5 -p 0.5 0.1 0.5 -p 0.3 0.1 0.5 -p 0.3 0.1 0.4 -p -0.3 0.1 0.4 -p -0.3 0.1 0.5 -p -0.5 0.1 0.5 -p -0.5 0 0.5 -p -0.5 0 0.3 -p -0.4 0 0.3 -p -0.4 0 -0.3 -p -0.5 0 -0.3 -p -0.5 0 -0.5 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -k 30 -k 31 -k 32 -k 33 -k 34 -k 35 -k 36 -k 37 -k 38 -k 39 -k 40 -k 41 -k 42 -k 43 -k 44 -k 45 -k 46 -k 47 -n \"ctrl\"; " ;
+          break;
+      case "Square":
+          $ctrl = "curve -d 1 -p -0.5 0.5 0 -p 0.5 0.5 0 -p 0.5 -0.5 0 -p -0.5 -0.5 0 -p -0.5 0.5 0 -k 0 -k 1 -k 2 -k 3 -k 4 -n \"ctrl\"; " ;
+          break;
+      
+    }
+		
+				
+	
+		eval($ctrl);
+		
+		
+		DeleteHistory;
+		
+		$ctrl = "ctrl";
+		int $spans = `getAttr ($ctrl + ".spans")`;
+		select -r ($ctrl + ".cv[0:" + $spans + "]");
+		scale -r $conScale $conScale $conScale;
+		select -r $obj;
+		
+		
+		
+	
+		select -cl;
+		string $ctrlShape[] = `listRelatives $ctrl`;
+		
+		
+//-------------------------------------------------------------------------------
+// Orient Selected
+//-------------------------------------------------------------------------------	
+		if($oriState == 1)
+		{
+			string $suffix = "_GRP";
+			if($prefix == "")
+			{
+				$ctrl = `rename $ctrl ($obj + "CON")`;
+			}
+			else
+			{
+				$ctrl = `rename $ctrl ($prefix + $obj)`;
+			}
+			string $grpName = $ctrl + $suffix;
+			$grpNode = `group -n $grpName $ctrl`;
+			
+			if($parent[0] != "")
+			{
+				pointConstraint -weight 1 $parent[0] $inherit;
+				orientConstraint -weight 1 $parent[0] $inherit;
+			}
+			
+			
+				parent -r $grpNode $obj;
+				parent -w $grpNode;	
+			
+			
+			//parent control and group node under inherit transfomations
+			parent $ctrl $grpNode $inherit;
+			parent $ctrl $grpNode;
+			if($extraGrp == true)
+			{
+				string $master = `group -em -n ($grpNode + "Master")`;
+				parent -r $master $grpNode;
+				parent -w $master;
+				parent $grpNode $master;
+				parent $master $inherit;
+				snLockAndHide($master);
+				
+				float $conPivot[] = `xform -q -ws -rp $ctrl`;
+				xform -ws -rp $conPivot[0] $conPivot[1] $conPivot[2] $grpNode;
+			}
+			
+			float $conPivot[] = `xform -q -ws -rp $ctrl`;
+			xform -ws -rp $conPivot[0] $conPivot[1] $conPivot[2] $grpNode;
+			pointConstraint -mo -weight 1 $obj $grpNode;
+			
+		
+			
+			
+			//we're just making it orient constrained
+			orientConstraint -mo $ctrl $obj;
+			if($parent[0] != "")
+			{
+				inherit_OrientRot($ctrl, $inherit, $obj);
+			}
+			snLockAndHide($inherit);
+			if($makeStretch == 1)
+				makeStretch($ctrl, $obj);
+			
+			select -r $ctrl;
+			string $sel[] = `ls -sl`;
+			if($makeUserControl == 1)
+			   userPositionControl $sel;
+			
+			
+		}
+//-------------------------------------------------------------------------------
+// Point Selected
+//-------------------------------------------------------------------------------	
+		if($pointState == 1)
+		{
+			string $suffix = "_GRP";
+			if($prefix == "")
+			{
+				$ctrl = `rename $ctrl ($obj + "CON")`;
+			}
+			else
+			{
+				$ctrl = `rename $ctrl ($prefix + $obj)`;
+			}
+			string $grpName = $ctrl + $suffix;
+			$grpNode = `group -n $grpName $ctrl`;
+			
+			if($parent[0] != "")
+			{
+				pointConstraint -weight 1 $parent[0] $inherit;
+				orientConstraint -weight 1 $parent[0] $inherit;
+			}
+			parent -r $grpNode $obj;
+			parent -w $grpNode;	
+			
+			//parent control and group node under inherit transfomations
+			parent $ctrl $grpNode $inherit;
+			parent $ctrl $grpNode;
+			
+			if($extraGrp == true)
+			{
+				string $master = `group -em -n ($grpNode + "Master")`;
+				parent -r $master $grpNode;
+				parent -w $master;
+				parent $grpNode $master;
+				parent $master $inherit;
+				snLockAndHide($master);
+				
+				float $conPivot[] = `xform -q -ws -rp $ctrl`;
+				xform -ws -rp $conPivot[0] $conPivot[1] $conPivot[2] $grpNode;
+			}
+			
+			float $conPivot[] = `xform -q -ws -rp $ctrl`;
+			xform -ws -rp $conPivot[0] $conPivot[1] $conPivot[2] $grpNode;
+			
+			//we're just making it a pointConstraint
+			pointConstraint -mo $ctrl $obj;
+			snLockAndHide($inherit);
+			if($makeStretch == 1)
+				makeStretch($ctrl, $obj);
+			
+			select -r $ctrl;
+			string $sel[] = `ls -sl`;
+			if($makeUserControl == 1)
+			   userPositionControl $sel;
+		}
+		
+//-------------------------------------------------------------------------------
+// Point/Orient Selected
+//-------------------------------------------------------------------------------			
+		if($pointOriState == 1)
+		{
+			string $suffix = "_GRP";
+			if($prefix == "")
+			{
+				$ctrl = `rename $ctrl ($obj + "CON")`;
+			}
+			else
+			{
+				$ctrl = `rename $ctrl ($prefix + $obj)`;
+			}
+			string $grpName = $ctrl + $suffix;
+			$grpNode = `group -n $grpName $ctrl`;
+			
+			if($parent[0] != "")
+			{
+				pointConstraint -weight 1 $parent[0] $inherit;
+				orientConstraint -weight 1 $parent[0] $inherit;
+			}
+			
+			parent -r $grpNode $obj;
+			parent -w $grpNode;
+			
+			//parent control and group node under inherit transfomations//
+			parent $ctrl $grpNode $inherit;
+			parent $ctrl $grpNode;
+			
+			if($extraGrp == true)
+			{
+				string $master = `group -em -n ($grpNode + "Master")`;
+				parent -r $master $grpNode;
+				parent -w $master;
+				parent $grpNode $master;
+				parent $master $inherit;
+				snLockAndHide($master);
+				
+				float $conPivot[] = `xform -q -ws -rp $ctrl`;
+				xform -ws -rp $conPivot[0] $conPivot[1] $conPivot[2] $grpNode;
+			}
+			
+			float $conPivot[] = `xform -q -ws -rp $ctrl`;
+			xform -ws -rp $conPivot[0] $conPivot[1] $conPivot[2] $grpNode;
+			
+			
+			//we're just making it a pointConstraint and pointConstraint
+			//can't have inherit attributes since the child object is 
+			//point contrained
+			orientConstraint -mo $ctrl $obj;
+			pointConstraint -mo $ctrl $obj;
+			snLockAndHide($inherit);
+			select -r $ctrl;
+		}
+//-------------------------------------------------------------------------------
+// Shape Selected
+//-------------------------------------------------------------------------------			
+		if($shapeState == 1)
+		{
+						
+			string $newShape = `rename $ctrlShape[0] ($obj + "Shape")`;
+			parent -r -shape $newShape $obj;
+			delete $ctrl;
+			delete $inherit;
+			
+			select -r $obj;
+			
+			if($lockAndHideTrans == 1)
+			{
+				setAttr -lock true -keyable false ($obj + ".tx");
+				setAttr -lock true -keyable false ($obj + ".ty");
+				setAttr -lock true -keyable false ($obj + ".tz");
+			}
+			if($lockAndHideRot == 1)
+			{
+				setAttr -lock true -keyable false ($obj + ".rx");
+				setAttr -lock true -keyable false ($obj + ".ry");
+				setAttr -lock true -keyable false ($obj + ".rz");
+			}
+			if($lockAndHideScale == 1)
+			{
+				setAttr -lock true -keyable false ($obj + ".sx");
+				setAttr -lock true -keyable false ($obj + ".sy");
+				setAttr -lock true -keyable false ($obj + ".sz");
+			}
+			
+			select -r $ctrl;
+			string $sel[] = `ls -sl`;
+			if($makeUserControl == 1)
+			   userPositionControl $sel;
+		}
+
+//-------------------------------------------------------------------------------
+// Just Snap Selected
+//-------------------------------------------------------------------------------	
+		if($snapState == 1)
+		{
+			
+			string $suffix = "_GRP";
+			if($prefix == "")
+			{
+				$ctrl = `rename $ctrl ($obj + "CON")`;
+			}
+			else
+			{
+				$ctrl = `rename $ctrl ($prefix + $obj)`;
+			}
+			string $grpName = $ctrl + $suffix;
+			$grpNode = `group -n $grpName $ctrl`;
+			
+			
+			
+		
+			parent -r $grpNode $obj;
+			parent -w $grpNode;
+			
+			float $conPivot[] = `xform -q -ws -rp $ctrl`;
+			xform -ws -rp $conPivot[0] $conPivot[1] $conPivot[2] $grpNode;
+			
+			if($extraGrp == true)
+			{
+				$master = `group -em -n ($grpNode + "Master")`;
+				parent -r $master $grpNode;
+				parent -w $master;
+				parent $grpNode $master;
+				snLockAndHide($master);
+				
+				float $conPivot[] = `xform -q -ws -rp $ctrl`;
+				xform -ws -rp $conPivot[0] $conPivot[1] $conPivot[2] $grpNode;
+				
+			}
+			if(`objExists $inherit`)
+			{
+				delete $inherit;
+			}
+			
+			if($makeStretch == 1)
+			{
+				makeStretch($ctrl, $obj);
+			}
+			
+			select -r $ctrl;
+			string $sel[] = `ls -sl`;
+			if($makeUserControl == 1)
+			   userPositionControl $sel;
+			
+		}
+		
+//-------------------------------------------------------------------------------
+// Advanced FK
+//-------------------------------------------------------------------------------	
+		if($advanFK == 1)
+		{
+			string $suffix = "_GRP";
+			if($prefix == "")
+			{
+				$ctrl = `rename $ctrl ($obj + "CON")`;
+			}
+			else
+			{
+				$ctrl = `rename $ctrl ($prefix + $obj)`;
+			}
+			string $grpName = $ctrl + $suffix;
+			$grpNode = `group -n $grpName $ctrl`;
+			
+			if($parent[0] != "")
+			{
+				pointConstraint -weight 1 $parent[0] $inherit;
+				orientConstraint -weight 1 $parent[0] $inherit;
+			}
+			
+			
+				parent -r $grpNode $obj;
+				parent -w $grpNode;	
+			
+			
+			//parent control and group node under inherit transfomations
+			parent $ctrl $grpNode $inherit;
+			parent $ctrl $grpNode;
+		
+				string $master = `group -em -n ($grpNode + "Master")`;
+				parent -r $master $grpNode;
+				parent -w $master;
+				parent $grpNode $master;
+				parent $master $inherit;
+				snLockAndHide($master);
+				
+				float $conPivot[] = `xform -q -ws -rp $ctrl`;
+				xform -ws -rp $conPivot[0] $conPivot[1] $conPivot[2] $grpNode;
+			
+			
+			float $conPivot[] = `xform -q -ws -rp $ctrl`;
+			xform -ws -rp $conPivot[0] $conPivot[1] $conPivot[2] $grpNode;
+			pointConstraint -mo -weight 1 $obj $grpNode;
+			
+		
+			
+			
+			//we're just making it orient constrained
+			orientConstraint -mo $ctrl $obj;
+			if($parent[0] != "")
+			{
+				inherit_OrientRot($ctrl, $inherit, $obj);
+			}
+			
+    			if($lockAndHideTrans == 1)
+    			{
+    				setAttr -lock true -keyable false ($ctrl + ".tx");
+    				setAttr -lock true -keyable false ($ctrl + ".ty");
+    				setAttr -lock true -keyable false ($ctrl + ".tz");
+    			}
+    			if($lockAndHideRot == 1)
+    			{
+    				setAttr -lock true -keyable false ($ctrl + ".rx");
+    				setAttr -lock true -keyable false ($ctrl + ".ry");
+    				setAttr -lock true -keyable false ($ctrl + ".rz");
+    			}
+    			if($lockAndHideScale == 1)
+    			{
+    				setAttr -lock true -keyable false ($ctrl + ".sx");
+    				setAttr -lock true -keyable false ($ctrl + ".sy");
+    				setAttr -lock true -keyable false ($ctrl + ".sz");
+    			}
+		
+		
+			snLockAndHide($inherit);
+		
+			select -r $ctrl;
+			
+			
+		}
+		
+		if($snapState == 1 || $pointOriState == 1 || $pointState == 1 ||$oriState == 1 || $advanFK == 1 )
+		{
+			if($lockAndHideTrans == 1)
+			{
+				setAttr -lock true -keyable false ($ctrl + ".tx");
+				setAttr -lock true -keyable false ($ctrl + ".ty");
+				setAttr -lock true -keyable false ($ctrl + ".tz");
+			}
+			if($lockAndHideRot == 1)
+			{
+				setAttr -lock true -keyable false ($ctrl + ".rx");
+				setAttr -lock true -keyable false ($ctrl + ".ry");
+				setAttr -lock true -keyable false ($ctrl + ".rz");
+			}
+			if($lockAndHideScale == 1)
+			{
+				setAttr -lock true -keyable false ($ctrl + ".sx");
+				setAttr -lock true -keyable false ($ctrl + ".sy");
+				setAttr -lock true -keyable false ($ctrl + ".sz");
+			}
+		}
+		
+		if($pointOriState == 1 || $pointState == 1 ||$oriState == 1 || $advanFK == 1 )
+			{
+				if($mainGrpName != "")
+				{
+					if(`objExists $mainGrpName`)
+					{
+						parent $inherit $mainGrpName;
+						select -r $ctrl;
+					}
+					else
+					{
+						group -em -n $mainGrpName;
+						parent $inherit $mainGrpName;
+						select -r $ctrl;
+					}
+				}
+			}
+			
+		if($snapState == 1 )
+			{
+				if($mainGrpName != "")
+				{
+					if(`objExists $mainGrpName`)
+					{
+						parent $grpNode $mainGrpName;
+						select -r $ctrl;
+					}
+					else
+					{
+						group -em -n $mainGrpName;
+						parent $grpNode $mainGrpName;
+						select -r $ctrl;
+					}
+				}
+			}
+		if($snapState == 1 || $pointOriState == 1 || $pointState == 1 ||$oriState == 1 )
+		{
+			//change the control color
+			$shape = `listRelatives $ctrl`;
+			setAttr ($shape[0] + ".overrideEnabled") 1;
+			int $color = `colorIndexSliderGrp -q -v conColor`;
+			if($color > 0)
+				setAttr ($shape[0] + ".overrideColor") ($color - 1); 
+		}
+		else
+		{
+			$shape = `listRelatives -s $objects[$i]`;
+			setAttr ($shape[0] + ".overrideEnabled") 1;
+			int $color = `colorIndexSliderGrp -q -v conColor`;
+			if($color > 0)
+				setAttr ($shape[0] + ".overrideColor") ($color - 1); 
+		}
+		
+		if($snapState == 1 || $pointOriState == 1 || $pointState == 1 ||$oriState == 1 )
+		{
+  		//set the rotate order of the control to be the same
+  		//as the joint
+  		$rotateOrder = `getAttr ($obj + ".rotateOrder")`;
+  		setAttr ($ctrl + ".rotateOrder") $rotateOrder;
+		}
+		$i++;
+	};//end for
+	
+	//New loop for the Advanced FK
+	if($advanFK == 1)
+	{
+	    string $firstJoint = $objects[0];  
+      $ctrl  = "curve -d 1 -p 0 1 0 -p -0.382683 0.92388 0 -p -0.707107 0.707107 0 -p -0.92388 0.382683 0 -p -1 0 0 -p -0.92388 -0.382683 0 -p -0.707107 -0.707107 0 -p -0.382683 -0.92388 0 -p 0 -1 0 -p 0.382683 -0.92388 0 -p 0.707107 -0.707107 0 -p 0.92388 -0.382683 0 -p 1 0 0 -p 0.92388 0.382683 0 -p 0.707107 0.707107 0 -p 0.382683 0.92388 0 -p 0 1 0 -p 0 0.92388 0.382683 -p 0 0.707107 0.707107 -p 0 0.382683 0.92388 -p 0 0 1 -p 0 -0.382683 0.92388 -p 0 -0.707107 0.707107 -p 0 -0.92388 0.382683 -p 0 -1 0 -p 0 -0.92388 -0.382683 -p 0 -0.707107 -0.707107 -p 0 -0.382683 -0.92388 -p 0 0 -1 -p 0 0.382683 -0.92388 -p 0 0.707107 -0.707107 -p 0 0.92388 -0.382683 -p 0 1 0 -p -0.382683 0.92388 0 -p -0.707107 0.707107 0 -p -0.92388 0.382683 0 -p -1 0 0 -p -0.92388 0 0.382683 -p -0.707107 0 0.707107 -p -0.382683 0 0.92388 -p 0 0 1 -p 0.382683 0 0.92388 -p 0.707107 0 0.707107 -p 0.92388 0 0.382683 -p 1 0 0 -p 0.92388 0 -0.382683 -p 0.707107 0 -0.707107 -p 0.382683 0 -0.92388 -p 0 0 -1 -p -0.382683 0 -0.92388 -p -0.707107 0 -0.707107 -p -0.92388 0 -0.382683 -p -1 0 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -k 30 -k 31 -k 32 -k 33 -k 34 -k 35 -k 36 -k 37 -k 38 -k 39 -k 40 -k 41 -k 42 -k 43 -k 44 -k 45 -k 46 -k 47 -k 48 -k 49 -k 50 -k 51 -k 52 -n \"ctrl\"; " ;
+      eval($ctrl);
+      
+      DeleteHistory;
+      $ctrl = "ctrl";
+      int $spans = `getAttr ($ctrl + ".spans")`;
+      select -r ($ctrl + ".cv[0:" + $spans + "]");
+      scale -r $conScale $conScale $conScale;
+      
+      
+      string $suffix = "_GRP";
+			if($prefix == "")
+			{
+				$ctrl = `rename $ctrl ($firstJoint + "FKCON")`;
+			}
+			else
+			{
+				$ctrl = `rename $ctrl ($prefix + $firstJoint)`;
+			}
+			string $grpName = $ctrl + $suffix;
+			$grpNode = `group -n $grpName $ctrl`;
+			
+			
+			
+		
+			parent -r $grpNode $firstJoint;
+			parent -w $grpNode;
+			
+			float $conPivot[] = `xform -q -ws -rp $ctrl`;
+			xform -ws -rp $conPivot[0] $conPivot[1] $conPivot[2] $grpNode;
+			
+			parentConstraint -mo $firstJoint $grpNode;
+			
+			addAttr -ln "showFkCONS" -at double -min 0 -max 1 -dv 0 -k 1 $ctrl;
+			
+			string $connectedGrp;
+			
+      for($obj in $objects)
+      {
+        $connectedGrp = ($obj + "CON_GRP");
+        string $connectedCtrl = ($obj + "CON"); 
+        string $rotMD = `createNode "multiplyDivide" -n ($connectedGrp + "_MD")`;
+        setAttr ($rotMD + ".operation") 2;
+        setAttr ($rotMD + ".input2X") $numOfObj;
+        setAttr ($rotMD + ".input2Y") $numOfObj;
+        setAttr ($rotMD + ".input2Z") $numOfObj;
+        connectAttr -force ($ctrl + ".rotate") ($rotMD + ".input1");
+        connectAttr -force ($rotMD + ".output") ($connectedGrp + ".rotate") ;
+        
+       
+        setAttr ($ctrl + ".showFkCONS") 1;
+        setAttr ($connectedCtrl + ".visibility") 1;
+        setDrivenKeyframe -cd ($ctrl + ".showFkCONS") ($connectedCtrl + ".visibility");
+        
+        
+        setAttr ($ctrl + ".showFkCONS") 0;
+        setAttr ($connectedCtrl + ".visibility") 0;
+        setDrivenKeyframe -cd ($ctrl + ".showFkCONS") ($connectedCtrl + ".visibility");
+        
+        setAttr ($ctrl + ".showFkCONS") 0;
+        setAttr -lock true -keyable false ($connectedCtrl + ".v");        
+      
+      }
+      
+      setAttr -lock true -keyable false ($ctrl + ".tx");
+    	setAttr -lock true -keyable false ($ctrl + ".ty");
+    	setAttr -lock true -keyable false ($ctrl + ".tz");
+    	setAttr -lock true -keyable false ($ctrl + ".sx");
+    	setAttr -lock true -keyable false ($ctrl + ".sy");
+    	setAttr -lock true -keyable false ($ctrl + ".sz");
+    	
+    	//Automatically select the next joint down the chain. Easy to know where you are at in the chain
+    	string $getChildJoint[] = `listRelatives -c $obj`;
+      
+       
+     //change the control color
+			$shape = `listRelatives $ctrl`;
+			setAttr ($shape[0] + ".overrideEnabled") 1;
+			int $color = `colorIndexSliderGrp -q -v conColor`;
+			if($color > 0)
+				setAttr ($shape[0] + ".overrideColor") ($color - 1); 
+			
+      if($mainGrpName != "")
+				{
+					if(`objExists $mainGrpName`)
+					{
+						parent $grpNode $mainGrpName;
+						
+					}
+					else
+					{
+						group -em -n $mainGrpName;
+						parent $grpNode $mainGrpName;
+					
+					}
+				}
+      
+      if(`size($getChildJoint)`!= 0)
+      {
+        select -r $getChildJoint[0];
+      }
+      else
+      {
+        select -cl; 
+      }
+      
+    }
+	
+}
+
+// creates an attribute for the control that will allow the blending
+// of inherit rotation from the parent object
+global proc inherit_OrientRot(string $control, string $inherit, string $object)
+{
+ 
+	select -cl;
+	select -r $control ;
+	addAttr -ln inheritRot -at double  -min 0 -max 1 -dv 1 -k 1;
+	select -r $inherit ;
+	SetKey;
+	SetKey;
+	
+	eval("setDrivenKeyframe -at blendPoint1 -v 1 -cd "+$control+".inheritRot");
+	eval("setDrivenKeyframe -at blendOrient1 -v 1 -cd "+$control+".inheritRot");
+
+	eval("setAttr "+$control+".inheritRot 0");
+	eval("setDrivenKeyframe -at blendOrient1 -v 0 -cd "+$control+".inheritRot");
+	eval("setAttr "+$control+".inheritRot 1");
+	
+	select -cl;
+}
+
+//display window that will let you rotate a contorl without affecting 
+//the children
+global proc snRotWin()
+{
+	if(`window -ex snRotWindow`) deleteUI snRotWindow;
+	int $winH = 115;
+	int $winW = 290;
+	
+	window -t "Rotate and Scale Control" -w $winH -h $winW snRotWindow;
+	columnLayout -w 280;
+	rowColumnLayout -nc 1 -cw 1 270;
+	text -al "left" -fn "smallBoldLabelFont" "Select a contorl and click which axis to rotate";
+	setParent..;
+	columnLayout;
+	rowColumnLayout -nc 3 -cw 1 ($winW/3 - 2) -cw 2 ($winW/3 - 2) -cw 3 ($winW/3 - 2);
+	button -l "X 90 deg" -command "snRotCtrlAxis(\"X\")";
+	button -l "Y 90 deg" -command "snRotCtrlAxis(\"Y\")";
+	button -l "Z 90 deg" -command "snRotCtrlAxis(\"Z\")";
+	text -l"";text -l"";text -l"";
+	setParent..;
+	rowColumnLayout -nc 1 -cw 1 ($winW - 8) ;
+	button -l "SELECT CURVES or OBJECTS TO SCALE" -ann "Make sure curves stay selected" -c "createScaleControl" btnScale;
+	rowColumnLayout -nc 1 -cw 1 ($winW - 8) scaleCol;
+
+	window -e -w $winW -h $winH snRotWindow;
+	showWindow snRotWindow;
+}
+
+
+global proc userPositionControl(string $obj[])
+{
+    string $control = $obj[0];
+    string $shapes[] = `listRelatives -s $control`;
+    string $shape = $shapes[0]; 
+   
+    
+    //ADD USER ATTRS
+    addAttr -ln "controlPosX" -at "float" $shape;
+    setAttr -e -keyable true ($shape + ".controlPosX");
+    addAttr -ln "controlPosY" -at "float" $shape;
+    setAttr -e -keyable true ($shape + ".controlPosY");
+    addAttr -ln "controlPosZ" -at "float" $shape;
+    setAttr -e -keyable true ($shape + ".controlPosZ");
+    
+    addAttr -ln "rotAxisX" -at "float" $shape;
+    setAttr -e -keyable true ($shape + ".rotAxisX");
+    addAttr -ln "rotAxisY" -at "float" $shape;
+    setAttr -e -keyable true ($shape + ".rotAxisY");
+    addAttr -ln "rotAxisZ" -at "float" $shape;
+    setAttr -e -keyable true ($shape+ ".rotAxisZ");
+    
+    addAttr -ln "controlScaleX" -at "float" -dv 1 $shape;
+    setAttr -e -keyable true ($shape + ".controlScaleX");
+    addAttr -ln "controlScaleY" -at "float" -dv 1 $shape;
+    setAttr -e -keyable true ($shape + ".controlScaleY");
+    addAttr -ln "controlScaleZ" -at "float" -dv 1 $shape;
+    setAttr -e -keyable true ($shape + ".controlScaleZ");
+    select -cl;
+	  string $grpLattice = `group -em -n ($control + "_userCtrlGrp")`;
+
+    //CREATE A LATTICE TO HELP SCALE THE CONTROL. PARENTED TO THE CONTROL
+    select -r $control;
+    string $sel[] = `ls -sl`;
+    string $name  = ($sel[0] + "_userCtrl");
+    
+    string $quote= (" \"\ ");
+    string $cmd= ("latticeAutoparent " + $quote + " lattice -name " + $name + " -divisions 2 2 2  -objectCentered true -ldv 2 2 2 -ol 1" + $quote ); 
+    eval ($cmd);
+    string $scaleCONLattice = ($name + "Lattice");
+    string $scaleCONBase = ($name + "Base");
+    
+    delete `parentConstraint $control $grpLattice`;
+    parent $scaleCONLattice $grpLattice;
+    parent $scaleCONBase $grpLattice;
+    parent $grpLattice $control;
+    //FREEZE TRANSFORMATIONS ON THE LATTICE
+    makeIdentity -apply true $scaleCONLattice;
+    
+    
+    //HOOK SHIT UP
+    connectAttr -f ($shape + ".controlPosX")  ($scaleCONLattice+ ".tx");
+    connectAttr -f ($shape + ".controlPosY")  ($scaleCONLattice+ ".ty");
+    connectAttr -f ($shape + ".controlPosZ")  ($scaleCONLattice+ ".tz");
+        
+    connectAttr -f ($shape + ".rotAxisX") ($scaleCONLattice+ ".rx");
+    connectAttr -f ($shape + ".rotAxisY") ($scaleCONLattice+ ".ry");
+    connectAttr -f ($shape + ".rotAxisZ") ($scaleCONLattice+ ".rz");
+    
+    connectAttr -f ($shape + ".controlScaleX") ($scaleCONLattice + ".scaleX");
+    connectAttr -f ($shape + ".controlScaleY") ($scaleCONLattice + ".scaleY");
+    connectAttr -f ($shape + ".controlScaleZ") ($scaleCONLattice + ".scaleZ");
+    
+      
+    //LOCK AND HIDE ATTRIBUTES  
+    setAttr ($scaleCONBase + ".v") 0;
+    setAttr ($scaleCONLattice + ".v") 0;
+    lockAndHide($scaleCONBase, "T");
+    lockAndHide($scaleCONBase, "R");
+    lockAndHide($scaleCONBase, "S");
+    lockAndHide($scaleCONBase, "V");
+    lockAndHide($scaleCONLattice, "T");
+    lockAndHide($scaleCONLattice, "R");
+    lockAndHide($scaleCONLattice, "S");
+    lockAndHide($scaleCONLattice, "V");
+    lockAndHide($grpLattice , "T");
+    lockAndHide($grpLattice , "R");
+    lockAndHide($grpLattice , "S");
+    lockAndHide($grpLattice , "V");
+
+    //MAKE THE CHANNELS NON-KEYABLE
+    setAttr -keyable false -channelBox true ($shape + ".rotAxisX");
+    setAttr -keyable false -channelBox true ($shape + ".rotAxisY");
+    setAttr -keyable false -channelBox true ($shape+ ".rotAxisZ");
+    setAttr -keyable false -channelBox true ($shape + ".controlPosX");
+    setAttr -keyable false -channelBox true ($shape + ".controlPosY");
+    setAttr -keyable false -channelBox true ($shape + ".controlPosZ");
+    setAttr -keyable false -channelBox true ($shape + ".controlScaleX");
+    setAttr -keyable false -channelBox true ($shape + ".controlScaleY");
+    setAttr -keyable false -channelBox true ($shape + ".controlScaleZ");
+    select -cl;
+
+}
+
+//Rotates the objects shape without affecting the childern or rotate axis
+global proc snRotCtrlAxis(string $axis)
+{
+	string $sel[] = `ls -sl`;
+	int $numSel = `size($sel)`;
+	int $i;
+	string $shape[];
+	string $objType;
+	
+	for($i = 0; $i < $numSel; $i++)
+	{
+		$shape = `listRelatives -s $sel[$i]`;
+		$objType = `objectType $shape[0]`;
+		if($objType == "nurbsCurve")
+		{
+			int $numOfCVs = `getAttr ($shape[0] + ".spans")`;
+			selectMode -component;
+			selectType -controlVertex 1;
+			select -r ($sel[$i] + ".cv[0:" + $numOfCVs + "]");
+		}
+		if($objType == "nurbsCurve")
+		{
+			switch($axis) {
+				case "X":
+					rotate -os 90 0 0;
+					selectMode -object;
+					break;
+				case "Y":
+					rotate -os 0 90 0;
+					selectMode -object;
+					break;
+				case "Z":
+					rotate -os 0 0 90;
+					selectMode -object;
+					break;
+			}
+		}
+	}
+	select $sel;
+}
+
+//LOCK AND HIDE SPECIFIC CHANNELS
+global proc lockAndHide(string $obj, string $channel)
+{
+	if($channel == "T")
+	{	
+		setAttr -lock true -keyable false ($obj + ".tx");
+		setAttr -lock true -keyable false ($obj + ".ty");
+		setAttr -lock true -keyable false ($obj + ".tz");
+	}
+	if($channel == "R")
+	{
+		setAttr -lock true -keyable false ($obj + ".rx");
+		setAttr -lock true -keyable false ($obj + ".ry");
+		setAttr -lock true -keyable false ($obj + ".rz");
+	}
+	if($channel == "S")
+	{
+		setAttr -lock true -keyable false ($obj + ".sx");
+		setAttr -lock true -keyable false ($obj + ".sy");
+		setAttr -lock true -keyable false ($obj + ".sz");
+	}
+	if($channel == "V")
+	{
+		setAttr -lock true -keyable false ($obj + ".v");
+	}
+	
+}
+
+global proc snUpdateCurrentColor()
+{
+  string $sel[] = `ls -sl`;
+  if($sel[0] == "")
+    error "Must select a control";
+    
+  string $shape[] = `listRelatives -s $sel[0]`;
+  if($shape[0] == "")
+    error "Object has no shape. Select a control curve";
+    
+  int $color = `colorIndexSliderGrp -q -v conColor`;
+	if($color > 0)
+		setAttr ($shape[0] + ".overrideColor") ($color - 1);
+	else
+	  setAttr ($shape[0] + ".overrideColor") 0;
+
+}
+
+global proc snGetCurrentColor()
+{
+  string $sel[] = `ls -sl`;
+  if($sel[0] == "")
+    error "Must select a control";
+    
+  string $shape[] = `listRelatives -s $sel[0]`;
+  if($shape[0] == "")
+    error "Object has no shape. Select a control curve";
+    
+  int $color = `getAttr ($shape[0] + ".overrideColor")`;
+  if($color > 0)
+    colorIndexSliderGrp -e -v ($color + 1) conColor;
+  else
+    colorIndexSliderGrp -e -v 0 conColor;
+  
+}
+//lock and hide channels
+global proc snLockAndHide (string $obj)
+{
+	
+	setAttr -lock true -keyable false ($obj + ".tx");
+	setAttr -lock true -keyable false ($obj + ".ty");
+	setAttr -lock true -keyable false ($obj + ".tz");
+	setAttr -lock true -keyable false ($obj + ".rx");
+	setAttr -lock true -keyable false ($obj + ".ry");
+	setAttr -lock true -keyable false ($obj + ".rz");
+	setAttr -lock true -keyable false ($obj + ".sx");
+	setAttr -lock true -keyable false ($obj + ".sy");
+	setAttr -lock true -keyable false ($obj + ".sz");
+	setAttr -lock true -keyable false ($obj + ".v");
+}
+
+//make FK controls stretch through translation
+global proc makeStretch(string $con,string $joint)
+{
+	if(`objectType -isType "joint" $joint`)
+	{
+		addAttr -ln stretch -at double -dv 1 $con;
+		setAttr -e -keyable true ($con + ".stretch");
+		float $jointXPos = `getAttr ($joint + ".translateX")`;
+		createNode "multiplyDivide" -n ("MD_" + $con + "stretch");
+		setAttr ("MD_" + $con + "stretch.input2X") $jointXPos;
+		connectAttr -f ($con + ".stretch") ("MD_" + $con + "stretch" + ".input1X");	
+		connectAttr -f ("MD_" + $con + "stretch" + ".outputX") ($joint + ".translateX");
+	}
+	else
+	{
+		error "Not a joint.Can only stretch a joint";
+	}
+}
+global proc updateSlider (int $color)
+{
+    colorIndexSliderGrp  -e -value $color conColor;
+}
+

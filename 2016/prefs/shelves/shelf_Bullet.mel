@@ -1,0 +1,349 @@
+global proc shelf_Bullet () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create an active Rigid Body object from the selection" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "[BULLET] Active Rigid Body" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "bullet_rigidActive.png" 
+        -image1 "bullet_rigidActive.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "python \"import maya.app.mayabullet.BulletUtils as BulletUtils; BulletUtils.checkPluginLoaded(); import maya.app.mayabullet.RigidBody as RigidBody; RigidBody.CreateRigidBody(True).executeCommandCB()\"" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create a set of Rigid Body objects from the selection" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "[BULLET] Rigid Set" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "bullet_rigidSet.png" 
+        -image1 "bullet_rigidSet.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "python \"import maya.app.mayabullet.BulletUtils as BulletUtils; BulletUtils.checkPluginLoaded(); import maya.app.mayabullet.RigidBody as RigidBody; RigidBody.CreateRigidSet().executeCommandCB(True)\"" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create a passive Rigid Body object" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "[BULLET] Passive Rigid Body" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "bullet_rigidPassive.png" 
+        -image1 "bullet_rigidPassive.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "python \"RigidBody.CreateRigidBody(False).executeCommandCB()\"" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Select geometry objects to create Soft Bodies" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "[BULLET] Soft Body" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "bullet_soft.png" 
+        -image1 "bullet_soft.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "python \"import maya.app.mayabullet.BulletUtils as BulletUtils; BulletUtils.checkPluginLoaded(); import maya.app.mayabullet.SoftBody as SoftBody; SoftBody.CreateSoftBody().executeCommandCB()\"" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Constrain 1 or 2 selected Rigid Bodies" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "[BULLET] Rigid Body Constraint" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "bullet_rigidConstraint.png" 
+        -image1 "bullet_rigidConstraint.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "python \"import maya.app.mayabullet.BulletUtils as BulletUtils; BulletUtils.checkPluginLoaded(); import maya.app.mayabullet.RigidBodyConstraint as RigidBodyConstraint; RigidBodyConstraint.CreateRigidBodyConstraint().executeCommandCB()\"" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Select Soft Body vertices and an object to act as the anchor" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "[BULLET] Soft Body Anchor" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "bullet_createSoftBodyAnchor.png" 
+        -image1 "bullet_createSoftBodyAnchor.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "python \"import maya.app.mayabullet.BulletUtils as BulletUtils; BulletUtils.checkPluginLoaded(); import maya.app.mayabullet.SoftBodyConstraint as SoftBodyConstraint; SoftBodyConstraint.createSoftBodyAnchorConstraint()\"" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Explicitly set per-particle mass for particles corresponding to selected mesh vertices (multiplied by the main mass attribute)" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "[BULLET] Mass" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "bullet_setPerParticleSoftBodyMass.png" 
+        -image1 "bullet_setPerParticleSoftBodyMass.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "python \"import maya.app.mayabullet.BulletUtils as BulletUtils; BulletUtils.checkPluginLoaded(); import maya.app.mayabullet.SoftBody as SoftBody; SoftBody.setSoftBodyPerParticleMass()\"" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Paint particle mass factor (multiplied by the main mass attribute)" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "[BULLET] Mass" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "bullet_paintPerParticleSoftBodyMass.png" 
+        -image1 "bullet_paintPerParticleSoftBodyMass.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "python \"import maya.app.mayabullet.BulletUtils as BulletUtils; BulletUtils.checkPluginLoaded(); import maya.app.mayabullet.SoftBody as SoftBody; SoftBody.paintSoftBodyVertexProperty('particleMass')\"" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Add a collider to the ragdoll for each selected skeleton joint." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "[BULLET] Add Colliders to Skeleton" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "bullet_createColliders.png" 
+        -image1 "bullet_createColliders.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "python \"Ragdoll.AddColliders().executeCommandCB()\"" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create a ragdoll from the selected root joint of a skeleton." 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "[BULLET] Ragdoll" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "bullet_createRagdoll.png" 
+        -image1 "bullet_createRagdoll.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "python \"import maya.app.mayabullet.BulletUtils as BulletUtils; BulletUtils.checkPluginLoaded(); import maya.app.mayabullet.Ragdoll as Ragdoll; Ragdoll.CreateRagdoll().executeCommandCB()\"" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Select Bullet Solver" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "[BULLET] [BULLET] Select Bullet Solver" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "bullet_selectSolverNode.png" 
+        -image1 "bullet_selectSolverNode.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "python \"import maya.app.mayabullet.BulletUtils as BulletUtils; BulletUtils.checkPluginLoaded(); BulletUtils.selectSolver()\"" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+
+} 

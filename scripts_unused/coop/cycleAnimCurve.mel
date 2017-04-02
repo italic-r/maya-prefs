@@ -1,0 +1,399 @@
+/* Cycle Anim Curve V1.0
+Author:		Dirk Bialluch
+Creation Date:	13.11.2000
+Last Update:	15.11.2000
+
+Description:
+	This script modifies the value and tangent of selected anim curve start and/or
+	end keys to achieve a smooth cycle.
+	
+	Please refer to the integrated help window for detailed information.
+*/
+
+global proc cycleAnimCurve()
+{
+	// get maya version number
+	string $version = `about -v`;
+	if ( float( `substring $version 1 3` ) < 3.0 )
+	{
+		confirmDialog
+			-title "Error"
+			-message "Cycle Anim Curve requires Maya version 3.0 or higher."
+		    	-button "OK";
+		return;
+	}
+
+	int $uiLabelWidth = 120;
+	int $uiInputWidth = 240;
+	int $uiWidth = $uiLabelWidth + $uiInputWidth + 40;
+
+	if ((`window -exists cac_ui`) == true)
+		deleteUI cac_ui;
+
+	window
+		-maximizeButton 0
+		-resizeToFitChildren 0
+		-title "Cycle Anim Curve V1.0"
+		-iconName "Cycle Anim Curve"
+		-menuBar true
+		-menuBarVisible true
+		cac_ui;
+	menu
+		-label "Edit"
+		-tearOff false;
+	menuItem
+    		-label "Reset Settings"
+    		-c "cac_storeRecallUI reset; cycleAnimCurve";
+	menu
+		-label "Help"
+		-tearOff 0;
+	menuItem
+    		-label "Help with Cycle Anim Curve tool"
+    		-c "cac_help 1";
+	menuItem
+		-divider true;
+	menuItem
+    		-label "Script Information"
+    		-c "cac_help 2";
+ 
+ 		string $cac_form = `formLayout -numberOfDivisions 100`;
+			string $cac_scroll = `scrollLayout -hst 16 -vst 16 -childResizable true -minChildWidth $uiWidth`;
+				columnLayout -adjustableColumn true -rowSpacing 5;
+					frameLayout
+						-label "Settings"
+						-labelAlign "center"
+						-cll true
+						-lw $uiWidth
+						-mh 3
+		                                -borderStyle "etchedIn"
+						-cc "cac_adjustUI nop"
+						-ec "cac_adjustUI nop"
+						-bv true
+						cac_sFrame;
+ 						columnLayout -adjustableColumn true;
+							rowLayout
+								-numberOfColumns 2
+								-cat 1 "right" 5
+								-columnWidth 1 $uiLabelWidth;
+								text
+									-l "Modify Value";
+								checkBox
+									-h 20
+									-label ""
+									-value true
+									-cc "cac_adjustUI nop"
+									cac_modifyValue;
+								setParent ..;
+							rowLayout
+								-numberOfColumns 2
+								-cat 1 "right" 5
+								-columnWidth 1 $uiLabelWidth
+								cac_valueMode;
+								text
+									-l "Value Mode";
+								radioButtonGrp
+									-nrb 3
+									-columnWidth 1 90
+									-columnWidth 2 90
+									-select 1
+									-cc "cac_storeRecallUI store"
+									-l1 "Start To End"
+									-l2 "End To Start"
+									-l3 "Average"
+									cac_valueMode;
+								setParent ..;
+
+							separator -h 12;
+
+							rowLayout
+								-numberOfColumns 2
+								-cat 1 "right" 5
+								-columnWidth 1 $uiLabelWidth;
+								text
+									-l "Modify Tangent";
+								checkBox
+									-h 20
+									-label ""
+									-value true
+									-cc "cac_adjustUI nop"
+									cac_modifyTangent;
+								setParent ..;
+							rowLayout
+								-numberOfColumns 2
+								-cat 1 "right" 5
+								-columnWidth 1 $uiLabelWidth
+								cac_tangentMode;
+								text
+									-l "Tangent Mode";
+								radioButtonGrp
+									-nrb 3
+									-columnWidth 1 90
+									-columnWidth 2 90
+									-select 1
+									-cc "cac_storeRecallUI store"
+									-l1 "Start To End"
+									-l2 "End To Start"
+									-l3 "Average"
+									cac_tangentMode;
+								setParent ..;
+							setParent ..;
+						setParent ..;
+					setParent ..;
+				setParent ..;
+
+			string $cac_button = `button
+				-label "Cycle Anim Curve"
+				-command "cac_main"
+				cac_execButton`;
+
+			string $cac_close = `button
+				-label "Close"
+				-command "deleteUI cac_ui"`;
+
+	// set form layouts
+	formLayout -edit
+		-attachForm $cac_scroll "top" 2
+		-attachForm $cac_scroll "left" 2
+		-attachControl $cac_scroll "bottom" 2 $cac_button
+		-attachForm $cac_scroll "right" 2
+
+		-attachNone $cac_button "top"
+		-attachForm $cac_button "left" 2
+		-attachForm $cac_button "bottom" 2
+		-attachPosition $cac_button "right" 2 50
+
+		-attachNone $cac_close "top"
+		-attachPosition $cac_close "left" 2 50
+		-attachForm $cac_close "bottom" 2
+		-attachForm $cac_close "right" 2
+		$cac_form;
+
+	cac_storeRecallUI recall;
+
+	// check UI settings after restoring values
+	cac_adjustUI nop;
+
+	showWindow cac_ui;
+}
+
+global proc cac_adjustUI( string $function )
+{
+	if( `checkBox -q -v cac_modifyTangent` )
+		rowLayout -e -enable 1 cac_tangentMode;
+	else
+		rowLayout -e -enable 0 cac_tangentMode;
+
+	if( `checkBox -q -v cac_modifyValue` )
+		rowLayout -e -enable 1 cac_valueMode;
+	else
+		rowLayout -e -enable 0 cac_valueMode;
+
+	if( !`checkBox -q -v cac_modifyTangent` && !`checkBox -q -v cac_modifyValue` )
+		button -e -enable 0 cac_execButton;
+	else
+		button -e -enable 1 cac_execButton;
+
+	cac_storeRecallUI store;
+}
+
+
+global proc cac_storeRecallUI( string $mode )
+{
+	string $floatFieldList[] = {
+		};
+
+	string $intFieldList[] = {
+		};
+
+	string $optionMenuList[] = {
+		};
+
+	string $floatSliderGrpList[] = {
+		};
+
+	string $intSliderGrpList[] = {
+		};
+
+	string $checkBoxList[] = {
+		"cac_modifyTangent",
+		"cac_modifyValue"
+		};
+
+	string $radioButtonGrpList[] = {
+		"cac_tangentMode",
+		"cac_valueMode"
+		};
+
+	string $frameLayoutList[] = {
+		"cac_sFrame"
+		};
+
+	int $cnt;
+
+	if ( $mode == "store" )
+	{
+		for ( $cnt = 0; $cnt < size( $floatFieldList ); $cnt++ )
+			optionVar -floatValue $floatFieldList[$cnt] `floatField -q -value $floatFieldList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $intFieldList ); $cnt++ )
+			optionVar -intValue $intFieldList[$cnt] `intField -q -value $intFieldList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $floatSliderGrpList ); $cnt++ )
+			optionVar -floatValue $floatSliderGrpList[$cnt] `floatSliderGrp -q -value $floatSliderGrpList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $intSliderGrpList ); $cnt++ )
+			optionVar -intValue $intSliderGrpList[$cnt] `intSliderGrp -q -value $intSliderGrpList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $checkBoxList ); $cnt++ )
+			optionVar -intValue $checkBoxList[$cnt] `checkBox -q -value $checkBoxList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $optionMenuList ); $cnt++ )
+			optionVar -intValue $optionMenuList[$cnt] `optionMenu -q -select $optionMenuList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $radioButtonGrpList ); $cnt++ )
+			optionVar -intValue $radioButtonGrpList[$cnt] `radioButtonGrp -q -select $radioButtonGrpList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			optionVar -intValue $frameLayoutList[$cnt] `frameLayout -q -collapse $frameLayoutList[$cnt]`;
+	}
+
+	if ( $mode == "recall" )
+	{
+		for ( $cnt = 0; $cnt < size( $floatFieldList ); $cnt++ )
+			if ( `optionVar -exists $floatFieldList[$cnt]` )
+				floatField -e -value `optionVar -q $floatFieldList[$cnt]` $floatFieldList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $intFieldList ); $cnt++ )
+			if ( `optionVar -exists $intFieldList[$cnt]` )
+				intField -e -value `optionVar -q $intFieldList[$cnt]` $intFieldList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $floatSliderGrpList ); $cnt++ )
+			if ( `optionVar -exists $floatSliderGrpList[$cnt]` )
+				floatSliderGrp -e -value `optionVar -q $floatSliderGrpList[$cnt]` $floatSliderGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $intSliderGrpList ); $cnt++ )
+			if ( `optionVar -exists $intSliderGrpList[$cnt]` )
+				intSliderGrp -e -value `optionVar -q $intSliderGrpList[$cnt]` $intSliderGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $checkBoxList ); $cnt++ )
+			if ( `optionVar -exists $checkBoxList[$cnt]` )
+				checkBox -e -value `optionVar -q $checkBoxList[$cnt]` $checkBoxList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $optionMenuList ); $cnt++ )
+			if ( `optionVar -exists $optionMenuList[$cnt]` )
+				optionMenu -e -select `optionVar -q $optionMenuList[$cnt]` $optionMenuList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $radioButtonGrpList ); $cnt++ )
+			if ( `optionVar -exists $radioButtonGrpList[$cnt]` )
+				radioButtonGrp -e -select `optionVar -q $radioButtonGrpList[$cnt]` $radioButtonGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			if ( `optionVar -exists $frameLayoutList[$cnt]` )
+				frameLayout -e -collapse `optionVar -q $frameLayoutList[$cnt]` $frameLayoutList[$cnt];
+	}
+
+	if ( $mode == "reset" )
+	{
+		for ( $cnt = 0; $cnt < size( $floatFieldList ); $cnt++ )
+			optionVar -remove $floatFieldList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $intFieldList ); $cnt++ )
+			optionVar -remove $intFieldList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $floatSliderGrpList ); $cnt++ )
+			optionVar -remove $floatSliderGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $intSliderGrpList ); $cnt++ )
+			optionVar -remove $intSliderGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $checkBoxList ); $cnt++ )
+			optionVar -remove $checkBoxList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $optionMenuList ); $cnt++ )
+			optionVar -remove $optionMenuList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $radioButtonGrpList ); $cnt++ )
+			optionVar -remove $radioButtonGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			optionVar -remove $frameLayoutList[$cnt];
+	}
+}
+
+
+//
+// main
+//
+global proc cac_main()
+{
+	int $tangentMode =	`radioButtonGrp -q -select cac_tangentMode`;
+	int $valueMode =	`radioButtonGrp -q -select cac_valueMode`;
+	int $modifyTangent =	`checkBox -q -v cac_modifyTangent`;
+	int $modifyValue =	`checkBox -q -v cac_modifyValue`;
+
+	// get selected animation curve nodes
+	string $curveList[] = `keyframe -q -name`;
+
+	// iterate through list of animation curves
+	for( $cnt = 0; $cnt < size( $curveList ); $cnt++ )
+	{
+		if( `keyframe -q -kc $curveList[$cnt]` < 2 )
+		{
+			warning ( "Anim curve " + $curveList[$cnt] + " has less than 2 keys." );
+			continue;
+		}
+
+		// copy tangent
+		if( $modifyTangent )
+		{
+			// query in-tangents of all keys
+			float $keyInTangents[] = `keyTangent -q -ia $curveList[$cnt]`;
+			float $keyOutTangents[] = `keyTangent -q -oa $curveList[$cnt]`;
+	
+			// copy start to end
+			if( $tangentMode == 1 )
+				// set out-tangent of last key
+				keyTangent -e -in ( size( $keyInTangents ) - 1 ) -oa $keyInTangents[0] $curveList[$cnt];
+
+			// copy end to start
+			if( $tangentMode == 2 )
+				// set out-tangent of first key
+				keyTangent -e -in 0 -ia $keyOutTangents[size( $keyOutTangents ) - 1] $curveList[$cnt];
+
+			// average
+			if( $tangentMode == 3 )
+			{
+				float $average = ( $keyInTangents[0] + $keyOutTangents[size( $keyOutTangents ) - 1] ) / 2;
+				keyTangent -e -in 0 -ia $average $curveList[$cnt];
+				keyTangent -e -in ( size( $keyInTangents ) - 1 ) -oa $average $curveList[$cnt];
+			}
+		}
+
+		// copy value
+		if( $modifyValue )
+		{
+			// query in-tangents of all keys
+			float $keyValues[] = `keyframe -q -vc $curveList[$cnt]`;
+	
+			// copy start to end
+			if( $valueMode == 1 )
+			{
+				// set value of last key
+				keyframe -e -in ( size( $keyValues ) - 1 ) -vc $keyValues[0] $curveList[$cnt];
+			}
+			// copy end to start
+			if( $valueMode == 2 )
+			{
+				// set value of first key
+				keyframe -e -in 0 -vc $keyValues[size( $keyValues ) - 1] $curveList[$cnt];
+			}
+			// average
+			if( $valueMode == 3 )
+			{
+				float $average = ( $keyValues[0] + $keyValues[size( $keyValues ) - 1] ) / 2;
+				keyframe -e -in ( size( $keyValues ) - 1 ) -vc $average $curveList[$cnt];
+				keyframe -e -in 0 -vc $average $curveList[$cnt];
+			}
+		}
+	}
+}

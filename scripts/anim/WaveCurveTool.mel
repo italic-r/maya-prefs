@@ -1,0 +1,196 @@
+/*
+
+
+--------------- Holy f*#k Maya! How can you not have a WAVE CURVE TOOL ?! ------------
+
+Version 0.9
+Created by Mooly Segal
+
+Hi there!
+The "Holy f*#k Maya! How can you not have a -= WAVE CURVE TOOL =- ?!" was made to speed up
+the process of animating wave curves in Maya's graph editor. It is completely free to use
+for commercial, educational or any other purpose that comes to mind.
+
+If you have any suggestions for improvement, or find any annoying bugs while using it, I would love to hear
+your input!
+
+email me at mooly3@gmail.com
+
+    * * *
+
+SYNTAX: WaveCurveTool;
+
+
+    * * *
+
+Cheers!
+Mooly
+
+*/
+
+global proc WaveCurveTool () {
+
+if ( `window -exists WaveCurveToolWindow` ) {
+ deleteUI WaveCurveToolWindow;
+}
+
+// create a window
+	window -title "Wave Curve Tool" WaveCurveToolWindow;
+		// define the layout of controls added
+		// to the window.
+		frameLayout -label "Wave Curve Creation";
+            intSliderGrp -field true -v 13 -minValue 1 -fieldMinValue 1 -label "Number of Waves" CW_WaveNumber;
+			intSliderGrp -field true -v 1 -minValue -99999 -fieldMinValue -10 -label "Wave Height" CW_WaveHeight;
+			intSliderGrp -field true -v 4 -minValue 1 -fieldMinValue 1 -label "Wave Length" CW_WaveLength;
+            button -label "Create Curve" -align "right" -command CurveCreator;
+            setParent ..;
+        setParent ..;
+		frameLayout -label "Ease in/out";
+            rowLayout -numberOfColumns 2;
+            button -label "Ease In" -command "msFadeInCurve";
+            button  -label "Ease Out" -command "msFadeOutCurve";
+            setParent ..;
+        setParent ..;
+		frameLayout -label "Randomizer";
+            rowLayout -numberOfColumns 2;
+            text -l "Max Value Change";
+            floatField -minValue 0 -value 0.1 -ann "Values between 0.001 and around 0.5 tend to work best here. Higher values work too but tend to get a bit crazy" -w 50 -precision 3 -enable on CW_maxRandom;
+            setParent ..;
+            button -label "Randomize" -align "right" -command MS_randomizer;
+	showWindow;
+
+}
+global proc CurveCreator (){
+
+//Check that only 1 key is selected
+
+int $WC_keysSelected = `keyframe -an keys -q -keyframeCount`;
+if ($WC_keysSelected >= 1) {
+   
+    string $selectedCurves[] = `keyframe -selected -q -name`;
+	for ($c = 0; $c < size($selectedCurves); $c++){
+			//channel to use for this pass
+			$channel = $selectedCurves[$c];
+            selectKey $channel;
+            // Create sineGraph
+
+            float $keyCValues[] = `keyframe -an keys -q -valueChange -lastSelected`;
+            float $keyCTime[] = `keyframe -query -lastSelected -timeChange`;
+            int $cycles = `intSliderGrp -q -value CW_WaveNumber`;
+            int $cycleLength = `intSliderGrp -q -value CW_WaveLength`;
+            int $waveValueChange = `intSliderGrp -q -value CW_WaveHeight`;
+            //int $lastFrameIndexVal[] = `keyframe -q -iv -lastSelected`;
+            $MS_currentTime = `currentTime -q`;
+        // Create the keys
+        for ($i = 0; $i < $cycles; $i++){
+             setKeyframe -i -t ($MS_currentTime + $cycleLength*$i) -v $keyCValues[0] $channel;
+             }
+        // Offset Alternating values
+        selectKey -t $MS_currentTime $channel;
+        int $currentFrameIndexVal[] = `keyframe -q -iv`;
+        $cycles_offset = $currentFrameIndexVal[0] + $cycles;
+        selectKey -cl;
+        for ($i = $currentFrameIndexVal[0]+1; $i < $cycles_offset; $i+=2){
+             keyframe -index ($i) -vc ($keyCValues[0] + $waveValueChange) $channel;
+             }
+   }
+    }else{
+    error "Please select at least one curve in the graph editor";
+    }
+ }
+
+
+////////////////////////////////// Fade in and out /////////////////////////////////////
+//// adjust for multiple curves
+
+
+global proc msFadeInCurve () {
+float $KeysSelect []= `keyframe -q -sl -tc`;
+float $lastKeySelect []= `keyframe -q -tc -lastSelected`;
+$keysRange = $KeysSelect[0]+ ":" + $lastKeySelect[0];
+string $selectedCurves[] = `keyframe -selected -q -name`;
+	for ($c = 0; $c < size($selectedCurves); $c++){
+			//channel to use for this pass
+			$channel = $selectedCurves[$c];
+
+            selectKey -t $keysRange $channel;
+
+            // Create fade
+
+    int $keyCount = `keyframe -an keys -q -keyframeCount`;
+    int $keyNumber[] = `keyframe -q -iv`;
+    float $keyValues[] = `keyframe -an keys -q -valueChange`;
+    float $keyValueAvg = ($keyValues[$keyCount-1] + $keyValues[$keyCount-2])/2;
+    selectKey -cl;
+    keyframe -e -index $keyNumber[0] -valueChange $keyValueAvg $channel;
+    for ($i = 0; $i < size($keyNumber); $i++){
+        scaleKey -index $keyNumber[$i] -valuePivot $keyValueAvg -valueScale (float(1)*$i/$keyCount) $channel;
+        }
+            selectKey -t $keysRange $channel;
+    }
+selectKey -t $keysRange $selectedCurves;
+}
+
+// Fade out
+
+global proc msFadeOutCurve () {
+    string $selectedCurves[] = `keyframe -selected -q -name`;
+    float $KeysSelect[]= `keyframe -q -sl -tc`;
+    float $lastKeySelect []= `keyframe -q -tc -lastSelected`;
+    $keysRange = $KeysSelect[0]+ ":" + $lastKeySelect[0];
+	for ($c = 0; $c < size($selectedCurves); $c++){
+			//channel to use for this pass
+			$channel = $selectedCurves[$c];
+            selectKey -t $keysRange $channel;
+
+
+
+  int $keyCount = `keyframe -an keys -q -keyframeCount`;
+  int $keyNumber[] = `keyframe -q -iv`;
+  float $keyValues[] = `keyframe -an keys -q -valueChange`;
+  float $keyValueAvg = ($keyValues[0] + $keyValues[1])/2;
+  selectKey -cl;
+  keyframe -e -index $keyNumber[$keyCount-1] -valueChange $keyValueAvg $channel;
+  for ($i = 0; $i < size($keyNumber); $i++){
+      scaleKey -index $keyNumber[$i] -valuePivot $keyValueAvg -valueScale (float(1)*($keyCount-$i)/$keyCount) $channel;
+      }
+            selectKey -t $keysRange $channel;
+   }
+            selectKey -t $keysRange $selectedCurves;
+}
+
+
+////////////////////// Randomizer ////////////////////////////
+
+
+global proc MS_randomizer(){
+
+    float $MS_MaxValueChange = 1 -`floatField -q -value CW_maxRandom`;
+    $MS_MinValueChange = 2-$MS_MaxValueChange;
+
+    float $KeysSelect[]= `keyframe -q -sl -tc`;
+    float $lastKeySelect []= `keyframe -q -tc -lastSelected`;
+    $keysRange = $KeysSelect[0]+ ":" + $lastKeySelect[0];
+
+    $MS_curvesSelected = `keyframe -selected -q -name`;
+    $MS_countCurvesSelected = size($MS_curvesSelected);
+
+    for ($c = 0; $c < $MS_countCurvesSelected; $c++){
+    	$channel = $MS_curvesSelected[$c];
+        selectKey -t $keysRange $channel;
+
+        $MS_keyIndex = `keyframe -q -iv`;
+        $MS_keyCount = size($MS_keyIndex);
+        int $keyCountC = `keyframe -an keys -q -keyframeCount`;
+        float $keyValues[] = `keyframe -an keys -q -valueChange`;
+        float $keyValueAvg = ($keyValues[$keyCountC-1] + $keyValues[$keyCountC-2])/2;
+
+
+        for ($i = 0; $i < $MS_keyCount; $i++){
+            selectKey -cl;
+            $MS_maxRand = `rand $MS_MinValueChange $MS_MaxValueChange`;
+            scaleKey -vp $keyValueAvg -vs $MS_maxRand -in $MS_keyIndex[$i] $channel;
+            }
+        selectKey -t $keysRange $MS_curvesSelected;
+        }
+    }

@@ -1,0 +1,20 @@
+//////////////////////////////////////////////////
+//	ackToggleNURBSCurves					
+//	2/20/05					
+//	Aaron Koressel						
+//							
+//	Toggles the visibility of NURBS curves in the
+//	viewport currently under the cursor. (Toggles
+//	your character's rig/controls/avars/shwoopties.)
+/////////////////////////////////////////////////
+
+
+global proc ackToggleNURBSCurves() {
+	string $curPanel = `getPanel -underPointer`;
+	if ($curPanel != "") {
+		if (`getPanel -typeOf $curPanel` == "modelPanel") {
+			$val = ! `modelEditor -q -nurbsCurves $curPanel`;
+			modelEditor -e -nurbsCurves $val $curPanel;
+		}
+	}
+}

@@ -1,0 +1,114 @@
+/////////////////////////////////////////////////
+//
+// script: zeroOutCtrls.mel
+//
+// Sean Nolan
+// snolan@sn.com
+//
+// Quick script to zero out controls
+// Select one or many controls. Pick an axis.
+/////////////////////////////////////////////////
+
+global proc snZeroOutCtrls()
+{
+	
+	if(`window -ex snZeroOutWin`) deleteUI snZeroOutWin;
+	window -title "Zero Out Ctrls" snZeroOutWin;
+	
+	int $winH = 140;
+	int $winW = 140;
+	
+columnLayout -w 200;
+	text -l "Zero out Translate";
+	
+	rowColumnLayout  -numberOfColumns 3  
+					 -columnWidth 1 50 
+ 					 -columnWidth 2 50 
+ 					 -columnWidth 3 50;
+		checkBox -l "X" -value 1 ckXTrans;
+		checkBox -l "Y" -value 1 ckYTrans;
+		checkBox -l "Z" -value 1 ckZTrans;
+	
+		button -l "Zero Out" -command snZeroTrans;
+		
+		
+		
+		setParent..;
+		setParent..;
+columnLayout -w 200;
+	text -l "Zero out Rotate";
+	rowColumnLayout  -numberOfColumns 3  
+					 -columnWidth 1 50 
+ 					 -columnWidth 2 50 
+ 					 -columnWidth 3 50;
+	
+		checkBox -l "X" -value 1 ckRotX;
+		checkBox -l "Y" -value 1 ckRotY;
+		checkBox -l "Z" -value 1 ckRotZ;
+	
+		button -l "Zero Out" -command snZeroRot;
+		
+		setParent..;
+		setParent..;
+		
+
+		window -edit -wh $winW $winH snZeroOutWin;
+		 
+		showWindow snZeroOutWin;
+		
+}
+
+global proc snZeroTrans()
+{
+	string $sel[] = `ls -sl`;
+	int $numSel = `size($sel)`;
+	int $i;
+	int $xt = `checkBox -q -value ckXTrans`;
+	int $yt = `checkBox -q -value ckYTrans`;
+	int $zt = `checkBox -q -value ckZTrans`;
+	for ($i = 0; $i < $numSel; $i++)
+	
+	{
+		if($xt == 1)
+		{
+			setAttr ($sel[$i] + ".tx") 0;
+		}
+		if($yt == 1)
+		{
+			setAttr ($sel[$i] + ".ty") 0;
+		}
+		if($zt == 1)
+		{
+		setAttr ($sel[$i] + ".tz") 0;
+		}
+		
+		print ($sel[$i] + " zeroed out\n");
+	}
+}
+
+global proc snZeroRot()
+{
+	string $sel[] = `ls -sl`;
+	int $numSel = `size($sel)`;
+	int $i;
+	int $xr = `checkBox -q -value ckRotX`;
+	int $yr = `checkBox -q -value ckRotY`;
+	int $zr = `checkBox -q -value ckRotZ`;
+	for ($i = 0; $i < $numSel; $i++)
+	
+	{
+		if($xr == 1)
+		{
+			setAttr ($sel[$i] + ".rx") 0;
+		}
+		if($yr == 1)
+		{
+			setAttr ($sel[$i] + ".ry") 0;
+		}
+		if($zr == 1)
+		{
+		setAttr ($sel[$i] + ".rz") 0;
+		}
+		print ($sel[$i] + " zeroed out\n");
+	}
+}

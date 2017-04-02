@@ -1,0 +1,580 @@
+//
+// animation export
+//
+// Created by Hamish McKenzie zootoolbox@googlegroups.com
+// Created : 11 March 2002
+//
+// Description:
+//
+// Usage:
+// Select the root of the skeleton you want to trace the motion
+// of, play with whatever options you want to, and hit the go
+// button.
+//
+// Hamish McKenzie ©2007...
+
+
+global proc zzExportAnimation () {
+	string $windowName = "zzExportAnimationWindow";
+	string $selObjs[] = `ls -sl`;
+	string $obj = $selObjs[0];
+	string $windowTitle = "Export Animation";
+	string $prevDir = "d:/";
+	//string $exportFileName = `fileDialog -directoryMask ( $prevDir + "*.vat" )`;
+	string $exportFileName = "d:/test.ase";
+	if ( `window -exists $windowName` ) { deleteUI $windowName; }
+
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0
+		-sizeable 1 -width 400 $windowName;
+
+		//formLayout -numberOfDivisions 100 zzLayerControlForm;
+		columnLayout -adjustableColumn true -rowSpacing 5 zzLayerLeftColumn;
+			text -align "left" -label "Skeleton Root:";
+			rowLayout -numberOfColumns 2 -p zzLayerLeftColumn
+				-columnWidth2 150 30
+				-columnAttach 1 "both" 	0
+				-columnAttach 2 "both" 	5;
+				textField -ed 1 -text $selObjs[0] zzExportAnimationTextSkeleton;
+				button -label "<-" -c "zzExportAnimationUIControls updateName";
+
+			text -align "left" -p zzLayerLeftColumn -label "Mode:";
+
+			radioCollection zzExportAnimationRadio;
+			radioButton -label "Trace Mode" -p zzLayerLeftColumn -sl -align "left" -cc "zzExportAnimationUIControls update" zzExportAnimationRadioTrace;
+
+			rowLayout -numberOfColumns 2 -p zzLayerLeftColumn
+				-columnAttach 1 "both" 	0
+				-columnAttach 2 "both" 	0;
+			radioButton -label "Simplify Mode" -align "left" -cc "zzExportAnimationUIControls update" zzExportAnimationRadioSimplify;
+			checkBox -label "Heirarchy" -align "left" -enable 0 -v 0 zzExportAnimationCheckHeirarchy;
+
+			rowLayout -numberOfColumns 2 -p zzLayerLeftColumn
+				-columnAttach 1 "both" 	0
+				-columnAttach 2 "both" 	15;
+				text -align "left" -label "Rotational Tolerance:";
+				textField -ed 1 -text "1.25" zzExportAnimationTextRotTolerance;
+
+			rowLayout -numberOfColumns 2 -p zzLayerLeftColumn
+				-columnAttach 1 "both" 	0
+				-columnAttach 2 "both" 	15;
+				text -align "left" -label "Positional Tolerance:";
+				textField -ed 1 -text "0.3" zzExportAnimationTextPosTolerance;
+
+			checkBox -label "Simplify Animation Data" -p zzLayerLeftColumn -align "left" -v 1 zzExportAnimationCheckSimplify;
+			checkBox -label "Create Dummy Skeleton" -p zzLayerLeftColumn -align "left" -v 1 zzExportAnimationCheckDummySkel;
+
+			rowLayout -numberOfColumns 2 -p zzLayerLeftColumn
+				-columnAttach 1 "both" 	0
+				-columnAttach 2 "both" 	5;
+			checkBox -label "Save To:" -align "left" -v 0 zzExportAnimationCheckSave;
+			button -label "<-" -c "";
+
+			textField -ed 1 -p zzLayerLeftColumn -text $exportFileName zzExportAnimationTextFileSave;
+			button -label "Make Go Now!" -p zzLayerLeftColumn -c zzRotateTrace;
+
+	showWindow $windowName;
+	}
+
+
+global proc zzExportAnimationUIControls ( string $function ) {
+	switch ( $function ) {
+		case "update":
+		if ( `radioButton -q -sl zzExportAnimationRadioTrace` ) {
+			textField -e -enable 1 zzExportAnimationTextRotTolerance;
+			checkBox -e -enable 1 zzExportAnimationCheckDummySkel;
+			checkBox -e -enable 1 zzExportAnimationCheckSimplify;
+			checkBox -e -v 0 -enable 0 zzExportAnimationCheckHeirarchy;
+			checkBox -e -enable 1 zzExportAnimationCheckSave;
+			}
+		if ( `radioButton -q -sl zzExportAnimationRadioSimplify` ) {
+			textField -e -enable 1 zzExportAnimationTextRotTolerance;
+			checkBox -e -v 0 -enable 0 zzExportAnimationCheckDummySkel;
+			checkBox -e -v 1 -enable 0 zzExportAnimationCheckSimplify;
+			checkBox -e -v 1 -enable 1 zzExportAnimationCheckHeirarchy;
+			checkBox -e -v 0 -enable 1 zzExportAnimationCheckSave;
+			}
+		break;
+
+		case "updateName":
+		string $selObjs[] = `ls -sl`;
+		textField -e -text $selObjs[0] zzExportAnimationTextSkeleton;
+		break;
+		}
+	}
+
+
+global proc zzRotateTrace () {
+	string $selObjs[] = `ls -sl`;
+	string $windowName = "zzExportAnimationWindow";
+	string $sourceRoot = `textField -q -text zzExportAnimationTextSkeleton`;
+	string $sourceSkeleton[] = `listRelatives -ad -pa -typ joint -typ transform $sourceRoot`;
+	string $jointRotNodes[] = {};
+	string $jointTransNodes[] = {};
+	string $skeletonDupe[] = {};
+	string $targetSkeleton[] = {};
+	float $minTime = `playbackOptions -q -min`;
+	float $maxTime = `playbackOptions -q -max`;
+	float $timeRange = $maxTime - $minTime;
+	float $timeCount = $minTime;
+	int $numBones;
+	int $n = 0;
+
+	$sourceSkeleton = `zzInsertFirst $sourceRoot $sourceSkeleton`;
+	$numBones = `size $sourceSkeleton`;
+	if ( `checkBox -q -v zzExportAnimationCheckDummySkel` ) {
+		//Duplicate Skeleton
+		$skeletonDupe = `duplicate -rc $sourceRoot`;
+		$targetSkeleton = `listRelatives -ad -pa -typ joint -typ transform $skeletonDupe[0]`;
+		$targetSkeleton = `zzInsertFirst $skeletonDupe[0] $targetSkeleton`;
+		}
+
+	//prefsChangeNodeNameScheme 1;
+
+	//Anim Curve Node Creation
+	string $rootPosKeyX = ( $sourceRoot + "RootTranslateExportCurve_X" );
+	string $rootPosKeyY = ( $sourceRoot + "RootTranslateExportCurve_Y" );
+	string $rootPosKeyZ = ( $sourceRoot + "RootTranslateExportCurve_Z" );
+	string $rootRotKeyX = ( $sourceRoot + "RootRotateExportCurve_X" );
+	string $rootRotKeyY = ( $sourceRoot + "RootRotateExportCurve_Y" );
+	string $rootRotKeyZ = ( $sourceRoot + "RootRotateExportCurve_Z" );
+
+	for ( $n = 0; $n < $numBones; $n++ ) {
+		string $animNodeRX = `createNode animCurveTA`;
+		string $animNodeRY = `createNode animCurveTA`;
+		string $animNodeRZ = `createNode animCurveTA`;
+
+		$jointRotNodes[($n * 3 + 0)] = `rename $animNodeRX ( $sourceSkeleton[$n] + "RotateExportCurve_X" )`;
+		$jointRotNodes[($n * 3 + 1)] = `rename $animNodeRY ( $sourceSkeleton[$n] + "RotateExportCurve_Y" )`;
+		$jointRotNodes[($n * 3 + 2)] = `rename $animNodeRZ ( $sourceSkeleton[$n] + "RotateExportCurve_Z" )`;
+
+		string $animNodeTX = `createNode animCurveTL`;
+		string $animNodeTY = `createNode animCurveTL`;
+		string $animNodeTZ = `createNode animCurveTL`;
+
+		$jointTransNodes[($n * 3 + 0)] = `rename $animNodeTX ( $sourceSkeleton[$n] + "TranslateExportCurve_X" )`;
+		$jointTransNodes[($n * 3 + 1)] = `rename $animNodeTY ( $sourceSkeleton[$n] + "TranslateExportCurve_Y" )`;
+		$jointTransNodes[($n * 3 + 2)] = `rename $animNodeTZ ( $sourceSkeleton[$n] + "TranslateExportCurve_Z" )`;
+		}
+
+
+	if ( `radioButton -q -sl zzExportAnimationRadioTrace` ) {
+		//Trace Routine
+		for ( $timeCount; $timeCount <= $maxTime; $timeCount++ ) {
+			currentTime -e $timeCount;
+
+			//setKeys for the rest of the skeleton
+			for ( $n = 0; $n < $numBones; $n++ ) {
+				string $animNodeTX = $jointTransNodes[($n*3 + 0)];
+				string $animNodeTY = $jointTransNodes[($n*3 + 1)];
+				string $animNodeTZ = $jointTransNodes[($n*3 + 2)];
+				string $animNodeRX = $jointRotNodes[($n*3 + 0)];
+				string $animNodeRY = $jointRotNodes[($n*3 + 1)];
+				string $animNodeRZ = $jointRotNodes[($n*3 + 2)];
+				float $posKey[] = `xform -q -t $sourceSkeleton[$n]`;
+				float $rotKey[] = `xform -q -ro -os $sourceSkeleton[$n]`;
+
+				setKeyframe -breakdown false -time $timeCount -v $posKey[0] $animNodeTX;
+				setKeyframe -breakdown false -time $timeCount -v $posKey[1] $animNodeTY;
+				setKeyframe -breakdown false -time $timeCount -v $posKey[2] $animNodeTZ;
+				setKeyframe -breakdown false -time $timeCount -v $rotKey[0] $animNodeRX;
+				setKeyframe -breakdown false -time $timeCount -v $rotKey[1] $animNodeRY;
+				setKeyframe -breakdown false -time $timeCount -v $rotKey[2] $animNodeRZ;
+				}
+			}
+
+		//Linearise Animation
+		for ( $n = 0; $n < $numBones; $n++ ) {
+			string $animNodeTX = $jointTransNodes[($n*3 + 0)];
+			string $animNodeTY = $jointTransNodes[($n*3 + 1)];
+			string $animNodeTZ = $jointTransNodes[($n*3 + 2)];
+			string $animNodeRX = $jointRotNodes[($n*3 + 0)];
+			string $animNodeRY = $jointRotNodes[($n*3 + 1)];
+			string $animNodeRZ = $jointRotNodes[($n*3 + 2)];
+
+			keyTangent -itt linear -ott linear $animNodeTX;
+			keyTangent -itt linear -ott linear $animNodeTY;
+			keyTangent -itt linear -ott linear $animNodeTZ;
+			keyTangent -itt linear -ott linear $animNodeRX;
+			keyTangent -itt linear -ott linear $animNodeRY;
+			keyTangent -itt linear -ott linear $animNodeRZ;
+			}
+
+		if ( `checkBox -q -v zzExportAnimationCheckDummySkel` ) {
+			//Create Dummy Skeleton
+			if ( `checkBox -q -v zzExportAnimationCheckDummySkel` ) {
+				for ( $n = 0; $n < $numBones; $n++ ) {
+					string $animNodeTX = $jointTransNodes[($n*3 + 0)];
+					string $animNodeTY = $jointTransNodes[($n*3 + 1)];
+					string $animNodeTZ = $jointTransNodes[($n*3 + 2)];
+					string $animNodeRX = $jointRotNodes[($n*3 + 0)];
+					string $animNodeRY = $jointRotNodes[($n*3 + 1)];
+					string $animNodeRZ = $jointRotNodes[($n*3 + 2)];
+
+					connectAttr ( $animNodeTX + ".output" ) ( $targetSkeleton[$n] + ".tx" );
+					connectAttr ( $animNodeTY + ".output" ) ( $targetSkeleton[$n] + ".ty" );
+					connectAttr ( $animNodeTZ + ".output" ) ( $targetSkeleton[$n] + ".tz" );
+					connectAttr ( $animNodeRX + ".output" ) ( $targetSkeleton[$n] + ".rx" );
+					connectAttr ( $animNodeRY + ".output" ) ( $targetSkeleton[$n] + ".ry" );
+					connectAttr ( $animNodeRZ + ".output" ) ( $targetSkeleton[$n] + ".rz" );
+					}
+				}
+			}
+		}
+
+	//This will do a simplify on the actual anim curve nodes, so its indpenedant of whether the dummy skeleton was created
+	if ( `radioButton -q -sl zzExportAnimationRadioTrace` ) {
+		//Curve Simplification
+		if ( `checkBox -q -v zzExportAnimationCheckSimplify` ) {
+			for ( $n = 0; $n < $numBones; $n++ ) {
+				float $rotTolerance = `textField -q -text zzExportAnimationTextRotTolerance`;
+				float $posTolerance = `textField -q -text zzExportAnimationTextPosTolerance`;
+				string $animNodeTX = $jointTransNodes[($n*3 + 0)];
+				string $animNodeTY = $jointTransNodes[($n*3 + 1)];
+				string $animNodeTZ = $jointTransNodes[($n*3 + 2)];
+				string $animNodeRX = $jointRotNodes[($n*3 + 0)];
+				string $animNodeRY = $jointRotNodes[($n*3 + 1)];
+				string $animNodeRZ = $jointRotNodes[($n*3 + 2)];
+
+				zzKeyCutter $animNodeTX $posTolerance;
+				zzKeyCutter $animNodeTY $posTolerance;
+				zzKeyCutter $animNodeTZ $posTolerance;
+				zzKeyCutter $animNodeRX $rotTolerance;
+				zzKeyCutter $animNodeRY $rotTolerance;
+				zzKeyCutter $animNodeRZ $rotTolerance;
+				}
+			}
+		}
+
+	//If in simplification mode, then we need to find the object heirarchy in a different way
+	if ( `radioButton -q -sl zzExportAnimationRadioSimplify` ) {
+		//Simplification Only - needs to find anim curve names for desendants
+		if ( `checkBox -q -v zzExportAnimationCheckSimplify` ) {
+			for ( $obj in $sourceSkeleton ) {
+				//float $posTolerance = `textField -q -text zzExportAnimationTextPosTolerance`;
+				float $rotTolerance = `textField -q -text zzExportAnimationTextRotTolerance`;
+				//string $objPosCurves[] = `listConnections -d 0 -t "animCurveTL" $obj`;
+				string $objRotCurves[] = `listConnections -d 0 -t "animCurveTA" $obj`;
+				string $animNodeX = $objRotCurves[0];
+				string $animNodeY = $objRotCurves[1];
+				string $animNodeZ = $objRotCurves[2];
+
+				zzKeyCutter $animNodeX $rotTolerance;
+				zzKeyCutter $animNodeY $rotTolerance;
+				zzKeyCutter $animNodeZ $rotTolerance;
+				}
+			}
+		}
+
+	//Save anim data to file
+	if ( `checkBox -q -v zzExportAnimationCheckSave` ) {
+		string $currentSceneName = `file -q -sn`;
+		string $exportFileName = `textField -q -text zzExportAnimationTextFileSave`;
+		string $fileOutPut;
+		int $tickTime = 160;
+		int $fileId=`fopen $exportFileName "w"`;
+		int $n = 0;
+
+		$fileOutPut = $fileOutPut + "*MAYA_ASCIIEXPORT	200\n\r";
+		$fileOutPut = $fileOutPut + "*COMMENT \"Max is bad...\"\n\r";
+		$fileOutPut = $fileOutPut + "*SCENE {\n\r";
+		$fileOutPut = $fileOutPut + "\t*SCENE_FILENAME \"" + $currentSceneName + "\"\n\r";
+		$fileOutPut = $fileOutPut + "\t*SCENE_FIRSTFRAME " + $minTime + "\n\r";
+		$fileOutPut = $fileOutPut + "\t*SCENE_LASTFRAME " + $maxTime + "\n\r";
+		$fileOutPut = $fileOutPut + "\t*SCENE_FRAMESPEED 30\n\r";
+		$fileOutPut = $fileOutPut + "\t*SCENE_TICKSPERFRAME " + $tickTime + "\n\r";
+		$fileOutPut = $fileOutPut + "\t*SCENE_BACKGROUND_STATIC 0.5725	0.5725	0.5725\n\r";
+		$fileOutPut = $fileOutPut + "\t*SCENE_AMBIENT_STATIC 0.0431	0.0431	0.0431\n\r";
+		$fileOutPut = $fileOutPut + "}\n\r";
+
+		for ( $n = 0; $n < $numBones; $n++ ) {
+			float $rotatePivot[] = `xform -q -ws -rp $sourceSkeleton[$n]`;
+			$fileOutPut = $fileOutPut + "*GEOMOBJECT {\n\r";
+			$fileOutPut = $fileOutPut + "\t*NODE_NAME \"" + $sourceSkeleton[$n] + "\"\n\r";
+			$fileOutPut = $fileOutPut + "\t*NODE_TM {\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*NODE_NAME \"" + $sourceSkeleton[$n] + "\"\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*INHERIT_POS 0 0 0\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*INHERIT_ROT 0 0 0\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*INHERIT_SCL 0 0 0\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*TM_ROW0\t1.0000\t0.0000\t0.0000\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*TM_ROW1\t0.0000\t1.0000\t0.0000\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*TM_ROW2\t0.0000\t0.0000\t1.0000\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*TM_ROW3\t" + $rotatePivot[0] + "\t" + $rotatePivot[1] + "\t" + $rotatePivot[2] + "\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*TM_POS\t\t" + $rotatePivot[0] + "\t" + $rotatePivot[1] + "\t" + $rotatePivot[2] + "\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*TM_ROTAXIS\t0.0000	0.0000	0.0000\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*TM_ROTANGLE\t0.0000\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*TM_SCALE\t1.0000\t1.0000\t1.0000\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*TM_SCALEAXIS\t0.0000\t0.0000\t0.0000\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*TM_SCALEAXISANG\t0.0000\n\r";
+			$fileOutPut = $fileOutPut + "}\n\r";
+
+			$fileOutPut = $fileOutPut + "\t*PROP_MOTIONBLUR 0\n\r";
+			$fileOutPut = $fileOutPut + "\t*PROP_CASTSHADOW 0\n\r";
+			$fileOutPut = $fileOutPut + "\t*PROP_RECVSHADOW 0\n\r";
+			$fileOutPut = $fileOutPut + "\t*TM_ANIMATION {\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*NODE_NAME \"" + $sourceSkeleton[$n] + "\"\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*CONTROL_POS_LINEAR {\n\r";
+
+			string $animNodeTX = $jointTransNodes[($n*3 + 0)];
+			string $animNodeTY = $jointTransNodes[($n*3 + 1)];
+			string $animNodeTZ = $jointTransNodes[($n*3 + 2)];
+			string $animNodeRX = $jointRotNodes[($n*3 + 0)];
+			string $animNodeRY = $jointRotNodes[($n*3 + 1)];
+			string $animNodeRZ = $jointRotNodes[($n*3 + 2)];
+			int $i = 0;
+
+			//each xform channel will have an equal number of nodes, thus take the number from the X channel
+			int $numPosKeys = `keyframe -q -kc $animNodeTX`;
+			int $numRotKeys = `keyframe -q -kc $animNodeRX`;
+
+			//now export translation data for bone
+			$i = 0;
+			for ( $i; $i < $numPosKeys; $i++ ) {
+				float $keyTime[] = `keyframe -in $i -q $animNodeTX`;
+				float $keyValueX[] = `keyframe -in $i -q -vc $animNodeTX`;
+				float $keyValueY[] = `keyframe -in $i -q -vc $animNodeTY`;
+				float $keyValueZ[] = `keyframe -in $i -q -vc $animNodeTZ`;
+
+				$fileOutPut = $fileOutPut + "\t\t\t*CONTROL_POS_KEY \t" + ( $keyTime[0] * $tickTime ) + "\t" + $keyValueX[0] + "\t" + $keyValueY[0] + "\t" + $keyValueZ[0] + "\n\r";
+				}
+
+			$fileOutPut = $fileOutPut + "\t\t}\n\r";
+			$fileOutPut = $fileOutPut + "\t\t*CONTROL_ROT_LINEAR {\n\r";
+
+			//now export rotation data for bone
+			$i = 0;
+			for ( $i; $i < $numRotKeys; $i++ ) {
+				float $keyTime[] = `keyframe -in $i -q $animNodeRX`;
+				float $keyValueX[] = `keyframe -in $i -q -vc $animNodeRX`;
+				float $keyValueY[] = `keyframe -in $i -q -vc $animNodeRY`;
+				float $keyValueZ[] = `keyframe -in $i -q -vc $animNodeRZ`;
+
+				$fileOutPut = $fileOutPut + "\t\t\t*CONTROL_ROT_KEY \t" + ( $keyTime[0] * $tickTime ) + "\t" + $keyValueX[0] + "\t" + $keyValueY[0] + "\t" + $keyValueZ[0] + "\n\r";
+				}
+			}
+
+		fwrite $fileId $fileOutPut;
+		fclose $fileId;
+		confirmDialog -button "rockin" -title "Anim Exporter V0.5" -message "ASE Exported Successfully";
+		}
+
+	select $selObjs;
+	}
+
+
+
+
+//This function takes an array, and a string, which is inserts at the begnning of the string.  Returns the array.
+global proc string[] zzInsertFirst ( string $firstEntry, string $array[] ) {
+	string $returnArray[] = {};
+	int $n = 0;
+
+	$returnArray[0] = $firstEntry;
+	for ( $n; $n < `size $array`; $n++ ) {
+		$returnArray[$n + 1] = $array[$n];
+		}
+
+	return $returnArray;
+	}
+
+
+global proc zzKeyCutter ( string $animNode, float $tolerance ) {	//string $objList[], float $tolerance
+	$obj = $animNode;
+
+	string $selObjs[] = `ls -sl`;
+	float $startTime[] = `keyframe -in 0 -q $obj`;	//keys have to be index based...
+	float $deleteKeyTimes[] = {};
+	int $indexCount = $startTime[0];
+	int $numKeys = `keyframe -q -kc $obj`;
+	int $n = 0;
+	int $i = 0;
+
+	//pass 1 - filter out flat keys
+	while ( $n < $numKeys - 3 ) {
+		if ( `zzKeyTest $n $tolerance $obj` ) {
+			float $keyTimes01[] = `keyframe -in ( $n + 1 ) -q $obj`;
+			$deleteKeyTimes[$i] = $keyTimes01[0];
+			$i++;
+			$n++;
+			if ( `zzKeyTest $n $tolerance $obj` ) {
+				print "2nd iteration\n";
+				float $keyTimes02[] = `keyframe -in ( $n + 1 ) -q $obj`;
+				$deleteKeyTimes[$i] = $keyTimes02[0];
+				$i++;
+				$n++;
+				if ( `zzKeyTest $n $tolerance $obj` ) {
+					print "3rd iteration\n";
+					float $keyTimes03[] = `keyframe -in ( $n + 1 ) -q $obj`;
+					$deleteKeyTimes[$i] = $keyTimes03[0];
+					$i++;
+					$n++;
+					if ( `zzKeyTest $n $tolerance $obj` ) {
+						print "4th iteration\n";
+						float $keyTimes04[] = `keyframe -in ( $n + 1 ) -q $obj`;
+						$deleteKeyTimes[$i] = $keyTimes04[0];
+						$i++;
+						$n++;
+						}
+					}
+				}
+			}
+		$n++;
+		}
+
+	//delete the tagged keyframes
+	for ( $key in $deleteKeyTimes ) {
+		cutKey -t $key -clear $obj;
+		}
+	}
+
+
+//this function takes a time, a tolerance and an anim node name and outputs
+//whether the key should be deleted or not.
+global proc int zzKeyTest ( float $n, float $tolerance, string $obj ) {
+	int $returnValue = 0;
+	float $key1Val[] = `keyframe -in $n -q -vc $obj`;
+	float $key2Val[] = `keyframe -in ( $n + 1 ) -q -vc $obj`;
+	float $key3Val[] = `keyframe -in ( $n + 2 ) -q -vc $obj`;
+	float $key1Time[] = `keyframe -in $n -q $obj`;
+	float $key2Time[] = `keyframe -in ( $n + 1 ) -q $obj`;
+	float $key3Time[] = `keyframe -in ( $n + 2 ) -q $obj`;
+
+	//Linear Test
+	float $midValue = $key3Val[0] - $key1Val[0];
+	float $midKeyOffset = ( $key2Time[0] - $key1Time[0] ) / ( $key3Time[0] - $key1Time[0] );
+	float $midValueExpect = $key1Val[0] + ( $midValue * $midKeyOffset );
+
+	//Gradient Test
+	float $run01 = $key2Time[0] - $key1Time[0];
+	float $run02 = $key3Time[0] - $key2Time[0];
+
+	int $notTurningPt = 1;
+	if ( $run01 != 0 && $run02 != 0 ) {
+		float $gradient01 = ( $key2Val[0] - $key1Val[0] ) / $run01;
+		float $gradient02 = ( $key3Val[0] - $key2Val[0] ) / $run02;
+		if ( $gradient01 != 0 && $gradient02 != 0 ) {
+			$notTurningPt = ( $gradient01/$gradient02 ) > 0?1:0;
+			}
+		}
+	if ( !$notTurningPt ) {
+		print ( "key number: " + ( $n + 1 ) + " is a turning point\n" );
+		}
+
+	//Mid key test
+	//if ( key 2 value lies inbetween the upper/lower tolerance, AND is not a turning point key )
+	int $upperLimit = ( $key2Val[0] < $midValueExpect + $tolerance )?1:0;
+	int $lowerLimit = ( $key2Val[0] > $midValueExpect - $tolerance )?1:0;
+	if ( $upperLimit && $lowerLimit && $notTurningPt ) {
+		$returnValue = 1;
+		}
+
+	return $returnValue;
+	}
+
+
+global proc zzKeyCutterCompareAlg ( string $animNode, float $tolerance ) {
+	string $dupeAnimNode[] = `duplicate $animNode`;
+	string $orgAnimNode = $dupeAnimNode[0];
+	float $keyTimes[] = {};  //this array will contain the times of keys at index n
+	float $undeletableKeyTimes[] = {};  //this array contains the time values of undeletable keys
+	int $numKeys = `keyframe -q -kc $animNode`;
+	int $n;
+	int $i = 0;  //this is the next index to add to the deleteKeyTime array
+
+	//create the keyTimes array
+	for ( $n; $n < $numKeys - 1; $n++ ) {
+		float $temp[1] = `keyframe -in $n -q $animNode`;
+		$keyTimes[$n] = $temp[0];
+		}
+
+	//generate an array of undeletable keys
+	$n = 1;  //start with the second key (ie index 1), and end on the second last
+	$i = 0;  //re-initialise the counter $i
+	for ( $n; $n < $numKeys - 1; $n++ ) {
+		float $keyValueNow[1] = `keyframe -in $n -q -vc $animNode`;
+		float $keyValueFut[1] = `keyframe -in ( $n + 1 ) -q -vc $animNode`;
+		float $keyValuePrev[1] = `keyframe -in ( $n - 1 ) -q -vc $animNode`;
+
+		float $keyTimesNow[1] = `keyframe -in $n -q $animNode`;
+		float $keyTimesFut[1] = `keyframe -in ( $n + 1 ) -q $animNode`;
+		float $keyTimesPrev[1] = `keyframe -in ( $n - 1 ) -q $animNode`;
+
+		float $run01 = $keyTimesNow[0] - $keyTimesPrev[0];
+		float $run02 = $keyTimesFut[0] - $keyTimesNow[0];
+
+		//turning point test
+		if ( $run01 != 0 && $run02 != 0 ) {
+			float $gradient01 = ( $keyValueNow[0] - $keyValuePrev[0] ) / $run01;
+			float $gradient02 = ( $keyValueFut[0] - $keyValueNow[0] ) / $run02;
+
+			//turning point test (turning point is when gradient changes sign
+			if ( $gradient01 != 0 && $gradient02 != 0 ) {
+				if ( ( $gradient01/$gradient02 ) < 0 ) {
+					$undeletableKeyTimes[$i] = $keyTimesNow[0];
+					$i++;
+					}
+				}
+
+			//corner test (a corner is where the gradient goes from non-zero to zero
+			if ( ( $gradient01 == 0 && $gradient02 != 0 ) || ( $gradient01 != 0 && $gradient02 == 0 ) ) {
+				$undeletableKeyTimes[$i] = $keyTimesNow[0];
+				$i++;
+				}
+			}
+		}
+
+	//go through and create an array of keys to be deleted
+	$n = 1;  //start with the second key (ie index 1), and end on the second last
+	$i = 0;  //re-initialise the counter $i
+	for ( $n; $n < $numKeys - 1; $n++ ) {
+		float $keyTimesNow = $keyTimes[$n];
+		float $keyTimesNowOrg = $keyTimes[$n];
+		int $deletable = 1;
+
+		//test to see if the key is deletable or not
+		for ( $key in $undeletableKeyTimes ) {
+			if ( $keyTimesNowOrg == $key ) {  //we can use $keyTimesNowOrg, as the two curves are duplicates.
+				$deletable = 0;
+				}
+			}
+
+		//only proceed if the key is deletable
+		if ( $deletable ) {
+			float $keyTimesFut = $keyTimes[( $n + 1 )];
+			float $keyTimesPrev[1] = `keyframe -in ( $n - 1 ) -q $animNode`;  //previous key is index based.  when keys are deleted, indicies are updated
+			float $keyTimesPrevSampled = $keyTimes[( $n - 1 )];
+
+			float $keyValueNow[1] = `keyframe -t ( $keyTimes[( $n )] ) -q -vc $animNode`;
+			float $keyValueFut[1] = `keyframe -t ( $keyTimes[( $n + 1 )] ) -q -vc $animNode`;
+			float $keyValuePrev[1] = `keyframe -in ( $n - 1 ) -q -vc $animNode`;  //previous key is index based.  when keys are deleted, indicies are updated
+			float $keyValueNowOrg[1] = `keyframe -t ( $keyTimes[$n] ) -q -vc $orgAnimNode`;
+			int $deleteAnyway = 0;
+
+			//print ( "now: " + $keyTimesNow + "  future: " + $keyTimesFut + "  prev: " + $keyTimesPrev[0] + "  sampled: " + $keyTimesPrevSampled + "\n" );
+
+			//figure out key value of curve between previous and future.
+			float $actualValue = $keyValueNowOrg[0];
+
+			float $timeDif = $keyTimesFut - $keyTimesPrev[0];
+			float $keyDif = $keyValueFut[0] - $keyValuePrev[0];
+			float $expectedValue;
+
+			float $gradient;
+			if ( $keyDif != 0 ) {
+				$gradient = $timeDif / $keyDif;
+
+				float $yIntercept = $keyTimesFut - ( $gradient * $keyValueFut[0] );
+				if ( $gradient != 0 ) { $expectedValue = ( $keyTimesNow - $yIntercept ) / $gradient; }
+				}
+			else { $deleteAnyway = 1; }  //if keyDiff = 0, then the key is a flat key, thats not a corner (as corners are put into the undeletable list) so delete it anyway
+
+			print ( "extrapolated value: " + $expectedValue + "  original value: " + $keyValueNow[0] + "\n" );
+			//check to see if the key lies within the tolerance range
+			if ( abs( $expectedValue - $actualValue ) < $tolerance || $deleteAnyway ) {
+				cutKey -t $keyTimesNow -clear $animNode;
+				$i++;
+				}
+			}
+		}
+
+	delete $orgAnimNode;
+	}

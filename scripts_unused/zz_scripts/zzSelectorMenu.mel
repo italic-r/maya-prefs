@@ -1,0 +1,63 @@
+//
+// selection editor marking menu
+//
+// Created by Hamish McKenzie www.emissionpossible.com
+// Created : 23 December 2002
+// Last Modified :
+//
+// Description:
+// very simple, displays a marking menu for opening selection editor
+// based windows (and generally other common, but fiddly to open)
+// editor windows.  by default, it opens the outliner.
+//
+// Usage:
+//  assign this function to a key press:
+//	zzSelectorMenu;
+//
+//  assign this function to the release;
+//	zzSelectorMenuKillUI;
+//
+// NOTE: if the hotkey you want to assign this script to contains
+// either ctrl, alt or shift, then modify the "popupMenu" line below
+// to reflect which key is used (ie if you're using alt-w then
+// change it to -alt 1).
+//
+// Hamish McKenzie ©2007...
+
+
+global proc zzSelectorMenu () {
+	global int $zzIsClicked;
+
+	$zzIsClicked = 0;
+	if( `popupMenu -exists tempMM` ) { deleteUI tempMM; }
+	popupMenu -ctl 0 -alt 0 -sh 0 -mm 1 -b 1 -aob 1 -p viewPanes -pmc "zzSelectorMenuUI" tempMM;
+	}
+
+
+global proc zzSelectorMenuUI () {
+	global int $zzIsClicked;
+
+	menu -e -dai tempMM;
+	$zzIsClicked = 1;
+
+	menuItem -l "Outliner" -command ( "OutlinerWindow" ) -rp "N";
+	menuItem -l "Dynamic Rel" -command ( "DynamicRelationshipEditor" ) -rp "E";
+	menuItem -l "Render Flags" -command ( "renderFlagsWindow" ) -rp "W";
+	menuItem -l "Light Linker" -command ( "lightLinkingEditor" ) -rp "S";
+
+	menuItem -l "Connection Ed" -command ( "ConnectionEditor" ) -rp "NE";
+	//menuItem -l "" -command ( "" ) -rp "NW";
+	//menuItem -l "" -command ( "" ) -rp "SE";
+	//menuItem -l "" -command ( "" ) -rp "SW";
+	}
+
+
+global proc zzSelectorMenuKillUI () {
+	global int $zzIsClicked;
+
+	if( `popupMenu -exists tempMM` ) {
+		deleteUI tempMM;
+		if ( $zzIsClicked ){ $zzIsClicked = 0; }
+		else { OutlinerWindow; }
+		}
+	}

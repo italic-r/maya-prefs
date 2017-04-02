@@ -1,0 +1,42 @@
+global proc makeQss() { 
+string $baseObjectSets[] = {"rig_elbow_r_skin_IK rig_shoulder_r_skin_IK rig_wrist_l_skin_FK_anim rig_elbow_l_skin_FK_anim rig_shoulder_l_skin_FK_anim rig_wrist_l_skin rig_elbow_l_skin_Roll_3 rig_elbow_l_skin_Roll_2 rig_elbow_l_skin_Roll_1 rig_elbow_l_skin_Roll_0 rig_elbow_l_skin rig_shoulder_l_skin_Roll_3_End_0 rig_shoulder_l_skin_Roll_3 rig_shoulder_l_skin_Roll_2 rig_shoulder_l_skin_Roll_1 rig_shoulder_l_skin_Roll_0 rig_shoulder_l_skin rig_clavicle_l_skin_End_0 rig_clavicle_l_skin rig_wrist_l_skin_SW_anim rig_elbow_l_skin_SW rig_shoulder_l_skin_SW rig_wrist_l_skin_IK rig_elbow_l_skin_IK rig_shoulder_l_skin_IK rig_head_2_skin rig_neck_0_skin_Roll_2 rig_neck_0_skin_Roll_1 rig_neck_0_skin_Roll_0 rig_neck_0_skin rig_spine_5_skin rig_spine_4_skin rig_spine_3_skin rig_spine_2_skin rig_spine_1_skin rig_spine_0_skin rig_pelvis_skin rig_toe_r_skin_FK rig_ball_r_skin_FK_anim rig_heel_r_skin_FK rig_ankle_r_skin_FK_anim rig_knee_l_skin_Roll_0 rig_knee_l_skin rig_hip_l_skin_Roll_3_End_0 rig_hip_l_skin_Roll_3 rig_hip_l_skin_Roll_2 rig_hip_l_skin_Roll_1 rig_hip_l_skin_Roll_0 rig_hip_l_skin rig_toe_l_skin_SW rig_ball_l_skin_SW rig_heel_l_skin_SW rig_ankle_l_skin_SW_anim rig_knee_l_skin_SW rig_hip_l_skin_SW rig_toe_l_skin_IK rig_ball_l_skin_IK rig_heel_l_skin_IK rig_ankle_l_skin_IK rig_knee_l_skin_IK rig_hip_l_skin_IK toe_r_skin ball_r_skin heel_r_skin ankle_r_skin knee_r_skin_Roll_3 knee_r_skin_Roll_2 knee_r_skin_Roll_1 knee_r_skin_Roll_0 knee_r_skin hip_r_skin_Roll_3 hip_r_skin_Roll_2 hip_r_skin_Roll_1 hip_r_skin_Roll_0 hip_r_skin toe_l_skin ball_l_skin heel_l_skin ankle_l_skin knee_l_skin_Roll_3 knee_l_skin_Roll_2 knee_l_skin_Roll_1 knee_l_skin_Roll_0 knee_l_skin hip_l_skin_Roll_3 rig_knee_r_skin_FK_anim rig_hip_r_skin_FK_anim rig_toe_r_skin rig_ball_r_skin rig_heel_r_skin rig_ankle_r_skin rig_knee_r_skin_Roll_3_End_0 rig_knee_r_skin_Roll_3 rig_knee_r_skin_Roll_2 rig_knee_r_skin_Roll_1 rig_knee_r_skin_Roll_0 rig_knee_r_skin rig_hip_r_skin_Roll_3_End_0 rig_hip_r_skin_Roll_3 rig_hip_r_skin_Roll_2 rig_hip_r_skin_Roll_1 rig_hip_r_skin_Roll_0 rig_hip_r_skin rig_toe_r_skin_SW rig_ball_r_skin_SW rig_heel_r_skin_SW rig_ankle_r_skin_SW_anim rig_knee_r_skin_SW rig_hip_r_skin_SW rig_toe_r_skin_IK rig_ball_r_skin_IK rig_heel_r_skin_IK rig_ankle_r_skin_IK rig_knee_r_skin_IK rig_hip_r_skin_IK rig_toe_l_skin_FK rig_ball_l_skin_FK_anim rig_heel_l_skin_FK rig_ankle_l_skin_FK_anim rig_knee_l_skin_FK_anim rig_hip_l_skin_FK_anim rig_toe_l_skin rig_ball_l_skin rig_heel_l_skin rig_ankle_l_skin rig_knee_l_skin_Roll_3_End_0 rig_knee_l_skin_Roll_3 rig_knee_l_skin_Roll_2 rig_knee_l_skin_Roll_1 m_leg_heel_Cntrl_r m_leg_heel_Cntrl_l rig_wrist_r_skin_FK_anim rig_elbow_r_skin_FK_anim rig_shoulder_r_skin_FK_anim rig_wrist_r_skin rig_elbow_r_skin_Roll_3 rig_elbow_r_skin_Roll_2 rig_elbow_r_skin_Roll_1 rig_elbow_r_skin_Roll_0 rig_elbow_r_skin rig_shoulder_r_skin_Roll_3_End_0 rig_shoulder_r_skin_Roll_3 rig_shoulder_r_skin_Roll_2 rig_shoulder_r_skin_Roll_1 rig_shoulder_r_skin_Roll_0 rig_shoulder_r_skin rig_clavicle_r_skin_End_0 rig_clavicle_r_skin rig_wrist_r_skin_SW_anim rig_elbow_r_skin_SW rig_shoulder_r_skin_SW rig_wrist_r_skin_IK head_2_skin neck_0_skin_Roll_2 neck_0_skin_Roll_1 neck_0_skin_Roll_0 neck_0_skin spine_6_skin spine_5_skin spine_4_skin spine_3_skin spine_2_skin spine_1_skin spine_0_skin pelvis_skin palm_l_skin clavicle_r_skin hip_l_skin_Roll_0 shoulder_l_skin_Roll_3 hip_l_skin wrist_r_skin palm_r_skin elbow_r_skin_Roll_1 elbow_r_skin_Roll_0 elbow_l_skin_Roll_3 wrist_l_skin shoulder_r_skin shoulder_r_skin_Roll_0 elbow_l_skin_Roll_1 elbow_l_skin_Roll_2 elbow_r_skin_Roll_2 shoulder_l_skin_Roll_1 elbow_r_skin_Roll_3 elbow_l_skin elbow_r_skin shoulder_r_skin_Roll_3 elbow_l_skin_Roll_0 clavicle_l_skin head_1_skin shoulder_r_skin_Roll_1 shoulder_r_skin_Roll_2 shoulder_l_skin_Roll_0 shoulder_l_skin hip_l_skin_Roll_2 shoulder_l_skin_Roll_2 hip_l_skin_Roll_1", "lwrLegSkinLeft_skinnyDeform_anim lwrArmSkinLeft_skinnyDeform_anim lwrArmSkinRight_skinnyDeform_anim uprArmSkinRight_skinnyDeform_anim uprArmSkinLeft_skinnyDeform_anim neckSkin_skinnyDeform_anim feminine_deform_anim Belly_deform_anim lwrLegLeft_bigDeform_anim uprArmLeft_bigDeform_anim uprArmRight_bigDeform_anim lwrArmRight_bigDeform_anim lwrArmLeft_bigDeform_anim uprLegSkinLeft_skinnyDeform_anim uprLegSkinRight_skinnyDeform_anim lwrLegSkinRight_skinnyDeform_anim neck_bigDeform_anim torsoBigLeft_bigDeform_anim torsoBigRight_bigDeform_anim torsoSkinnyLeft_skinnyDeform_anim torsoSkinnyRight_skinnyDeform_anim uprLegLeft_bigDeform_anim uprLegRight_bigDeform_anim lwrLegRight_bigDeform_anim", "right_Ear_skin_jnt left_Ear_skin_jnt right_sideHead_skin_jnt left_sideHead_skin_jnt uprHead_skin_jnt left_lwrFace_skin_jnt nose_skin_jnt mouth_skin_jnt jawBase_skin_jnt jaw_skin_jnt right_eyebrow_skin_jnt right_outerCorner_skin_jnt right_innerCorner_skin_jnt right_lwrFace_skin_jnt right_outerLwrLid_skin_jnt head_skin_jnt left_eyeorb_skin_jnt left_uprLid_skin_jnt left_lwrLid_skin_jnt left_innerUprLid_skin_jnt left_innerLwrLid_skin_jnt left_outerLwrLid_skin_jnt left_outerUprLid_skin_jnt left_innerCorner_skin_jnt left_outerCorner_skin_jnt left_eyebrow_skin_jnt right_eyeorb_skin_jnt right_uprLid_skin_jnt right_innerUprLid_skin_jnt right_lwrLid_skin_jnt right_innerLwrLid_skin_jnt right_outerUprLid_skin_jnt", "right_Ear_skin_jnt left_Ear_skin_jnt right_sideHead_skin_jnt left_sideHead_skin_jnt uprHead_skin_jnt left_lwrFace_skin_jnt nose_skin_jnt mouth_skin_jnt jawBase_skin_jnt jaw_skin_jnt right_eyebrow_skin_jnt right_lwrFace_skin_jnt head_skin_jnt left_eyeorb_skin_jnt left_eyebrow_skin_jnt right_eyeorb_skin_jnt"}; 
+string $qssNames[] = {"qssBodyBindJoints", "qssBodyDeformers", "qssFaceSkinJoints", "qssHairSkinJoints"}; 
+string $qssObjects[]; 
+string $qssMissingObjects[]; 
+string $prefix; 
+int $i = 0; 
+int $n = 0; 
+int $m = 0; 
+string $result = `promptDialog -title "Prefix Object Names?" 
+                       -message "Insert any prefix you would like to add" 
+                         -button "Confirm" -button "Cancel" 
+                        -defaultButton "Confirm" -cancelButton "Cancel" 
+                        -dismissString "Cancel"`; 
+    if ($result == "Confirm") { 
+       $prefix = `promptDialog -query -text`; 
+     } 
+ for ($set in $baseObjectSets) { 
+	$i = 0;	 
+    string $currentSet[]; 
+    int $numTokens = tokenize($baseObjectSets[$n], $currentSet); 
+       	for($object in $currentSet) { 
+       		string $prefixedObject = $prefix + $object; 
+      		$qssObjects[$i] = $prefixedObject; 
+      			if(! `objExists $prefixedObject`) { 
+                 print ($prefixedObject + " not found from " + $qssNames[$n] + "\n");   
+					$qssMissingObjects[$m] = $prefixedObject ;  
+					$m++; 
+        		}  
+			$i++; 
+        }  
+	string $qssFoundObjects[]= stringArrayRemove($qssMissingObjects, $qssObjects); 
+	string $nameBuffer = $prefix + $qssNames[$n]; 
+	sets -text "gCharacterSet" -name $nameBuffer $qssFoundObjects; 
+	int $size = size($qssObjects); 
+		for($z=0;$z<$size;$z++){ 
+			stringArrayRemoveAtIndex(0, $qssObjects); 
+		} 
+	$n++; 
+    } 
+ } 
+ makeQss; 

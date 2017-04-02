@@ -1,0 +1,236 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: graphFilter v1.5
+''    Author: Jeremy Cantor
+''    Last Updated: October 6, 2002
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=animation#1918
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+// Graph Editor Filter
+// version 1.5
+// October 3, 2002
+// Jeremy Cantor
+//
+// Allows the user to filter which curves are visible in the graph editor.
+// Works with multiple selections as well as custom attributes.
+// Saves you the trouble of scrolling through the object list and ctrl-selecting
+// all the x-translate curves (for example). 
+// Creates a pop-up window with a list of keyable attributes of all selected objects.
+// Simply select the channel (or channels) and hit the "filter" button.
+// Has "replace" and "append" modes. And a Graph-Editor toggle button.
+//
+// Updates from version 0.0
+// Allows inclusion of locked channels.
+// Now you can manually select curves in the Graph Editor window, then hide all
+// but those highlighted with the "Filter Highlighted" button.
+//
+// Should be self-explanatory.
+// If not...direct questions/comments/complaints to
+// jeremycantor@attbi.com
+//
+
+global proc getAllAttrs() {
+ string $whatPicked[] = `ls -sl`;
+ if (size($whatPicked) > 0)
+  {
+   //list all keyable attributes
+   string $listFull[];
+   if (`checkBox -q -v ifLocked` == 1)
+    $listFull = `listAttr -k`;
+   else
+    $listFull = `listAttr -u -k`;
+   if (size($listFull) == 0)
+    {textScrollList -e -ra attrList; return;}
+   //prune list
+   string $listPruned[];
+   int $y = 0; 
+   for ($x=0; $x<(size($listFull)); $x++)
+     {
+      string $A = $listFull[$x];
+      //check to see if current item is already in pruned list
+      string $alreadyThere = "no";
+      for ($z=0; $z<(size($listPruned)); $z++)
+        if ($A == $listPruned[$z])
+          $alreadyThere = "yes";
+      //if not already there, then add to pruned list
+      if ($alreadyThere == "no" )
+        {$listPruned[$y] = $A; $y++;}
+     }
+   //clear list
+   textScrollList -e -ra attrList;
+   //update list size
+   textScrollList -e -nr (size($listPruned)) attrList;
+   //make new list
+   for ($x=0; $x<size($listPruned); $x++)
+     textScrollList -e -a $listPruned[$x] attrList;
+  }
+ else //nothing selected
+  {
+   textScrollList -e -ra attrList;
+  }
+}
+
+
+global proc allCurves() {
+  string $selectedObj[] = `selectionConnection -q -object graphEditorList`;
+  for ($obj in $selectedObj)
+    selectionConnection -e -select $obj graphEditor1FromOutliner;
+  GraphEditor;
+  SelectAllMarkingMenu; 
+  buildSelectAllMM;
+  SelectAllMarkingMenuPopDown;
+}
+
+
+global proc whichCurve(string $whatCurve) {
+   string $whatObject[] = `ls -sl`;
+   for ($x=0; $x<(size($whatObject)); $x++)
+     {
+      string $curve = $whatObject[$x] + "." + $whatCurve;
+      if (`objExists $curve`)
+        selectionConnection -e -select $curve graphEditor1FromOutliner;
+     } 
+}
+
+
+global proc filterCurves() {
+  if (`textScrollList -q -nsi attrList` != 0)
+   {
+    if (`checkBox -q -v replaceButton` == 1)
+      selectionConnection -e -clear graphEditor1FromOutliner;
+    string $whatAttrs[] = `textScrollList -q -si attrList`;
+    for ($x=0; $x<(size($whatAttrs)); $x++)
+      whichCurve $whatAttrs[$x];
+   } 
+   GraphEditor;
+   SelectAllMarkingMenu; 
+   buildSelectAllMM;
+   SelectAllMarkingMenuPopDown;
+}
+
+global proc filterHighlighted() {
+   string $whatObject[] = `ls -sl`;
+   string $hiCurves[] = `keyframe -q -sl -n`;
+   string $newCurve[];
+   for ($x=0; $x<size($whatObject); $x++)
+    {
+     print ("\n" + $whatObject[$x] + "\n");
+     for ($y=0; $y<size($hiCurves); $y++)
+      {
+       print ($hiCurves[$y] + "\n");
+       if (`gmatch $hiCurves[$y] ($whatObject[$x]+"*")` == 1)
+        {
+         string $newAttr = `substring $hiCurves[$y] (size($whatObject[$x])+2) (size($hiCurves[$y]))`;
+         $newCurve[$y] = $whatObject[$x] + "." + $newAttr;
+         print "its a match\n";
+         print ("newCurve[" + $y + "] is " + $newCurve[$y] + "\n"); 
+        }
+       else print "no match\n";
+      }
+     }
+   if (size($hiCurves) != 0)
+    {    selectionConnection -e -clear graphEditor1FromOutliner;
+     for ($x=0; $x<size($newCurve); $x++)
+      {
+       selectionConnection -e -select $newCurve[$x] graphEditor1FromOutliner;
+       print ($newCurve[$x] + "\n");
+      }
+     GraphEditor;
+     SelectAllMarkingMenu; 
+     buildSelectAllMM;
+     SelectAllMarkingMenuPopDown;
+    } 
+ }
+
+
+global proc selectAll() {
+   int $sizeList = `textScrollList -q -ni attrList`;
+   for ($x=1; $x<= $sizeList; $x++)
+     textScrollList -e -sii $x attrList;
+}
+
+global proc clearAll() {
+   int $sizeList = `textScrollList -q -ni attrList`;
+   for ($x=1; $x<= $sizeList; $x++)
+     textScrollList -e -dii $x attrList;
+}
+
+
+global proc graphFilter()  {
+
+if ((`window -ex graphFilter`) == true) deleteUI graphFilter;
+if (`windowPref -q -ex graphFilter`)
+{	if ((`windowPref -q -w graphFilter`) != 255)
+ 		windowPref -e -w 255 graphFilter;
+	if ((`windowPref -q -h graphFilter`) != 260)
+ 		windowPref -e -h 260 graphFilter;}
+
+window -title "Graph Editor Filter 10.06.02" -mxb true -mnb true -s true graphFilter;
+
+formLayout formz;
+
+ // form 1
+ rowColumnLayout -nc 3 -cw 1 85 -cw 2 70 -cw 3 70 topRow;
+  button -l "Graph Editor" -c "if ((`window -ex graphEditor1Window`) == true) deleteUI -window graphEditor1Window; else GraphEditor";
+  button -l "All Curves" -c "allCurves";
+  button -l "Clear View" -c "selectionConnection -e -clear graphEditor1FromOutliner";
+ setParent ..;
+
+ //form 2
+ rowColumnLayout -nc 2 -cw 1 110 -cw 2 110 -co 1 "left" 5 -co 2 "left" 5 checkBoxRow;
+  checkBox -v 1 -l "Replace Mode" replaceButton;
+  checkBox -l "Append Mode" appendButton;
+ setParent ..;
+ checkBox -e -onc ("checkBox -e -v 0 appendButton") replaceButton;
+ checkBox -e -ofc ("checkBox -e -v 1 appendButton") replaceButton;
+ checkBox -e -onc ("checkBox -e -v 0 replaceButton") appendButton;
+ checkBox -e -ofc ("checkBox -e -v 1 replaceButton") appendButton;
+
+ //form 3
+ scrollLayout -hst 0 -vst 1 scrollz;
+  textScrollList -w 400 -h 120 -nr 8 -ams true attrList;
+ setParent ..;
+
+ //form 4
+ rowColumnLayout -nc 2 -cw 1 10 -cw 2 105 buttonColumn;
+  button -vis false;
+  rowColumnLayout -nr 7 -rh 1 22 -rh 2 6 -rh 3 22 -rh 4 22 -rh 5 22 -rh 6 30 -rh 7 22
+                  -ro 1 "top" 2;
+    button -l "Filter From List" -c filterCurves;
+    button -vis false;
+    button -l "Select All" -c selectAll;
+    button -l "Clear list" -c clearAll;
+    button -l "Update List" -c getAllAttrs;
+    checkBox -v 0 -l "Include Locked" ifLocked;
+    button -l "Filter Highlighted" -c filterHighlighted;
+  setParent ..;
+ setParent ..;
+
+setParent ..;
+
+formLayout -e -af topRow "top" 10
+              -af topRow "left" 8
+              -af checkBoxRow "top" 40
+              -af checkBoxRow "left" 8
+              -af scrollz "top" 70
+              -af scrollz "left" 8
+              -ac scrollz "right" 5 buttonColumn
+              -af scrollz "bottom" 15
+              -af buttonColumn "top" 70
+              -af buttonColumn "right" 10
+           formz;
+
+getAllAttrs;
+
+showWindow graphFilter;
+
+}
+
+

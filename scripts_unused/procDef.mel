@@ -1,0 +1,19 @@
+//returns the line for a procedure definition of a given procedure
+
+zooUtils;
+
+
+global proc string procDef( string $proc ) {
+	string $what = `w $proc`;
+	string $prefixToStrip = "Mel procedure found in: ";
+	string $path = `substring $what (size($prefixToStrip)+1) (size($what))`;
+	string $scriptContents[] = `zooReadFile $path "-strip 1"`;
+	int $num = `size $scriptContents`;
+
+	for( $n=0; $n<$num; $n++ )
+		if( `match "^[ \t]*global[ \t]+proc[ \t]+" $scriptContents[$n]` != "" )
+			if( `match ( " "+ $proc + "[ (]+" ) $scriptContents[$n]` != "" )
+				return $scriptContents[$n];
+
+	return "";
+	}

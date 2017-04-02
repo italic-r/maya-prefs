@@ -1,0 +1,63 @@
+//
+// scale tool options
+//
+// Created by Hamish McKenzie www.macaronikazoo.com
+// Created : 06 June 2003
+//
+// Description:
+//
+//
+// Now displays the current context in bold.
+//
+// Usage:
+//  assign this function to a key press:
+//	zzRotateOptions
+//
+//  assign this function to the release;
+//	if( `popupMenu -exists tempMM` ) { deleteUI tempMM; }
+//
+// NOTE: if the hotkey you want to assign this script to contains
+// either ctrl, alt or shift, then modify the "popupMenu" line below
+// to reflect which key is used (ie if you're using alt-w then
+// change it to -alt 1).
+//
+// Hamish McKenzie ©2007...
+
+
+global proc zzScaleOptions() {
+	if( `popupMenu -ex tempMM` ) deleteUI tempMM;
+	global string $gScale;
+	setToolTo $gScale;
+
+	popupMenu -ctl 0 -alt 0 -sh 0 -mm 1 -b 1 -aob 1 -p( `getPanel -up` ) -pmc zzDisplayScaleOptions tempMM;
+	}
+
+
+global proc zzDisplayScaleOptions () {
+	if( `popupMenu -ex tempMM` ) menu -e -dai tempMM;
+	float $snap = `manipScaleContext -q -snapValue Scale`;
+	int $isSnapOn = `manipScaleContext -q -snap Scale`;
+	int $objPiv = `manipScaleContext -q -useObjectPivot Scale`;
+	int $isRelativeOn = `manipScaleContext -q -snapRelative Scale`;
+
+	menuItem -l "Scale Options" -c "" -rp "E";
+	menuItem -l "component object pivot" -cb $objPiv -c( "manipScaleContext -e -useObjectPivot "+ (!$objPiv) +" Scale;" ) -rp "SE";
+	menuItem -l "relative" -cb $isRelativeOn -c ( "manipScaleContext -e -snapRelative " + !$isRelativeOn + " Scale;" ) -rp "SW";
+
+	menuItem -l "snap" -checkBox $isSnapOn -c ( "manipScaleContext -e -snap " + !$isSnapOn + " Scale;" );
+	menuItem -l "relative" -cb $isRelativeOn -c ( "manipScaleContext -e -snapRelative " + !$isRelativeOn + " Scale;" );
+	menuItem -d 1;
+	menuItem -l "snap amount" -subMenu 1;
+		menuItem -l "10%" -cb( $snap==0.1 ) -c ( "manipScaleContext -e -snapValue 0.1 Scale; manipScaleContext -e -snap 1 Scale;" );
+		menuItem -l "5%" -cb( $snap==0.05 ) -c ( "manipScaleContext -e -snapValue 0.05 Scale; manipScaleContext -e -snap 1 Scale;" );
+		menuItem -l "2.5%" -cb( $snap==0.025 ) -c ( "manipScaleContext -e -snapValue 0.025 Scale; manipScaleContext -e -snap 1 Scale;" );
+		menuItem -l "1%" -cb( $snap==0.01 ) -c ( "manipScaleContext -e -snapValue 0.01 Scale; manipScaleContext -e -snap 1 Scale;" );
+	setParent -m ..;
+	menuItem -d 1;
+	menuItem -l "mirror selection" -c( "zooMirrorSelection 0;" );
+	menuItem -l "additive mirror selection" -c( "zooMirrorSelection 1;" );
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007

@@ -1,0 +1,90 @@
+/*
+//////////////////////////////////////////////////////////
+
+ackSwapKeys 1.0					
+6/18/07					
+Aaron Koressel				
+www.aaronkoressel.com
+
+Swaps the times of two vertical sets of keys (two poses).
+Only operates on a selection of two distinct times and 
+two keys per channel.
+
+//////////////////////////////////////////////////////////
+*/
+
+
+global proc ackSwapKeys() {    	
+	
+//--------------------------------------------------------
+//make sure only two times exist in the current selection.	
+
+	//loop over selected curves and process independently
+	int $exitFlag = 0;	
+	string $selectedCurves[] = `keyframe -selected -q -name`;
+
+	//init two time values to be checked against
+	float $timeArrayFirst[] = `keyframe -selected -q -timeChange $selectedCurves[0]`;
+	
+	if (size($timeArrayFirst) == 2){
+		float $timeA = $timeArrayFirst[0];
+		float $timeB = $timeArrayFirst[1];
+
+		string $channel = "";
+		for ($c = 0; $c < size($selectedCurves); $c++){
+			//channel to use for this pass
+			$channel = $selectedCurves[$c];
+
+			//get array of key times in selection
+			float $timeArray[] = `keyframe -selected -q -timeChange $channel`;
+
+
+			//only allow 2 keys per channel & only allow 2 unique times
+			if (size($timeArray) != 2){
+				$exitFlag = 1;
+				break;
+			}
+
+			//check for only 2 times
+			if (($timeArray[0] != $timeA)&&($timeArray[0] != $timeB)){
+				$exitFlag = 1;
+				break;			
+			}
+			if (($timeArray[1] != $timeA)&&($timeArray[1] != $timeB)){
+				$exitFlag = 1;
+				break;			
+			}
+		}
+		
+		//continue if selection is valid
+		if (! $exitFlag){
+		
+			//--------------------------------------------------------
+			//selection is valid so swap all keys at time A with all keys at time B
+
+			
+			//loop over selected curves and process independently
+			string $selectedCurves[] = `keyframe -selected -q -name`;
+			for ($c = 0; $c < size($selectedCurves); $c++){
+				//channel to use for this pass
+				$channel = $selectedCurves[$c];
+				
+				float $timeBuffer = -99999;
+				//selectKey -clear;
+				keyframe -e -time $timeA -o over -timeChange $timeBuffer $channel;
+				keyframe -e -time $timeB -o over -timeChange $timeA $channel;
+				keyframe -e -time $timeBuffer -o over -timeChange $timeB $channel;			
+			}
+			
+		} else {
+			//selection was invalid
+			warning "ackSwapKeys only operates on a selection of two distinct times and two keys per channel.";
+		}
+	} else {
+		//selection was invalid
+		warning "ackSwapKeys only operates on a selection of two distinct times and two keys per channel.";
+	}
+}
+
+
+

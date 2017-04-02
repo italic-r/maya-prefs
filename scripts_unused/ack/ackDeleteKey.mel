@@ -1,0 +1,27 @@
+//////////////////////////////////////////////////////////
+//	ackDeleteKey 1.0			
+//	12/12/04					
+//	Aaron Koressel				
+//						
+//	If a curve is selected in graph editor, deletes 
+//	selected keys.  If no curves are selected, deletes 
+//	current key of selected objects.  Same functionality 
+//	as delete key on keyboard but mappable to any other key.				
+//////////////////////////////////////////////////////////
+
+global proc ackDeleteKey() {    
+	// get graph outliner 
+	string $connection = `editor -q -mainListConnection graphEditor1GraphEd`;
+	
+	// get selection from outliner
+	string $curveSel[] = `expandSelectionConnectionAsArray $connection`;
+	
+	int $keyCount = 0;
+	$keyCount = `keyframe -an keys -q -kc`;					//check for selected curves
+
+	if ($keyCount == 0) {  							//no curves selected: delete current key of objects
+		timeSliderClearKey;
+	} else {								//curves are selected:  delete selected keys in graph
+		cutKey -animation keys -clear;
+	};
+};

@@ -1,0 +1,47 @@
+// animEdito
+
+
+global proc animEditor() {
+	
+   	if (`window -ex jabAnimEditorWindow` != true) {
+		window -w 640 -h 480 -ret -t "AnimEditor" -in "AnimEditor" -s true -tb true jabAnimEditorWindow;
+
+		setParent jabAnimEditorWindow;
+		formLayout jabImageBoxmainForm;
+
+		tabLayout mainTab1;
+		
+		scriptedPanel -type "graphEditor" graphEditor2;
+		setParent ..;
+		scriptedPanel -type "clipEditorPanel" clipEditorPanel2;
+		setParent ..;
+		scriptedPanel -type "dopeSheetPanel" dopeSheetPanel2;
+		setParent ..;
+
+		
+		//scriptedPanel -e -rp graphEditor1 tempPanel ;
+		
+		tabLayout -e 
+			-tabLabelIndex 1 "Graph Editor"
+			-tabLabelIndex 2 "Dope Sheet"
+			-sc "setFocus (`tabLayout -q -st mainTab1`)"
+			mainTab1;
+
+		formLayout -e 
+			-attachForm mainTab1 "left" 0
+			-attachForm mainTab1 "right" 0
+			-attachForm mainTab1 "top" 0
+			-attachForm mainTab1 "bottom" 0
+			
+			jabImageBoxmainForm;
+		
+		showWindow jabAnimEditorWindow;
+	}
+    	else
+    	{
+			showWindow jabAnimEditorWindow;
+	}
+
+
+}
+

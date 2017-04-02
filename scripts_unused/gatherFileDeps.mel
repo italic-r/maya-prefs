@@ -1,0 +1,18 @@
+//gathers all dependent files for the currently open scene, and copies them to the
+//destination given
+global proc gatherFileDeps( string $destination ) {
+	string $files[] = `file -q -l`;
+	string $curFile = `file -q -loc`;
+
+	$files = `stringArrayRemoveDuplicates $files`;
+	substituteAllString $destination "\\" "/";
+	if( `match "/$" $destination` == "" ) $destination += "/";
+	if( !`filetest -d $destination` ) sysFile -makeDir $destination;
+	for( $file in $files ) {
+		string $filename = `match "[^/\\]+$" $file`;
+		sysFile -copy ( $destination + $filename ) $file;
+		}
+
+	string $filename = `match "[^/\\]+$" $curFile`;
+	sysFile -copy ( $destination + $filename ) $curFile;
+	}

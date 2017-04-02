@@ -1,0 +1,191 @@
+
+//cMenu...a handy little menu for your scripts
+ 
+ 
+
+
+proc cMenuGeneral(string $os){
+	
+
+						
+			
+		menuItem -l "animToolbox"
+			-ann "animToolBox.mel on them"
+			-echoCommand true
+			-c "animToolBox"
+			selectAllAnimMenuItem;			
+
+
+		menuItem -l "copyTransf"
+			-ann "copyTransf"
+			-echoCommand true
+			-c "copyTransf"
+			copyTransfMenuItem;
+			
+			
+		menuItem -l "cutAtt"
+			-ann "cutAtt"
+			-echoCommand true
+			-c "cutAtt"
+			cutAttMenuItem;
+						
+		menuItem -l "keyAtt"
+			-ann "keyAtt"
+			-echoCommand true
+			-c "keyAtt"
+			keyAttMenuItem;
+
+		menuItem -l "keyPlus"
+			-ann "keyPlus"
+			-echoCommand true
+			-c "keyPlus"
+			keyPlusMenuItem;
+			
+		menuItem -l "keyMinus"
+			-ann "keyMinus"
+			-echoCommand true
+			-c "keyMinus"
+			keyMinusMenuItem;			
+
+			
+		menuItem -l "eulerFilter"
+			-ann "eulerFilter"
+			-echoCommand true
+			-c "eulerFilter"
+			eulerFilterMenuItem;	
+
+		menuItem -l "frac"
+			-ann "eulerFilter"
+			-echoCommand true
+			-c "frac"
+			fracMenuItem;	
+								
+					
+
+		menuItem -l "frameDisplay"
+			-ann "frameDisplay"
+			-echoCommand true
+			-c "frameDisplay"
+			frameDisplayMenuItem;				
+								
+		menuItem -l "graphFilter"
+			-ann "graphFilter"
+			-echoCommand true
+			-c "graphFilter"
+			graphFilterMenuItem;	
+
+			
+		menuItem -l "spaceSwitch"
+			-ann "keyShifter"
+			-echoCommand true
+			-c "frameDisplay"
+			keyShifterMenuItem;
+			
+			
+		menuItem -l "KeyThis"
+			-ann "KeyThis"
+			-echoCommand true
+			-c "KeyThis"
+			KeyThisMenuItem;
+
+										
+		menuItem -l "phantomWindow"
+			-ann "phantomWindow"
+			-echoCommand true
+			-c "phantomWindow"
+			phantomWindowMenuItem;				
+								
+										
+		menuItem -l "outlinerSelected"
+			-ann "outlinerSelected"
+			-echoCommand true
+			-c "outlinerSelected"
+			phantomWindowMenuItem;				
+								
+
+		
+			
+		menuItem -l "snWorldSpaceTool"
+			-ann "snWorldSpaceTool"
+			-echoCommand true
+			-c "snWorldSpaceTool"			
+			snWorldSpaceToolMenuItem;
+
+
+ 		menuItem -l "snZeroOutCtrls"
+			-ann "snZeroOutCtrls"
+			-echoCommand true
+			-c "snZeroOutCtrls"
+			snZeroOutCtrlsMenuItem;
+
+
+ 		menuItem -l "toggleJoints"
+			-ann "toggleJoints"
+			-echoCommand true
+			-c "toggleJoints"
+			toggleJointsMenuItem;
+
+ 		menuItem -l "toggleNurbs"
+			-ann "toggleNurbs"
+			-echoCommand true
+			-c "toggleNurbs"
+			toggleNurbsMenuItem;
+			
+
+ 		menuItem -l "toggleXRay"
+			-ann "toggleXRay"
+			-echoCommand true
+			-c "toggleXRay"
+			toggleXRayMenuItem;
+			
+ 		menuItem -l "zeroButton"
+			-ann "zeroButton"
+			-echoCommand true
+			-c "zeroButton"
+			zeroButtonMenuItem;
+
+
+	menuItem -l "Cycle Animation Curve"
+			-ann "makes doing animation cycles easier"
+			-echoCommand true
+			-c "cycleAnimCurve"
+			cycleAnimCurveMenuItem;
+			
+
+		menuItem -l "dkAnim"
+			-ann "animXfer"
+			-echoCommand true
+			-c "dkAnim"
+			dkAnimMenuItem;
+
+			
+
+			
+} 
+// end of cMenuGeneral
+
+
+global proc cMenu(){
+
+	global string $gMainWindow;
+	global string $gMenuModeButton;
+	//string $mayaMode = `setMenuMode`;
+	string $os = `about -operatingSystem`;
+
+	if(`menu -exists cMenu`)
+		deleteUI -menu cMenu;
+
+	setParent $gMainWindow;
+
+	menu -label "cMenu"
+		-parent $gMainWindow
+		-tearOff 1
+		-allowOptionBoxes true
+		cMenu;
+
+	cMenuGeneral $os;
+
+	hotBox -updateMenus;
+
+}
+

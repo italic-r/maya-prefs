@@ -1,0 +1,24 @@
+Manually
+========
+
+You can also install the files manually by moving the following files/folders in a folder of your choice:
+
+.. image:: img/manually_01.jpg
+
+Then you'll need to execute the following python code in order to run Helios.
+
+.. code:: python
+
+    import sys
+    sys.path.append('PATH TO FOLDER')
+
+    import Helios
+    Helios.HeliosGUI()
+
+Change the 'PATH TO FOLDER' by the folder where you moved the files.
+
+Now |click here| to see how you can create a Hotkey in Maya to launch Helios.
+
+.. |click here| raw:: html
+
+   <a href="creating_hotkey_in_maya.html">click here</a>

@@ -1,0 +1,42 @@
+//////////////////////////////////////////////////////////
+//	ackSliceCurves 1.1					
+//	11/14/04					
+//	Aaron Koressel				
+//							
+//	Inserts a key at the current time into the currently
+//	selected curves while preserving tangents.  Operates 
+//	on selected curves in graph editor not currently 
+//	selected objects.  If no curves are selected, slices 
+//	all curves in graph editor.  This is basically the 
+//	same functionality as Maya's insert key tool, but 
+//	arguably faster because it just slices the current
+//	frame.	
+//////////////////////////////////////////////////////////
+// ver 1.1  11/16/04
+// - if no curves are selected, key only visible curves
+//
+// TODO
+// - If no curves are selected it will set keys only on
+//   the first graph editor.  if more than one graphs
+//   are present it should key all curves in all graphs.
+// - Have it work with the middle mouse button (transfer
+//   pose to new time)
+//////////////////////////////////////////////////////////
+
+global proc ackSliceCurves() {    
+	// get graph outliner 
+	string $connection = `editor -q -mainListConnection graphEditor1GraphEd`;
+	
+	// get selection from outliner
+	string $graphObject[] = `expandSelectionConnectionAsArray $connection`;
+	
+	int $keyCount = 0;
+	$keyCount = `keyframe -an keys -q -kc`;
+
+	if ($keyCount == 0) {  							//no curves selected: slice all
+		setKeyframe -insert -time `currentTime -q` $graphObject;
+	} else {								//curves are selected:  slice selected
+		string $selectedCurves[] = `keyframe -selected -q -name`;  		//return curves of selected keys
+		setKeyframe -insert -time `currentTime -q` $selectedCurves;
+	};
+};

@@ -1,0 +1,94 @@
+p4;
+
+
+global proc p4menu() {
+	global string $gMainWindow;
+	string $menuName = "p4menu";
+
+	if( `menu -ex $menuName` ) deleteUI $menuName;
+	menu -l "Perforce" -to 1 -p $gMainWindow -pmc( "p4buildMenu "+ $menuName +" \"\";" ) $menuName;
+	}
+
+
+global proc p4buildMenu( string $parent, string $file ) {
+	menu -e -dai $parent;
+	setParent -m $parent;
+
+	//if the given file is an empty string, then query the currently opened file and use that
+	if( $file == "" ) $file = `file -q -sn`;
+	string $location = zooGetElement_str(0,`zooSplitPath $file "/"`);
+
+	//if the file is still an empty string or unreadable, the currently opened file hasn't been saved - report it
+	if( !`filetest -r $file` || $file == "" ) {
+		menuItem -en 0 -l "file not saved";
+		menuItem -d 1;
+		menuItem -l "Perforce Scene File Lister" -c( "p4Lister {};" );
+		menuItem -l "List All Files Currently \"open for edit\"" -c( "p4Lister `p4_openedClient`;" );
+		return;
+		}
+
+	p4;
+	string $dataNames[] = {};
+	string $data[] = {};
+	int $isEdit = `isEdit $file $dataNames $data`;
+	int $headRev = `zooGetIdxOfElement_str $dataNames "headRev"`;
+	int $haveRev = `zooGetIdxOfElement_str $dataNames "haveRev"`;
+	int $isLatest = 0;
+
+	if( $headRev != -1 && $haveRev != -1 ) $isLatest = $data[$headRev] == $data[$haveRev]? 1: 0;
+	if( $isEdit == -1 ) menuItem -l "Add to Perforce" -c( "p4_add {\""+ $file +"\"} -1;" );
+	else {
+		int $openedIdx = `zooGetIdxOfElement_str $dataNames "otherOpen"`;
+		if( $openedIdx != -1 ) if( $data[$openedIdx] == "1" ) {
+			$openedIdx = `zooGetIdxOfElement_str $dataNames "otherOpen0"`;
+			if( $openedIdx != -1 ) {
+				menuItem -l( "ALSO OPENED BY "+ $data[$openedIdx] );
+				}
+			}
+
+		int $have = 0;
+		int $head = 0;
+
+		if( $haveRev != -1 ) $have = $data[$haveRev];
+		if( $headRev != -1 ) $head = $data[$headRev];
+		if( $head ) menuItem -en(!$isLatest) -l( "Sync to Latest ("+ $have +"/"+ $head +")" ) -c( "p4_sync {\""+ $file +"\"} 0;{ string $ans = `confirmDialog -m \"do you want to reload the file?\" -b \"Yes\" -b \"No\" -db \"No\"`; if( $ans == \"Yes\" ) file -f -o \""+ $file +"\"; }" );
+
+		if( $head>1 ) {
+			menuItem -l "Sync to Previous..." -sm 1;
+				int $maxToDisplay = 5;
+				int $numToShow = $head >= $maxToDisplay? $maxToDisplay: $head;
+
+				for( $n=1; $n<$numToShow; $n++ ) {
+					int $revToSync = $head - $n;
+					menuItem -l( "Sync to Revision "+ $revToSync ) -c( "p4_sync {\""+ $file +"\"} "+ $revToSync +";{ string $ans = `confirmDialog -m \"do you want to reload the file?\" -b \"Yes\" -b \"No\" -db \"No\"`; if( $ans == \"Yes\" ) file -f -o \""+ $file +"\"; }" );
+					}
+				menuItem -d 1;
+				menuItem -l "Sync to Given Version...";
+			setParent -m ..;
+			}
+		menuItem -en( $isEdit==0 ) -l "Open for Edit" -c( "p4_sync {\""+ $file +"\"} 0; p4_edit {\""+ $file +"\"} -1;" );
+		menuItem -d 1;
+		menuItem -l "Submit Scene and Dependencies..." -c( "p4submitUI `getFilesThatAreOpenForEdit`;//{\""+ $file +"\"};" );
+		menuItem -d 1;
+		menuItem -en $isEdit -l "Revert File" -c( "p4_revert {\""+ $file +"\"};{ string $ans = `confirmDialog -m \"do you want to reload the file?\" -b \"Yes\" -b \"No\" -db \"No\"`; if( $ans == \"Yes\" ) file -f -o \""+ $file +"\"; }" );
+		}
+	menuItem -d 1;
+	menuItem -l "Sync Maya Dependencies" -c( "p4_sync `listOutOfSyncDependencies` 0; { string $ans = `confirmDialog -m \"do you want to reload the file?\" -b \"Yes\" -b \"No\" -db \"No\"`; if( $ans == \"Yes\" ) file -f -o \""+ $file +"\"; }" );
+	menuItem -l "Sync all Scripted Tools" -c "syncScripts;";
+	menuItem -d 1;
+	menuItem -l "Explore to File..." -c( "zooExploreTo \""+ $file +"\";" );
+	string $temp = "start cmd /K cd "+ (zooReplaceInString($location,"/","\\\\"));
+	menuItem -l "Prompt to File Location..." -c( "system \""+ $temp +"\";" );
+	menuItem -l "Open Perforce to File..." -c( "openp4At \""+ $file +"\";" );  //this seems to hang maya for some reason...
+	}
+
+
+global proc openp4At( string $filepath ) {
+	$filepath = `resolvePath $filepath`;
+	if( !`filetest -r $filepath` ) return;
+	$filepath = `zooReplaceInString $filepath "/" "\\"`;
+	string $cmd = "start p4win -q -s \""+ $filepath +"\"";
+	print( $cmd +"\n" );
+	system $cmd;
+	}
+

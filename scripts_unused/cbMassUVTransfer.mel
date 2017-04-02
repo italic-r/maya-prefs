@@ -1,0 +1,83 @@
+/*
+cbMassUVTransfer v 1.0b
+"""""""""""""""""""""""""
+
+//----------------------------------------------------------
+
+What?_
+This script allows the user to transfer UV's to multiple 
+objects in one action.
+
+//----------------------------------------------------------
+
+Who?_
+Author: Christer Bjørklund
+Website: www.christerb.com
+eMail: christer@christerb
+
+Copyright ©2006 Christer Bjørklund - All Rights Reserved.
+//----------------------------------------------------------
+
+Why?_
+I got tired of selecting, transferring, reselecting, tranferring..
+and so on and so forth...
+//----------------------------------------------------------
+
+How?_
+Place the cbMassUVTransfer.mel file in your Maya scripts
+directory, source the file (or reboot Maya) and run
+
+cbMassUVTransfer();
+
+I have also included an icon for shelf usage.
+( cbMassUVTransferShelfIcon.bmp )
+
+Shelfbutton example:
+
+source "C://Documents and Settings//userName//My Documents//maya//X.X//scripts//cbMassUVTransfer.mel";
+cbMassUVTransfer();
+//----------------------------------------------------------
+
+Information_
+
+Version(s):
+        1.0 - First release
+
+Known issues:
+        - Nothing.. I think.. well maybe except the.. no.. nevermind.
+
+Compability:
+        Tested and working in Maya 7.0, but should run in earlier
+        versions as well.
+
+Usage:
+        Use at your own risk. I will not stand responsible for
+        any damage caused by this script.
+
+//----------------------------------------------------------
+
+A quick "how to"..
+""""""""""""""""""
+
+//----------------------------------------------------------
+
+1. Select the objects you want to transfer UV's to.
+2. Add the object with the UV you want to transfer from to the
+   selection.
+3. Run the script.
+
+//----------------------------------------------------------
+
+*/
+
+global proc cbMassUVTransfer()
+{
+$selLast = `ls -sl -tl 1`;
+$selRest = `ls -sl`;
+
+for ($i in $selRest)
+    {
+    if ($i != $selLast[0])
+    polyTransfer -vc 0 -uv 1 -v 0 -ao ($selLast) ($i);
+    }
+}

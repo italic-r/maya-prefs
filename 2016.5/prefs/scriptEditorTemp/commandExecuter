@@ -1,0 +1,22 @@
+import pymel.core as pmc
+import maya.cmds as cmds
+import maya.OpenMaya as om
+
+obj = pmc.ls(sl=True)[0]
+tgt1 = pmc.ls(sl=True)[0]
+tgt2 = pmc.ls(sl=True)[0]
+pcon = pmc.parentConstraint(tgt1, tgt2, obj)
+pblend = pmc.ls(sl=True)[0]
+
+# node.sources()
+# node.destinations()
+# node.inputs()
+# node.outputs()
+
+alias_list = pcon.getWeightAliasList()  # con weight attributes to key
+pConn_list = set(pmc.listConnections(pcon, source=False, destination=True))
+pConn_list.remove(pcon)
+
+for conn in pConn_list:
+    print(conn)
+    print(type(conn))

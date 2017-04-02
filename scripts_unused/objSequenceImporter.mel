@@ -1,0 +1,204 @@
+//OBJ Sequence Importer 1.3 by Dave Girard daveg@can-con.ca 
+//Usage note: you need to have your frame number as the last thing in the name, just before the ".obj". The script automatically detects number frame padding (file.####.obj)
+
+global proc objSequenceImporterCommand()
+{
+string $inResult = `promptDialog
+    -title "Delimiter:"
+    -message "Enter the delimiter before the number. RealFlow uses _ and others are probably ."
+    -button "OK" -button "Cancel"
+    -defaultButton "OK" -cancelButton "Cancel"
+    -dismissString "Cancel"`;
+string $numberDelimiterTextsolo = `promptDialog -q`;    
+global string $numberDelimiterText;
+global int $numTokensy;
+$numberDelimiterText = $numberDelimiterTextsolo;
+string $singleFilter = "All Files (*.*)";
+string $resultant[] = `fileDialog2 -cap "First OBJ Frame (Don't sweat the save overwrite)." -selectFileFilter $singleFilter -dialogStyle 1`;
+string $resultantTokenized = $resultant[0];
+string $resultantTokenizedToo;
+string $bufferygoodness[];//holds the text blocks for . delimiters
+string $bufferygoodnessPartDeux[];//holds the text blocks for _ delimiters
+string $bufferyToo[];
+string $bufferygoodnessPartDeuxToo[];
+string $longFileNameSansOBJ[];
+int $minFrameCountOBJ;
+int $maxFrameCountOBJ;
+global int $framePadLength;
+global string $minFrameCountOBJLong;
+global string $maxFrameCountOBJLong;
+string $OBJPathSansNumber;
+//figure out the portion that's the min number from the input file path
+tokenize $resultantTokenized "." $longFileNameSansOBJ;
+if ($numberDelimiterText == ".")
+	{
+	$numTokensy = `tokenize $resultantTokenized "." $bufferygoodness`;
+	$minFrameCountOBJLong = $bufferygoodness[1];/// The 1 is still assuming there's only one dot in the name. Fix this.
+	}
+else if ($numberDelimiterText == "_")
+	{
+	//determine if this is a realflow file or not
+	
+	$numTokensy = `tokenize $resultantTokenized "." $bufferygoodness`;//the name sans .obj
+	$numTokensy = `tokenize $bufferygoodness[0] "_" $bufferygoodnessPartDeux`;//the number of parts between _ (max being padded file number)
+	global int $underscoreTokenizedCount;
+	if ($numTokensy == 2)//it's only got the one underscore and it's not a realflow OBJ sequence
+		{
+		//warning: "just one underscore";
+		
+		$minFrameCountOBJLong = $bufferygoodnessPartDeux[($numTokensy - 1)];
+		string $numberToStrip = $bufferygoodnessPartDeux[$numTokensy - 1]; 
+		$OBJPathSansNumber = `substitute $numberToStrip $bufferygoodness[0] ""`;///make this a substitue based on tokenized frame number
+		$underscoreTokenizedCount = 2;
+		}	
+	else //RealFlow
+		{
+		$numTokensy = `tokenize $resultantTokenized "." $bufferygoodness`;//the name sans .obj
+		$numTokensy = `tokenize $bufferygoodness[0] "_" $bufferygoodnessPartDeux`;//the number of parts between _ (max being padded file number)
+		$minFrameCountOBJLong = $bufferygoodnessPartDeux[($numTokensy - 1)];
+		string $numberToStrip = $bufferygoodnessPartDeux[$numTokensy - 1]; 
+		$OBJPathSansNumber = `substitute $numberToStrip $bufferygoodness[0] ""`;///make this a substitue based on tokenized frame number
+		$underscoreTokenizedCount = 3;
+		}
+	}
+else if ($numberDelimiterText == "")
+	{
+	$numTokensy = `tokenize $resultantTokenized "." $bufferygoodness`;
+	$minFrameCountOBJLong = $bufferygoodness[1];/// The 1 is still assuming there's only one dot in the name. Fix this.
+	} 
+$minFrameCountOBJ = $minFrameCountOBJLong;
+$framePadLength = `size($minFrameCountOBJLong)`;
+
+string $singleFiltery = "All Files (*.*)";
+string $inputLastFilePath[] = `fileDialog2 -cap "Last OBJ Frame (Don't sweat the save overwrite)" -selectFileFilter $singleFilter -dialogStyle 1`;
+string $lastFramebuffer[];
+$uselessToken = `tokenize $inputLastFilePath[0] "." $lastFramebuffer`;//result: $lastFramebuffer[0] is long file name sans .obj
+//figure out the portion that's the max number from the input file path
+if ($numberDelimiterText == ".")
+	{
+	$maxFrameCountOBJLong = $lastFramebuffer[1];/// The 1 is still assuming there's only one dot in the name. Fix this.
+	}
+else if ($numberDelimiterText == "_")
+	{
+	if ($underscoreTokenizedCount = 2)//not Realflow
+		{
+		$newToken = `tokenize $lastFramebuffer[0] "." $bufferyToo`;//the name sans .obj
+		$newTokenToo = `tokenize $bufferyToo[0] "_" $bufferygoodnessPartDeuxToo`;//the number of parts between _ (max being padded file number)
+		$maxFrameCountOBJLong = $bufferygoodnessPartDeuxToo[($numTokensy - 1)];
+		}	
+	else //Realflow
+		{
+		$newToken = `tokenize $lastFramebuffer[0] "." $bufferyToo`;//the name sans .obj
+		$newTokenToo = `tokenize $bufferyToo[0] "_" $bufferygoodnessPartDeuxToo`;//the number of parts between _ (max being padded file number)
+		$maxFrameCountOBJLong = $bufferygoodnessPartDeuxToo[($numTokensy - 1)];
+		}
+	}
+if ($numberDelimiterText == "")
+	{
+	$maxFrameCountOBJLong = $lastFramebuffer[1];/// The 1 is still assuming there's only one dot in the name. Fix this.
+	}
+$maxFrameCountOBJ = $maxFrameCountOBJLong;//value in string stored into unpadded int
+		
+int $startingTime = 1;//change this to the slider value
+string $framey[];
+global string $reLengthenedFileNumber;
+
+for ($n=$minFrameCountOBJ ; $n<($maxFrameCountOBJ + 1) ; $n++)
+	{
+	currentTime 1;
+	if ($numberDelimiterText == ".")
+		{
+		string $enStringer = $n; 
+		$reLengthenedFileNumber = `python ("'%0"+$framePadLength+"d' % "+$enStringer)`;
+		print $reLengthenedFileNumber;
+		//$reLengthenedFileNumber = `python ("'%03d' % "+$enString)`;//count the number of characters in $bufferygoodness[1] and make that the padding amount 
+		//file -import -type "OBJ" -ra true -mergeNamespacesOnClash false -options "mo=1" -namespace ("frame_" + $n) -pr -loadReferenceDepth "all" ($bufferygoodness[0] + "." + $n + ".obj");//these are now unpadded
+		//print ($bufferygoodness[0] + "." + $reLengthenedFileNumber + ".obj");
+		file -import -type "OBJ" -ra true -mergeNamespacesOnClash false -options "mo=1" -namespace ("frame_" + $n) -pr -loadReferenceDepth "all" ($bufferygoodness[0] + "." + $reLengthenedFileNumber + ".obj");
+		}
+	else if ($numberDelimiterText == "_")
+		if ($underscoreTokenizedCount = 2)//not realflow
+			{
+			//string $enString = $n; 
+			string $enStringer = $n; 
+			$reLengthenedFileNumber = `python ("'%0"+$framePadLength+"d' % "+$enStringer)`;
+			//$reLengthenedFileNumber = `python ("'%05d' % "+$enString)`;//5 is wrong because it needs to be measured
+			file -import -type "OBJ" -ra true -mergeNamespacesOnClash false -options "mo=1" -namespace ("frame_" + $n) -pr -loadReferenceDepth "all" ($OBJPathSansNumber + $reLengthenedFileNumber + ".obj");
+			}
+	
+		else //Realflow
+			{
+			string $enString = $n; 
+			$reLengthenedFileNumber = `python ("'%05d' % "+$enString)`;
+			//print ($OBJPathSansNumber + $reLengthenedFileNumber + ".obj");
+			file -import -type "OBJ" -ra true -mergeNamespacesOnClash false -options "mo=1" -namespace ("frame_" + $n) -pr -loadReferenceDepth "all" ($OBJPathSansNumber + $reLengthenedFileNumber + ".obj");
+			//$reLengthenedFileNumber = `python ("'%05d' % "+$n)`;
+			}
+	else if ($numberDelimiterText == "")
+		{
+		string $enStringer = $n; 
+		$reLengthenedFileNumber = `python ("'%0"+$framePadLength+"d' % "+$enStringer)`;
+		file -import -type "OBJ" -ra true -mergeNamespacesOnClash false -options "mo=1" -namespace ("frame_" + $n) -pr -loadReferenceDepth "all" ($bufferygoodness[0] + "." + $reLengthenedFileNumber + ".obj");
+		}
+	visChanger($n, $startingTime);
+	}
+string $allOBJImport[] = `ls -type "mesh" ("frame_*" + ":*")`;
+select -r $allOBJImport;
+group -name "OBJSequence";
+select -d;
+currentTime 1;
+warning "Done importing OBJs, yo.\n";
+}
+
+global proc visChanger(int $frameNumbery, int $timeToStart)
+{
+	string $tmpy;
+	//select -r ("frame_" + $frameNumbery + ":\*");
+	string $mySelection[] = `ls -type "mesh" ("frame_" + $frameNumbery + ":\*")`;
+	$tmpy = $mySelection[0];
+	if ( catch( `setAttr ($tmpy + ".visibility") 0` ) ) 
+		{
+    	warning ("You have an empty frame at " + $frameNumbery + "\n");
+	  	} 
+	else 
+	  	{
+      	// continue on as usual...
+	  	string $mySelection[] = `ls -type "mesh" ("frame_" + $frameNumbery + ":\*")`;
+	  	$tmpy = $mySelection[0];
+		setAttr ($tmpy + ".visibility") 0;
+		setKeyframe ($tmpy + ".v");
+		currentTime $frameNumbery;
+		setAttr ($tmpy + ".visibility") 1;
+		setKeyframe ($tmpy + ".v");
+		currentTime ($frameNumbery + 1);
+		setAttr ($tmpy + ".visibility") 0;
+		setKeyframe ($tmpy + ".v");
+		}
+}
+
+global proc objSequenceImporter()
+{
+if ( `window -exists objSequenceImporter` )
+  deleteUI -window objSequenceImporter;
+string $objSequenceImporter = `window -tlb true objSequenceImporter`;
+columnLayout -adjustableColumn true -columnAttach "both" 8;
+columnLayout;
+
+separator -style "none" -h 4;
+//text "Import time start:";	
+//$objSlider = `intSliderGrp -field 1 -min 1 -max 55000 -value 1 objSlider3`;
+//text "Frame number delimiter (Realflow = \"_\"):";	
+//text "Fix reflection/refraction parameter (needed for earlier than Maya 2013 SP1):";	
+
+setParent ..;
+columnLayout;
+
+rowColumnLayout -numberOfColumns 2
+	-columnWidth 1 120
+	-columnWidth 2 120;
+button -w 240 -h 30 -l "Import Sequence" -c "objSequenceImporterCommand;";
+setParent ..;
+
+separator -style "none" -w 240 -h 12;
+showWindow $objSequenceImporter;
+}

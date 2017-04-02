@@ -1,0 +1,121 @@
+/*
+//////////////////////////////////////////////////////////
+
+ackPushPull 1.1
+10/13/07					
+Aaron Koressel				
+www.aaronkoressel.com
+
+Pushes or pulls animation in the graph editor.
+Scales selected keys by some factor towards or away from
+a pivot point.
+
+ackSetup is required to change script settings.
+
+One of three pivot points will be used
+depending on what mode is set in the setup window:
+
+PARAMETERS (via ackSetup):
+ Pivot From:
+* Adjacent Left (Multi Pivot): uses the adjacent left key per curve
+as a pivot point.  If there is more than one curve selected there 
+will be multiple pivot points - each curve independently looking
+to the left adjacent key.
+
+* Adjacent Right (Multi Pivot): same as above but to the right.
+
+* Last Selected Key (Single Pivot): uses the last single key selected
+of all curves as the pivot point.  There is only one pivot point and
+all curves pivot from this key.
+ 
+ Scale Factor:
+How much to scale selected keys by.
+
+SYNTAX:
+ackPushPull "push";
+ackPushPull "pull";
+
+EXAMPLE:
+Assign this commnad to "Alt /":  ackPushPull "pull";
+Assign this commnad to "Alt *":  ackPushPull "push";
+
+CHANGELOG:
+10/13/07		1.1
+ackSetup compliant
+
+7/08/07			1.0
+First version.
+//////////////////////////////////////////////////////////
+*/
+
+//$ackSetup_pivot = "left";
+//$ackSetup_affect = "individual";
+//$ackSetup_scaleFactor = .9;
+
+global proc ackPushPull(string $cmd){
+	//only run if at least one key is selected
+	$keyCount = `keyframe -an keys -q -keyframeCount`;
+	if ($keyCount != 0) {
+		//ackSetup Globals
+		global string $ackSetup_pivot;
+		global string $ackSetup_affect;
+		global float $ackSetup_scaleFactor;
+
+		//set default value if doesn't exist
+		if ($ackSetup_pivot == ""){
+			$ackSetup_pivot = "left";
+		}
+		if ($ackSetup_affect == ""){
+			$ackSetup_affect = "individual";
+		}
+		if ($ackSetup_scaleFactor <= .0001){
+			$ackSetup_scaleFactor = .9;
+		}
+
+		float $pivotTime;
+		float $pivotValue[];
+
+		if ($ackSetup_pivot == "last"){
+			$pivotValue = `keyframe -lastSelected -q -valueChange`;	
+		}			
+
+		//loop over selected curves and process independently
+		string $selectedCurves[] = `keyframe -selected -q -name`;
+		for ($c = 0; $c < size($selectedCurves); $c++){
+			//channel to use for this pass
+			$channel = $selectedCurves[$c];
+
+			//get array of key times in selection (to find closest match key)
+			$timeArray = `keyframe -selected -q -timeChange $channel`;
+
+			//get pivot point
+
+			switch ($ackSetup_pivot){
+				case "left":
+					$pivotTime = `findKeyframe -which "previous" -time $timeArray[0] $channel`;
+					$pivotValue = `keyframe -time $pivotTime -q -valueChange $channel`;
+					break;
+				case "right":
+					int $lastKey = size($timeArray) - 1;
+					$pivotTime = `findKeyframe -which "next" -time $timeArray[$lastKey] $channel`;
+					$pivotValue = `keyframe -time $pivotTime -q -valueChange $channel`;
+					break;
+			}
+
+
+			//scale selected keys
+			$selected = `keyframe -selected -q -indexValue $channel`;
+			if ($cmd == "push"){
+				for ($i = 0; $i < size($selected); $i++){
+					scaleKey -index $selected[$i] -valuePivot $pivotValue[0] -valueScale (1/$ackSetup_scaleFactor) $channel;
+				}
+			}else if ($cmd == "pull"){
+				for ($i = 0; $i < size($selected); $i++){
+					scaleKey -index $selected[$i] -valuePivot $pivotValue[0] -valueScale ($ackSetup_scaleFactor) $channel;
+				}
+
+			}
+
+		}	//loop curves
+	}	//chk key selection
+}

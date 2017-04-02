@@ -1,0 +1,119 @@
+//=================================================================
+// snWorldSpaceTool.mel
+// Sean Nolan
+// www.snolan.net
+// 1/15/06
+//
+//
+// Copy and paste world space(translate and rotation) coordinates 
+// from one object to another.
+//
+// Choose your options of what channel to copy and paste.
+// Select the target and hit paste.
+//=================================================================
+
+global proc snWorldSpaceTool()
+{
+	if(`window -exists worldSpaceUI`) deleteUI worldSpaceUI;
+	
+	window -t "World Space Tool" worldSpaceUI;
+	
+	columnLayout;
+	rowColumnLayout -nc 3 -cw 1 60 -cw 2 150 -cw 3 100;
+
+	text -l "";	
+	text -l "Channels to Copy and Paste";
+	text -l "";
+	separator;separator;separator;
+	text -l "";	text -l "";	text -l "";	
+setParent..;
+
+	rowColumnLayout -nc 3 -cw 1 60 -cw 2 90 -cw 3 100;
+	text -l "";
+	checkBox -label "Translate" cbTrans;
+ 	checkBox -label "Rotate" cbRot;
+ 	setParent..;
+ 	
+ 	rowColumnLayout -nc 3 -cw 1 30 -cw 2 90 -cw 3 100;
+ 	text -l "";	text -l "";	text -l "";	
+ 	text -h 10 -l "";	text -al "center" -l "Select Source";	text -al "center" -l " Select Target";	
+ 	text -l "";
+ 	button -l "Copy" -command "snCopyWS";
+ 	button -l "Paste" -command "snPasteWS";
+ 	
+ 	floatField -vis false wsXPos;
+	floatField -vis false wsYPos;
+	floatField -vis false wsZPos;
+	
+	floatField -vis false wsXRot;
+	floatField -vis false wsYRot;
+	floatField -vis false wsZRot;  	
+ 	
+ 	window -e -h 160 -w 260 worldSpaceUI;
+	showWindow worldSpaceUI;
+	
+}
+
+global proc snCopyWS ()
+{
+	
+	int $copyTrans = `checkBox -q -v cbTrans`;
+	int $copyRot = `checkBox -q -v cbRot`;
+	
+	string $objToCopy[] = `ls -sl`;
+	if($objToCopy[0] == "")
+		error "Select the Source";
+	
+	float $wsPos[] = `xform -q -ws -t $objToCopy[0]`; 
+	float $wsRot[] = `xform -q -ws -ro $objToCopy[0]`; 
+	
+	if($copyTrans == 1)
+	{
+		floatField -e -v $wsPos[0] wsXPos;
+		floatField -e -v $wsPos[1] wsYPos;
+		floatField -e -v $wsPos[2] wsZPos;
+	}
+	if($copyRot == 1)
+	{	
+		floatField -e -v $wsRot[0] wsXRot;
+		floatField -e -v $wsRot[1] wsYRot;
+		floatField -e -v $wsRot[2] wsZRot;
+	}
+	if($copyRot == 0 && $copyTrans == 0)
+	{
+		error "Select a channel to Copy";
+	}
+	
+}
+
+global proc snPasteWS()
+{
+	int $copyTrans = `checkBox -q -v cbTrans`;
+	int $copyRot = `checkBox -q -v cbRot`;
+	
+	string $objToPaste[] = `ls -sl`;
+	if($objToPaste[0] == "")
+		error "Select the Target";
+		
+	if($copyTrans == 1)
+	{
+		float $xPos = `floatField -q -v wsXPos`;
+		float $yPos = `floatField -q -v wsYPos`;
+		float $zPos = `floatField -q -v wsZPos`;
+		
+		xform -ws -t $xPos $yPos $zPos $objToPaste[0];
+	}
+	
+	if($copyRot == 1)
+	{
+		float $xRot = `floatField -q -v wsXRot`;
+		float $yRot = `floatField -q -v wsYRot`;
+		float $zRot = `floatField -q -v wsZRot`;
+		
+		xform -ws -ro $xRot $yRot $zRot $objToPaste[0];
+	}
+	if($copyRot == 0 && $copyTrans == 0)
+	{
+			error "Select a channel to Paste";
+	}
+}

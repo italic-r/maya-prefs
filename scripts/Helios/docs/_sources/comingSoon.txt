@@ -1,0 +1,5 @@
+Coming Soon
+===========
+
+* More custom commands (I'm more than open to suggestions).
+* Command Creator GUI.

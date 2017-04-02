@@ -1,0 +1,22 @@
+About
+=====
+
+Helios is a Maya utility made by |Thibault Houdon| using |Python| and |PyQt|.
+It allows you to execute hundreds of commands by typing them in a search bar.
+
+Helios is free and developed in my spare time. If you have any suggestions or are experiencing
+issues with Helios you can contact me at houdon.thibault@gmail.com
+
+
+
+.. |Thibault Houdon| raw:: html
+
+   <a href="http://www.ThibH.com" target="_blank">Thibault Houdon</a>
+
+.. |Python| raw:: html
+
+   <a href="http://www.Python.org" target="_blank">Python</a>
+
+.. |PyQt| raw:: html
+
+   <a href="https://sourceforge.net/projects/pyqt/" target="_blank">PyQt</a>

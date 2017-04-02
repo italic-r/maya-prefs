@@ -1,0 +1,954 @@
+//---------------------------------------------------------------------------
+// cr_autoRiggingUI.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:	
+//
+// REQUIRES:
+//		cr_buildArmSetup.mel
+//		cr_buildBipedLegSetup.mel
+//		cr_buildQuadLegSetup.mel
+//		cr_buildSpineSetup.mel
+//		cr_buildEyeSetup.mel
+//		cr_buildHandSetup.mel
+//		cr_buildNeckHeadSetup.mel
+//		cr_buildSpaceSwitchSetup.mel
+//		cr_buildTentacleSetup.mel
+//		cr_autoRigGetFromUI.mel
+//		cr_charUtilsLib.mel
+//
+// AUTHOR:
+//		Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+eval("source \"cr_buildArmSetup.mel\";");
+eval("source \"cr_buildBipedLegSetup.mel\";");
+eval("source \"cr_buildQuadLegSetup.mel\";");
+eval("source \"cr_buildSpineSetup.mel\";");
+eval("source \"cr_buildEyeSetup.mel\";");
+eval("source \"cr_buildHandSetup.mel\";");
+eval("source \"cr_buildNeckHeadSetup.mel\";");
+eval("source \"cr_buildSpaceSwitchSetup.mel\";");
+eval("source \"cr_buildTentacleSetup.mel\";");
+eval("source \"cr_autoRigGetFromUI.mel\";");
+cr_charUtilsLib;
+cr_help;
+
+{
+//main window
+if (`window -exists cr_autoRiggingWin`)
+deleteUI cr_autoRiggingWin;
+
+	window
+	-t "creatureRigs: Auto Rigger"
+	-wh 389 485
+	-mxb off
+	-mnb on
+	-resizeToFitChildren on
+	-sizeable on
+	-menuBar true
+	cr_autoRiggingWin;
+
+//option menu
+menu -label "File";
+	menuItem -label "install shelf button" -c "cr_installShelfBtn(\"cr_autoRigging\",\"cr_autoRigging\", \"kinConnect\")";
+	menuItem -divider true;
+	menuItem -label "Close" -c ("deleteUI cr_autoRiggingWin");
+menu -label "Edit";
+	menuItem -label "Auto Mirror" -checkBox 0 autoMirrorOptionMi;
+	menuItem -divider true;
+	menuItem -label "Toggle Selectable" -c "cr_toggleBaseSkeletonSelect()";
+	menuItem -divider true;
+menu -label "Tools";
+	menuItem -label "Curve Utilities" -c "cr_curveUtil";
+	menuItem -divider true;
+	menuItem -label "IK Stretch UI" -c "cr_stretchNetworkUI";
+	menuItem -label "Spline Stretch UI" -c "cr_splineStretchUI";
+menu -label "Help" -helpMenu true;
+	menuItem -label "How to use" -c "cr_helpWindow()";
+
+
+//main clolumn
+columnLayout -adj 1 -p cr_autoRiggingWin mainColumn;
+
+//name prefix
+frameLayout -l "Prefix "
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedIn"
+	-p mainColumn
+	prefixFrame;
+
+rowColumnLayout -nc 4 -cw 1 50 -cw 2 85 -cw 3 40 -cw 4 85 -cs 1 5 -cs 2 5 -cs 3 40 -cs 4 5 -p prefixFrame nameRCL;
+	text  -l "Name:" -align "left" nameTitle;
+	textField  nameTF;
+	
+	text -label "Side:" -al "left";
+	optionMenu sidePrefix;  //select side prefix menu
+	menuItem -label "l/r";
+	menuItem -label "lt/rt";
+	menuItem -label "left/right";
+	menuItem -label "none";
+	 
+	text  -l "Scale :" -align "left" sideTitle;
+	floatField -v 1.0 -pre 2 scaleFloatF;
+	text -l "" fill1;
+	text -l "" fill2;
+
+//advance options
+frameLayout -l "Advance Options "
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedIn"
+	-p mainColumn
+	advOptionFrame;
+
+rowColumnLayout -nc 3 -cw 1 120 -cw 2 80 -cw 3 80 -cs 1 0 -cs 2 10 -cs 3 10 -p advOptionFrame stretchRCL;
+
+	text -l "Stretch" -al "left" -fn "boldLabelFont" stretchTitle;
+	text -l "" fill1;
+	text -l "" fill2;
+	
+	checkBox -label "Stretch" -v 1 -cc "cr_stretchSwitch" stretchChk;
+	text -l "" fill3;
+	text -l "" fill4;
+	
+	optionMenu -l "Method :" scaleTypeOpGrp;
+	menuItem -l "scale";
+	menuItem -l "translate";
+	checkBox -label "Volume" -v 1 -cc "" volChk;
+	checkBox -label "Mid Lock" -v 1 -cc "" midChk;
+	
+	text  -l " IK FK" -al "left" -fn "boldLabelFont" ikFkTitle;
+	text  -l "Build World" -al "left" -fn "boldLabelFont" BWTitle;
+	text  -l "" fill5;
+	
+	optionMenu -l "Method :" rotTypeOpGrp;
+	menuItem -l "constrain";
+	menuItem -l "utilNode";
+	
+	checkBox -label "Build" -v 1 -cc "" -en 0 buildChk;
+
+tabLayout -w 385 -innerMarginWidth 5 -innerMarginHeight 5 -sc "frameLayout -e -cl 1 advHandFrame;" -p mainColumn mainPartTab;//window -e -wh 389 485 cr_autoRiggingWin;
+iconTextButton -style "iconOnly" -i "creatureRigs.png" -ann ("creatureRigs Tool \"Auto Rigging Tools\"- Copyright ©2010 Wasim Khan creaturerigs.com") -c ("showHelp -a \"http://creaturerigs.com/\"") -w 389 -h 30 -p mainColumn;
+
+// spine entry
+frameLayout -l ""
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedIn"
+	-p mainPartTab
+	spineFrame;
+
+formLayout -p spineFrame spineForm;
+	intSliderGrp -w 100 -l "Joints:" -f 1 -v 7 -min 0 -max 25 -cw3 85 30 50 -adjustableColumn3 3 spineJointISG;
+    textFieldButtonGrp -label "Root:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField rootJointTFBG" -cw3 85 235 67 rootJointTFBG;
+    textFieldButtonGrp -label "Chest:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField chestJointTFBG" -cw3 85 235 67 chestJointTFBG;
+    textFieldButtonGrp -label "Hip:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField hipsJointTFBG" -cw3 85 235 67 hipsJointTFBG;
+	separator -height 5 -style "out" spineSep1;
+	optionMenuGrp -l "Type:" -cw2 85 50 spineTypeOpGrp;
+	menuItem -l "stretchy IK FK";
+	//menuItem -l "reverse spine";
+	button -l "Create Spine" -c "cr_autoRigGetFromUI(\"spine\")" spineTypeBtn;
+	separator -height 5 -style "out" spineSep2;
+
+formLayout -e
+    -af spineJointISG "top" 0
+    -af spineJointISG "left" 0
+    -ap spineJointISG "right" 0 87
+    
+    -ac rootJointTFBG "top" 0 spineJointISG
+    -af rootJointTFBG "left" 0
+
+    -ac chestJointTFBG "top" 0 rootJointTFBG
+    -af chestJointTFBG "left" 0  
+    
+    -ac hipsJointTFBG "top" 0 chestJointTFBG
+    -af hipsJointTFBG "left" 0  
+
+    -ac spineSep1 "top" 0 hipsJointTFBG
+    -af spineSep1 "left" 0 
+    -ap spineSep1 "right" 0 100 
+
+    -ac spineTypeOpGrp "top" 0 spineSep1
+    -af spineTypeOpGrp "left" 0 
+
+    -ac spineTypeBtn "top" 0 spineSep1
+    -ac spineTypeBtn "left" 0 spineTypeOpGrp
+    -ap spineTypeBtn "right" 0 100 
+
+    -ac spineSep2 "top" 0 spineTypeBtn
+    -af spineSep2 "left" 0 
+    -ap spineSep2 "right" 0 100 
+spineForm;
+
+// arm entry
+frameLayout -l ""
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedIn"
+	-p mainPartTab
+	armFrame;
+
+formLayout -p armFrame armForm;
+    textFieldButtonGrp -label "Shoulder:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField shoulderJointTFBG" -cw3 85 235 67 shoulderJointTFBG;
+    textFieldButtonGrp -label "Wrist:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField wristJointTFBG" -cw3 85 235 67 wristJointTFBG;
+	separator -height 5 -style "out" armSep1;
+	optionMenuGrp -l "Type:" -cw2 85 50 armTypeOpGrp;
+	menuItem -l "besic ik/fk";
+	//menuItem -l "advance fk";
+	button -l "Create Arm" -c "cr_autoRigGetFromUI(\"arm\")" armTypeBtn;
+	separator -height 5 -style "out" armSep2;
+    radioButtonGrp -l "Side:" -nrb 2  -la2 "L" "R"  -cw3 85 40 40 -sl 1 armSideRdBnGrp;
+ 	separator -height 5 -style "out" armSep3;
+
+formLayout -e   
+    -af shoulderJointTFBG "top" 0 
+    -af shoulderJointTFBG "left" 0
+
+    -ac wristJointTFBG "top" 0 shoulderJointTFBG
+    -af wristJointTFBG "left" 0  
+
+    -ac armSep1 "top" 0 wristJointTFBG
+    -af armSep1 "left" 0 
+    -ap armSep1 "right" 0 100 
+
+    -ac armTypeOpGrp "top" 0 armSep1
+    -af armTypeOpGrp "left" 0 
+
+    -ac armTypeBtn "top" 0 armSep1
+    -ac armTypeBtn "left" 0 armTypeOpGrp
+    -ap armTypeBtn "right" 0 100 
+
+    -ac armSep2 "top" 0 armTypeBtn
+    -af armSep2 "left" 0 
+    -ap armSep2 "right" 0 100       
+
+    -ac armSideRdBnGrp "top" 0 armSep2
+    -af armSideRdBnGrp "left" 0
+
+    -ac armSep3 "top" 0 armSideRdBnGrp
+    -af armSep3 "left" 0 
+    -ap armSep3 "right" 0 100    
+armForm;
+
+// legs/feet entry
+frameLayout -l ""
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedIn"
+	-p mainPartTab
+	legFrame;
+
+formLayout -p legFrame legForm;
+    textFieldButtonGrp -label "Hip:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField hipJointTFBG" -cw3 85 235 67 hipJointTFBG;
+    textFieldButtonGrp -label "Ankle:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField ankleJointTFBG" -cw3 85 235 67 ankleJointTFBG;
+    textFieldButtonGrp -label "Ball:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField ballJointTFBG" -cw3 85 235 67 ballJointTFBG;
+    textFieldButtonGrp -label "Toe:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField toeJointTFBG" -cw3 85 235 67 toeJointTFBG;
+	separator -height 5 -style "out" legSep1;	
+	optionMenuGrp -l "Type:" -cw2 85 40 -cc "cr_legUItypeSwitch" legTypeOpGrp;
+		menuItem -l "biped";
+		menuItem -l "quadropad";
+	button -l "Create Leg" -c "cr_autoRigGetFromUI(\"leg\")" legTypeBtn;
+	separator -height 5 -style "out" legSep2;
+    radioButtonGrp -l "Side:" -nrb 2  -la2 "L" "R" -cw3 85 40 40 -sl 1 legSideRdBnGrp;
+ 	separator -height 5 -style "out" armSep3;
+
+formLayout -e   
+    -af hipJointTFBG "top" 0 
+    -af hipJointTFBG "left" 0
+
+    -ac ankleJointTFBG "top" 0 hipJointTFBG
+    -af ankleJointTFBG "left" 0  
+
+    -ac ballJointTFBG "top" 0 ankleJointTFBG
+    -af ballJointTFBG "left" 0
+
+    -ac toeJointTFBG "top" 0 ballJointTFBG
+    -af toeJointTFBG "left" 0 
+    
+    -ac legSep1 "top" 0 toeJointTFBG
+    -af legSep1 "left" 0 
+    -ap legSep1 "right" 0 100 
+
+    -ac legTypeOpGrp "top" 0 legSep1
+    -af legTypeOpGrp "left" 0 
+
+    -ac legTypeBtn "top" 0 legSep1
+    -ac legTypeBtn "left" 0 legTypeOpGrp
+    -ap legTypeBtn "right" 0 100 
+
+    -ac legSep2 "top" 0 legTypeBtn
+    -af legSep2 "left" 0 
+    -ap legSep2 "right" 0 100       
+
+    -ac legSideRdBnGrp "top" 0 legSep2
+    -af legSideRdBnGrp "left" 0
+
+    -ac armSep3 "top" 0 legSideRdBnGrp
+    -af armSep3 "left" 0 
+    -ap armSep3 "right" 0 100    
+legForm;
+
+//head entry
+frameLayout -l ""
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedIn"
+	-p mainPartTab
+	headFrame;
+
+formLayout -p headFrame headForm;
+	intSliderGrp -w 100 -l "Joints:" -f 1 -v 3 -min 0 -max 25 -cw3 85 30 50 -adjustableColumn3 3 neckJointISG;
+    textFieldButtonGrp -label "Head:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField headJointTFBG" -cw3 85 235 67 headJointTFBG;
+    textFieldButtonGrp -label "Neck:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField neckJointTFBG" -cw3 85 235 67 neckJointTFBG;
+	separator -height 5 -style "out" headSep1;
+	optionMenuGrp -l "Type:" -cw2 85 50 headTypeOpGrp;
+	    menuItem -l "besic head";
+	button -l "Create Head" -c "cr_autoRigGetFromUI(\"head\")" headTypeBtn;
+	separator -height 5 -style "out" eyeStartSep;
+	text -l "Eyes" -fn "plainLabelFont" -align "center" eyesSepTitle;
+	separator -height 5 -style "out" eyeEndSep;
+    textFieldButtonGrp -label "L Eye:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField eyeLJointTFBG" -cw3 85 235 67 eyeLJointTFBG;
+    textFieldButtonGrp -label "R Eye:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField eyeRJointTFBG" -cw3 85 235 67 eyeRJointTFBG;
+	separator -height 5 -style "out" headSep2;
+	optionMenuGrp -l "Type:" -cw2 85 50 eyeTypeOpGrp;
+	    menuItem -l "besic eyes";
+	button -l "Create Eyes" -c "cr_autoRigGetFromUI(\"eyes\")" eyeTypeBtn;
+	separator -height 5 -style "out" headSep3;
+
+formLayout -e
+    -af neckJointISG "top" 0
+    -af neckJointISG "left" 0
+    -ap neckJointISG "right" 0 87
+
+    -ac headJointTFBG "top" 0 neckJointISG
+    -af headJointTFBG "left" 0
+
+    -ac neckJointTFBG "top" 0 headJointTFBG
+    -af neckJointTFBG "left" 0
+
+    -ac headSep1 "top" 0 neckJointTFBG
+    -af headSep1 "left" 0 
+    -ap headSep1 "right" 0 100 
+
+    -ac headTypeOpGrp "top" 0 headSep1
+    -af headTypeOpGrp "left" 0 
+
+    -ac headTypeBtn "top" 0 headSep1
+    -ac headTypeBtn "left" 0 headTypeOpGrp
+    -ap headTypeBtn "right" 0 100 
+
+	-ac eyeStartSep "top" 5 headTypeBtn
+	-af eyeStartSep "left" 0 
+	-ap eyeStartSep "right" 0 45
+	
+	-ac eyesSepTitle "top" 0 headTypeBtn
+	-ac eyesSepTitle "left" 0 eyeStartSep
+	-ap eyesSepTitle "right" 0 55
+	
+	-ac eyeEndSep "top" 5 headTypeBtn
+	-ac eyeEndSep "left" 0 eyesSepTitle
+	-ap eyeEndSep "right" 0 100
+
+    -ac eyeLJointTFBG "top" 0 eyesSepTitle
+    -af eyeLJointTFBG "left" 0
+
+    -ac eyeRJointTFBG "top" 0 eyeLJointTFBG
+    -af eyeRJointTFBG "left" 0
+
+    -ac headSep2 "top" 0 eyeRJointTFBG
+    -af headSep2 "left" 0 
+    -ap headSep2 "right" 0 100 
+
+    -ac eyeTypeOpGrp "top" 0 headSep2
+    -af eyeTypeOpGrp "left" 0 
+
+    -ac eyeTypeBtn "top" 0 headSep2
+    -ac eyeTypeBtn "left" 0 eyeTypeOpGrp
+    -ap eyeTypeBtn "right" 0 100 
+
+	-ac headSep3 "top" 0 eyeTypeBtn
+	-af headSep3 "left" 0 
+	-ap headSep3 "right" 0 100
+headForm;
+
+//hand entry  
+frameLayout -l ""
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedIn"
+	-p mainPartTab
+	handFrame;
+
+columnLayout -adj 1 -p handFrame handMainColumn;
+
+formLayout -p handMainColumn handCompForm;
+    textFieldButtonGrp -label "Control:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField controlHandTFBG" -cw3 85 235 67 controlHandTFBG;
+	checkBoxGrp -l "Fk Control:" -v1 1 -cw2 85 50 -cc "cr_tentOffsetSwitch" fkConChk;
+	textField -editable 0 -tx "square" fkConHandTF;
+	separator -height 5 -style "out" controlHandSep1;
+
+	checkBox -l "" -v 1 -cc "cr_fingerUISwitch finger1" finger1Chk;
+	text -l "Thumb:" -align "right" finger1Title;
+	textField -tx "Thumb" finger1NameTF;
+    textFieldButtonGrp -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField finger1JointTFBG" -cw2 154 67 finger1JointTFBG;
+
+	checkBox -l "" -v 1 -cc "cr_fingerUISwitch finger2" finger2Chk;
+	text -l "Index:" -align "right" finger2Title;
+	textField -tx "Index" finger2NameTF;
+    textFieldButtonGrp -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField finger2JointTFBG" -cw2 154 67 finger2JointTFBG;
+
+	checkBox -l "" -v 1 -cc "cr_fingerUISwitch finger3" finger3Chk;
+	text -l "Middle:" -align "right" finger3Title;
+	textField -tx "Middle" finger3NameTF;
+    textFieldButtonGrp -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField finger3JointTFBG" -cw2 154 67 finger3JointTFBG;
+
+	checkBox -l "" -v 1 -cc "cr_fingerUISwitch finger4" finger4Chk;
+	text -l "Ring:" -align "right" finger4Title;
+	textField -tx "Ring" finger4NameTF;
+    textFieldButtonGrp -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField finger4JointTFBG" -cw2 154 67 finger4JointTFBG;
+	
+	checkBox -l "" -v 1 -cc "cr_fingerUISwitch finger5" finger5Chk;
+	text -l "Pinky:" -align "right" finger5Title;
+	textField -tx "Pinky" finger5NameTF;
+    textFieldButtonGrp -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField finger5JointTFBG" -cw2 154 67 finger5JointTFBG;
+	
+	separator -height 5 -style "out" controlHandSep2;
+	button -l "Create Hand" -c "cr_autoRigGetFromUI(\"hand\")" createHandBtn;
+	separator -height 5 -style "out" controlHandSep3;
+
+	string $wireTypes[] = {"arrow","circleCross","pin1","circleOrient","cross","square","cube1","cube2","circle","sphere","plus","triangle","cone","thinCross","pin2"};
+	$wireTypes = sort($wireTypes);
+	
+	popupMenu -p fkConHandTF;
+	for($m=0;$m<size($wireTypes);++$m)
+	menuItem -l $wireTypes[$m] -c ("textField -e -tx "+$wireTypes[$m]+" fkConHandTF;");
+
+formLayout -e
+    -af controlHandTFBG "top" 0 
+    -af controlHandTFBG "left" 0
+
+	-ac fkConChk "top" 3 controlHandTFBG
+	-af fkConChk "left" 0 
+	-ap fkConChk "right" 0 25
+	
+	-ac fkConHandTF "top" 0 controlHandTFBG
+	-ac fkConHandTF "left" 0 fkConChk
+	-ap fkConHandTF "right" 0 86
+	
+	-ac controlHandSep1 "top" 0 fkConHandTF
+	-af controlHandSep1 "left" 0
+	-ap controlHandSep1 "right" 0 100
+	
+	-ac finger1Chk "top" 7 controlHandSep1
+	-af finger1Chk "left" 0
+	-ap finger1Chk "right" 0 5
+
+	-ac finger1Title "top" 7 controlHandSep1
+	-ac finger1Title "left" 0 finger1Chk
+	-ap finger1Title "right" 0 23
+	
+	-ac finger1NameTF "top" 3 controlHandSep1
+	-ac finger1NameTF "left" 0 finger1Title
+	-ap finger1NameTF "right" 0 45
+	
+	-ac finger1JointTFBG "top" 0 controlHandSep1
+	-ac finger1JointTFBG "left" 0 finger1NameTF
+	-ap finger1JointTFBG "right" 0 100
+
+	-ac finger2Chk "top" 7 finger1JointTFBG
+	-af finger2Chk "left" 0
+	-ap finger2Chk "right" 0 5
+
+	-ac finger2Title "top" 7 finger1JointTFBG
+	-ac finger2Title "left" 0 finger2Chk
+	-ap finger2Title "right" 0 23
+	
+	-ac finger2NameTF "top" 3 finger1JointTFBG
+	-ac finger2NameTF "left" 0 finger2Title
+	-ap finger2NameTF "right" 0 45
+	
+	-ac finger2JointTFBG "top" 0 finger1JointTFBG
+	-ac finger2JointTFBG "left" 0 finger2NameTF
+	-ap finger2JointTFBG "right" 0 100
+	
+	-ac finger3Chk "top" 7 finger2JointTFBG
+	-af finger3Chk "left" 0
+	-ap finger3Chk "right" 0 5
+
+	-ac finger3Title "top" 7 finger2JointTFBG
+	-ac finger3Title "left" 0 finger3Chk
+	-ap finger3Title "right" 0 23
+	
+	-ac finger3NameTF "top" 3 finger2JointTFBG
+	-ac finger3NameTF "left" 0 finger3Title
+	-ap finger3NameTF "right" 0 45
+	
+	-ac finger3JointTFBG "top" 0 finger2JointTFBG
+	-ac finger3JointTFBG "left" 0 finger3NameTF
+	-ap finger3JointTFBG "right" 0 100
+	
+	-ac finger4Chk "top" 7 finger3JointTFBG
+	-af finger4Chk "left" 0
+	-ap finger4Chk "right" 0 5
+
+	-ac finger4Title "top" 7 finger3JointTFBG
+	-ac finger4Title "left" 0 finger4Chk
+	-ap finger4Title "right" 0 23
+	
+	-ac finger4NameTF "top" 3 finger3JointTFBG
+	-ac finger4NameTF "left" 0 finger4Title
+	-ap finger4NameTF "right" 0 45
+	
+	-ac finger4JointTFBG "top" 0 finger3JointTFBG
+	-ac finger4JointTFBG "left" 0 finger4NameTF
+	-ap finger4JointTFBG "right" 0 100
+	
+	-ac finger5Chk "top" 7 finger4JointTFBG
+	-af finger5Chk "left" 0
+	-ap finger5Chk "right" 0 5
+
+	-ac finger5Title "top" 7 finger4JointTFBG
+	-ac finger5Title "left" 0 finger5Chk
+	-ap finger5Title "right" 0 23
+	
+	-ac finger5NameTF "top" 3 finger4JointTFBG
+	-ac finger5NameTF "left" 0 finger5Title
+	-ap finger5NameTF "right" 0 45
+	
+	-ac finger5JointTFBG "top" 0 finger4JointTFBG
+	-ac finger5JointTFBG "left" 0 finger5NameTF
+	-ap finger5JointTFBG "right" 0 100
+	
+	-ac controlHandSep2 "top" 0 finger5JointTFBG
+	-af controlHandSep2 "left" 0
+	-ap controlHandSep2 "right" 0 100
+	
+	-ac createHandBtn "top" 0 controlHandSep2
+	-af createHandBtn "left" 0
+	-ap createHandBtn "right" 0 100
+
+	-ac controlHandSep3 "top" 0 createHandBtn
+	-af controlHandSep3 "left" 0
+	-ap controlHandSep3 "right" 0 100
+handCompForm;
+
+//advance hand options
+frameLayout -l "Advance Options"
+	-collapsable on
+	-collapse on
+	-borderStyle "etchedIn"
+	//-ec "window -e -wh 389 662 cr_autoRiggingWin;"
+	//-cc "window -e -wh 389 485 cr_autoRiggingWin;"
+	-p handMainColumn
+	advHandFrame;
+
+rowColumnLayout -nc 1 -p advHandFrame advHandRCL;
+	checkBoxGrp -l "Manual:" -v1 0 -cw2 85 50 -cc "cr_fingerManualSwitch" manualOpChk;
+	radioButtonGrp -l "Curl:" -nrb 3 -la3 "X" "Y" "Z" -cw4 85 70 70 70 -sl 3 curlfacingRdBnGrp;
+	radioButtonGrp -l "Spread:" -nrb 3 -la3 "X" "Y" "Z" -cw4 85 70 70 70 -sl 2 spreadfacingRdBnGrp;
+	radioButtonGrp -l "Spin:" -nrb 3 -la3 "X" "Y" "Z" -cw4 85 70 70 70 -sl 1 spinfacingRdBnGrp;
+	radioButtonGrp -l "Stretch:" -nrb 3  -la3 "X" "Y" "Z" -cw4 85 70 70 70 -sl 1 stretchfacingRdBnGrp;
+	separator -height 5 -style "out" nameSep1;
+	radioButtonGrp -l "Naming:" -nrb 3  -la3 "1,2,3.." "A,B,C.." "base,mid,tip" -cw4 85 70 70 70 -sl 2 namingRdBnGrp;
+	separator -height 5 -style "out" nameSep3;
+	checkBoxGrp -l "Skip Last:" -v1 1 -cw2 85 50 skipOpChk;
+	separator -height 5 -style "out" nameSep5;
+	radioButtonGrp -l "Side:" -nrb 2 -la2 "L" "R"  -cw3 85 40 40 -sl 1 fingerSideRdBnGrp;
+
+//tentacles
+frameLayout -l ""
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedIn"
+	-p mainPartTab
+	tenticaleFrame;
+
+formLayout -p tenticaleFrame tentCompForm;
+	intSliderGrp -l "Joints:" -f 1 -v 7 -min 0 -max 25 -cw3 85 30 50 -adjustableColumn3 3 tenticaleJointISG;
+    textFieldGrp -label "Name:" -text "" -cw2 85 235 tenticaleNameTFG;
+    textFieldButtonGrp -label "Start:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField startTentJointTFBG" -cw3 85 235 67 startTentJointTFBG;
+    textFieldButtonGrp -label "End:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField endTentJointTFBG" -cw3 85 235 67 endTentJointTFBG;
+    textFieldGrp -label "Control:" -tx "square" -ed 0 -cw2 85 235 conTentTFG;
+	checkBoxGrp -l "Dynamic:" -v1 1 -cw2 85 50 dynamicChk;
+	text -l "Offset Control" -fn "boldLabelFont" -align "left" tentfill3;	
+	checkBoxGrp -l "Offset:" -v1 1 -cw2 85 50 -cc "cr_tentOffsetSwitch" offsetChk;
+	textField -editable 0 -tx "plus" conOffTentTF;
+	separator -height 5 -style "out" tentSep1;	
+	button -l "Create Tentacle" -c "cr_autoRigGetFromUI(\"tentacle\")" createTentBtn;
+	separator -height 5 -style "out" tentSep2;
+
+	string $wireTypes[] = {"arrow","circleCross","pin1","circleOrient","cross","square","cube1","cube2","circle","sphere","plus","triangle","cone","thinCross","pin2"};
+	$wireTypes = sort($wireTypes);
+	
+	popupMenu -p conTentTFG;
+	for($m=0;$m<size($wireTypes);++$m)
+	menuItem -l $wireTypes[$m] -c ("textFieldGrp -e -tx "+$wireTypes[$m]+" conTentTFG;");
+	
+	popupMenu -p conOffTentTF;
+	for($n=0;$n<size($wireTypes);++$n)
+	menuItem -l $wireTypes[$n] -c ("textField -e -tx "+$wireTypes[$n]+" conOffTentTF;");
+
+formLayout -e
+    -af tenticaleJointISG "top" 0
+    -af tenticaleJointISG "left" 0
+    -ap tenticaleJointISG "right" 0 87
+	
+    -ac tenticaleNameTFG "top" 0 tenticaleJointISG
+    -af tenticaleNameTFG "left" 0
+	
+    -ac startTentJointTFBG "top" 0 tenticaleNameTFG
+    -af startTentJointTFBG "left" 0
+	
+    -ac endTentJointTFBG "top" 0 startTentJointTFBG
+    -af endTentJointTFBG "left" 0
+
+    -ac conTentTFG "top" 0 endTentJointTFBG
+    -af conTentTFG "left" 0	
+	   
+	-ac dynamicChk "top" 0 conTentTFG
+	-af dynamicChk "left" 0 
+	-ap dynamicChk "right" 0 45
+	
+	-ac tentfill3 "top" 0 conTentTFG 
+	-ac tentfill3 "left" 0 dynamicChk
+	-ap tentfill3 "right" 0 100
+
+	-ac offsetChk "top" 3 dynamicChk
+	-af offsetChk "left" 0 
+	-ap offsetChk "right" 0 25
+	
+	-ac conOffTentTF "top" 0 dynamicChk
+	-ac conOffTentTF "left" 0 offsetChk
+	-ap conOffTentTF "right" 0 86
+
+	-ac tentSep1 "top" 0 conOffTentTF
+	-af tentSep1 "left" 0 
+	-ap tentSep1 "right" 0 100
+	
+	-ac createTentBtn "top" 0 tentSep1
+	-af createTentBtn "left" 0 
+	-ap createTentBtn "right" 0 100
+
+	-ac tentSep2 "top" 0 createTentBtn
+	-af tentSep2 "left" 0 
+	-ap tentSep2 "right" 0 100
+tentCompForm;
+
+frameLayout -l ""
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedIn"
+	-p mainPartTab
+	parentFrame;
+
+formLayout -p parentFrame parentForm;
+    textFieldButtonGrp -label "Control:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField parentConTFBG;cr_spaceNodeParentupdate" -cw3 85 235 67 parentConTFBG;
+    textFieldButtonGrp -label "Grp:" -text "" -buttonLabel " select " -ed 0 -bc "cr_updateTextField parentGrpTFBG" -cw3 85 235 67 parentGrpTFBG;
+	separator -height 5 -style "out" parentSep1;
+	radioButtonGrp -l "Type:" -nrb 3 -la3 "Parent" "Rotate" "Trans/Rotate" -cw4 85 70 70 70 -sl 1 parentTypeRdBnGrp;
+	separator -height 5 -style "out" parentSep2;
+	text -l "Space:" -fn "boldLabelFont" -align "left" parentSpaceTitle;
+	text -l "Name:" -fn "boldLabelFont" -align "left" spaceNameTitle;
+	textScrollList -h 70 -allowMultiSelection 0 -sc "cr_selectSpaceSwitchName"  spaceSwitchParentTSL;
+	textScrollList -h 70 -allowMultiSelection 0 -en 0 spaceSwitchNameTSL;
+	button -l "add" -c "cr_addParentSpace" addSpaceBtn;
+	button -l "delete" -c "cr_deleteParentSpace" removeSpaceBtn;
+	button -l "clean" -c "cr_deleteAllParentSpace" removeAllSpaceBtn;
+	textField -ec "cr_changeSpaceName" newSpaceNameTF;
+	button -l "change" -c "cr_changeSpaceName" changeNameBtn;
+	separator -height 5 -style "out" parentSep3;	
+	button -l "create Space Switch" -c "cr_autoRigGetFromUI(\"parentSwitch\")" createParentBtn;
+	separator -height 5 -style "out" parentSep4;	
+	
+formLayout -e
+    -af parentConTFBG "top" 0 
+    -af parentConTFBG "left" 0
+
+    -ac parentGrpTFBG "top" 0 parentConTFBG
+    -af parentGrpTFBG "left" 0
+    
+	-ac parentSep1 "top" 2 parentGrpTFBG
+	-af parentSep1 "left" 0 
+	-ap parentSep1 "right" 0 100
+
+	-ac parentTypeRdBnGrp "top" 0 parentSep1
+	-af parentTypeRdBnGrp "left" 0 
+	-ap parentTypeRdBnGrp "right" 0 100
+
+	-ac parentSep2 "top" 0 parentTypeRdBnGrp
+	-af parentSep2 "left" 0 
+	-ap parentSep2 "right" 0 100
+	
+	-ac parentSpaceTitle "top" 2 parentSep2
+	-af parentSpaceTitle "left" 0 
+	-ap parentSpaceTitle "right" 0 50	
+
+	-ac spaceNameTitle "top" 2 parentSep2
+	-ac spaceNameTitle "left" 5 parentSpaceTitle
+	-ap spaceNameTitle "right" 0 100	
+
+	-ac spaceSwitchParentTSL "top" 2 parentSpaceTitle
+	-af spaceSwitchParentTSL "left" 0 
+	-ap spaceSwitchParentTSL "right" 0 50	
+
+	-ac spaceSwitchNameTSL "top" 2 spaceNameTitle
+	-ac spaceSwitchNameTSL "left" 5 spaceSwitchParentTSL
+	-ap spaceSwitchNameTSL "right" 0 100	
+
+	-ac addSpaceBtn "top" 2 spaceSwitchParentTSL
+	-af addSpaceBtn "left" 0 
+	-ap addSpaceBtn "right" 0 15
+
+	-ac removeSpaceBtn "top" 2 spaceSwitchParentTSL
+	-ac removeSpaceBtn "left" 0 addSpaceBtn
+	-ap removeSpaceBtn "right" 0 30
+
+	-ac removeAllSpaceBtn "top" 2 spaceSwitchParentTSL
+	-ac removeAllSpaceBtn "left" 0 removeSpaceBtn
+	-ap removeAllSpaceBtn "right" 0 50
+
+	-ac newSpaceNameTF "top" 2 spaceSwitchNameTSL
+	-ac newSpaceNameTF "left" 5 removeAllSpaceBtn
+	-ap newSpaceNameTF "right" 0 80
+
+	-ac changeNameBtn "top" 2 spaceSwitchParentTSL
+	-ac changeNameBtn "left" 0 newSpaceNameTF
+	-ap changeNameBtn "right" 0 100
+
+	-ac parentSep3 "top" 0 changeNameBtn
+	-af parentSep3 "left" 0 
+	-ap parentSep3 "right" 0 100
+
+	-ac createParentBtn "top" 0 parentSep3
+	-af createParentBtn "left" 0 
+	-ap createParentBtn "right" 0 100
+
+	-ac parentSep4 "top" 0 createParentBtn
+	-af parentSep4 "left" 0 
+	-ap parentSep4 "right" 0 100
+parentForm;	
+
+//tab edits         
+tabLayout -edit
+	-tabLabel spineFrame "Spine" 
+	-tabLabel armFrame "Arm"
+	-tabLabel legFrame "Foot"
+	-tabLabel headFrame "Head"
+	-tabLabel handFrame "Fingers"
+	-tabLabel tenticaleFrame "Tentacle"
+	-tabLabel parentFrame "Parent"	
+mainPartTab;
+
+//UI edits
+checkBoxGrp -e -v1 0  manualOpChk;
+optionMenu -e -v "lt/rt" sidePrefix;
+cr_fingerManualSwitch();
+cr_legUItypeSwitch();
+cr_stretchSwitch();
+
+showWindow cr_autoRiggingWin;
+}
+
+global proc cr_fingerManualSwitch()
+{
+int $switch = `checkBoxGrp -q -v1 manualOpChk`;
+if($switch)
+	{
+	radioButtonGrp -e -en 1 curlfacingRdBnGrp;
+	radioButtonGrp -e -en 1 spreadfacingRdBnGrp;
+	radioButtonGrp -e -en 1 stretchfacingRdBnGrp;
+	radioButtonGrp -e -en 1 spinfacingRdBnGrp;
+	}
+else
+	{
+	radioButtonGrp -e -en 0 curlfacingRdBnGrp;
+	radioButtonGrp -e -en 0 spreadfacingRdBnGrp;
+	radioButtonGrp -e -en 0 stretchfacingRdBnGrp;
+	radioButtonGrp -e -en 0 spinfacingRdBnGrp;
+	}
+}
+
+global proc cr_updateTextField(string $textField)
+{
+string $sel[] = `ls -sl`;
+if($sel[0]!= "")
+textFieldButtonGrp -e -tx $sel[0] $textField;
+else
+print ("selection is empty select a object and try again\n");
+}
+
+global proc cr_tentOffsetSwitch()
+{
+int $switch = `checkBoxGrp -q -v1 offsetChk`;
+if($switch)
+	{
+	text -e -en 1 tentfill3;
+	textField -e -en 1 conOffTentTF;
+	textField -e -ed 0 conOffTentTF;
+	}
+else
+	{
+	text -e -en 0 tentfill3;
+	textField -e -en 0 conOffTentTF;
+	}
+}
+
+global proc cr_handFkSwitch()
+{
+int $switch = `checkBox -q -v fkConChk`;
+if($switch)
+	{
+	textField -e -en 1 fkConHandTF;
+	textField -e -ed 0 fkConHandTF;
+	text -e -en 1 fingerSideTitle;
+	radioButtonGrp -e -en 1 fingerSideRdBnGrp;
+	}
+else
+	{
+	textField -e -en 0 fkConHandTF;
+	text -e -en 0 fingerSideTitle;
+	radioButtonGrp -e -en 0 fingerSideRdBnGrp;
+	}
+}
+
+global proc cr_fingerUISwitch(string $name)
+{
+int $switch = `checkBox -q -v ($name + "Chk")`;
+if($switch)
+	{
+	text -e -en 1 ($name + "Title");
+	textField -e -en 1 ($name + "NameTF");
+	textFieldButtonGrp -e -en 1 ($name + "JointTFBG");
+	}
+else
+	{	
+	text -e -en 0 ($name + "Title");
+	textField -e -en 0 ($name + "NameTF");
+	textFieldButtonGrp -e -en 0 ($name + "JointTFBG");
+	}
+}
+
+global proc cr_legUItypeSwitch()
+{
+string $type = `optionMenuGrp -q -value legTypeOpGrp`;
+if($type == "quadropad")
+    textFieldGrp -e -en 1 toeJointTFBG;
+else
+    textFieldGrp -e -en 0 toeJointTFBG;
+}
+
+global proc cr_stretchSwitch()
+{
+int $switch = `checkBox -q -v stretchChk`;
+if($switch)
+	{
+	optionMenu -e -en 1 scaleTypeOpGrp;
+	checkBox -e -en 1 volChk;
+	checkBox -e -en 1 midChk;
+	checkBox -e -v 1 volChk;
+	checkBox -e -v 1 midChk;
+	}
+else
+	{
+	optionMenu -e -en 0 scaleTypeOpGrp;
+	checkBox -e -v 0 volChk;
+	checkBox -e -en 0 volChk;
+	checkBox -e -v 0 midChk;
+	checkBox -e -en 0 midChk;
+	}
+}
+
+global proc cr_selectSpaceSwitchName()
+{
+int $index[] = `textScrollList -q -selectIndexedItem spaceSwitchParentTSL`;
+textScrollList -e -da spaceSwitchNameTSL;
+textScrollList -e -selectIndexedItem $index[0] spaceSwitchNameTSL;
+string $nameTF[] = `textScrollList -q -si spaceSwitchNameTSL`;
+textField -e -tx $nameTF[0] newSpaceNameTF;
+}
+
+global proc cr_changeSpaceName()
+{
+string $newName = `textField -q -tx newSpaceNameTF`;
+int $selSpace[] = `textScrollList -q -sii spaceSwitchNameTSL`;
+textScrollList -e -rii $selSpace[0] spaceSwitchNameTSL;
+textScrollList -e -ap $selSpace[0] $newName spaceSwitchNameTSL;
+textScrollList -e -sii $selSpace[0] spaceSwitchNameTSL;
+}
+
+global proc cr_addParentSpace()
+{
+string $space[];
+$space = `ls -sl`;
+if($space[0]=="")error "Selection is empty...";
+for($each in $space)
+{	
+textScrollList -e -a $each spaceSwitchParentTSL;
+textScrollList -e -a $each spaceSwitchNameTSL;
+}
+}
+
+global proc cr_deleteParentSpace()
+{
+int $selSpace[] = `textScrollList -q -sii spaceSwitchParentTSL`;
+textScrollList -e -rii $selSpace[0] spaceSwitchParentTSL;
+textScrollList -e -rii $selSpace[0] spaceSwitchNameTSL;
+}
+
+global proc cr_deleteAllParentSpace()
+{
+if( `confirmDialog -t "Are you sure?" -message "Do you want to remove all items?" -button "Yes" -button "No" -defaultButton "Yes"` == "Yes" ) 
+{
+textScrollList -e -ra spaceSwitchParentTSL;
+textScrollList -e -ra spaceSwitchNameTSL;
+textField -e -tx "" newSpaceNameTF;
+}
+}
+
+global proc cr_spaceNodeParentupdate()
+{
+string $node = `textFieldButtonGrp -q -tx parentConTFBG`;
+textFieldButtonGrp -e -tx "" parentGrpTFBG;
+string $parent = cr_getParent($node);
+if($parent != "")
+textFieldButtonGrp -e -tx $parent parentGrpTFBG;
+else
+error "No parent found for given node load parent node manually";
+};
+
+global proc cr_installShelfBtn(string $command, string $label, string $icon)
+{
+global string $gShelfTopLevel;
+string $myPrefDir = `internalVar -userPrefDir`;
+	if (`tabLayout -exists $gShelfTopLevel`)	
+	{
+		shelfButton
+			-parent ($gShelfTopLevel + "|" + `tabLayout -q -st $gShelfTopLevel`)
+			-command ($command)
+			-image1 ($myPrefDir+"/icons/"+$icon+".png")
+			-annotation ($command)
+			-imageOverlayLabel ($label);
+	}
+	else
+		error ("Must have active shelf to create shelf button");
+}

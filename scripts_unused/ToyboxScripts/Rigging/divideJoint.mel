@@ -1,0 +1,27 @@
+// divideJoint
+
+global proc divideJoint () {
+
+	string $selectedObj[] = `ls -sl`;
+	string $childJoints[];
+	int $numOfDivisions = 3;
+
+	for ($currentJoint in $selectedObj){
+		$childJoints  = `listRelatives $currentJoint`;
+		float $childOffsetX = `getAttr ($childJoints[0]+".tx")`;
+		float $newOffset = $childOffsetX / $numOfDivisions;
+		
+		string $newJoint[] = `duplicate $childJoints[0]`;
+		delete `listRelatives $newJoint[0]`;
+		string $newJoint2[] = `duplicate $newJoint[0]`;
+		setAttr ($newJoint[0]+".tx") $newOffset;
+		setAttr ($newJoint2[0]+".tx") ($newOffset*2);
+
+		parent $newJoint2[0] $newJoint[0];		
+		parent $childJoints[0] $newJoint2[0];
+
+		
+	
+	}
+	
+}

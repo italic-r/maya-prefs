@@ -1,0 +1,31 @@
+// --------------------------------------------------------------------------
+// toggleJoints.mel - MEL Script
+// --------------------------------------------------------------------------
+//
+//toggle joints
+//
+// --------------------------------------------------------------------------
+
+/*
+ * toggleJoints() - Main entry
+ */
+global proc toggleJoints()
+{
+    string $currentPanel = `getPanel -underPointer`;
+    if ("" == $currentPanel) 
+        {
+        $currentPanel = `getPanel -withFocus`;
+        }
+    if ("" != $currentPanel) 
+       {
+        string $panelType = `getPanel -typeOf $currentPanel`;
+        if ($panelType ==  "modelPanel") 
+            {
+            int $state = `modelEditor -q -joints $currentPanel`;
+            modelEditor -e -joints (!$state) $currentPanel;
+            }
+       }
+}
+
+
+// --------------------------------------------------------------------------

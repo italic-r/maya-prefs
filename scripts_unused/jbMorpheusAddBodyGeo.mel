@@ -1,0 +1,80 @@
+/*
+TITLE: jbMorpheusAddBodyGeo
+VERSION: 1.0
+AUTHOR:Josh Burton
+	   www.joshburton.com
+DATE: October 7, 2010
+
+DESCRIPTION:
+Script for baking out custom body geo for the Morpheus Rig.
+
+DISCLAIMER:
+If your computer explodes, I didn't do it.
+
+HOW TO USE:
+1. First select the custom geo to bake
+2. Then select any of the body controls for the Mophy you want to connect it to
+3. Run script
+
+LIMITATIONS:
+1. Doesn't work with hand meshes currently
+
+HISTORY:
+10.07.10 - BIRTH!
+
+Acknowledgements - 
+1. Blendshape extraction, size, existance checking from extractBlendShapes - Asi Sudai
+	asi@asimation.com www.reel.asimation.com
+*/
+
+//Main Proc
+global proc jbMorpheusAddBodyGeo() {
+
+//Declaring our intial variables
+string $selected[] = `ls -sl`;
+string $refPrefix;
+string $customGeo = $selected[0];
+string $customGeoSkinName = $customGeo+"_skinCluster";
+
+//error checking
+	if(!size($selected)) error "You Must Select the custom mesh AND one of the controls on the Morphy to connect to.";
+	if(`attributeExists "customGeofied" $customGeo`){ 
+			error "Geo is already connected" ;	 
+	}	else {
+
+//renames our original custom geo properly
+$customGeoProperName = $customGeo+"_customGeo";
+rename $customGeo $customGeoProperName;
+	
+//checks for referencing
+int $isReferenced = `referenceQuery -isNodeReferenced $selected[1]`;
+
+if ($isReferenced == 1){
+	string $buffer[] ; // Create Empty Array To Hold Tokens  
+	tokenize $selected[1] ":" $buffer ; // Split $objectName by ":" 
+	$refPrefix = $buffer[0]+":";
+} else {}
+
+$deformerGeo = $refPrefix + "body_geo";
+
+
+//Skin the custom geo
+$skinJoints =  $refPrefix + "qssBodyBindJoints";
+skinCluster -n $customGeoSkinName -tsb $skinJoints $customGeoProperName;
+
+//copy the skin weights from the deformer geo to the custom geo
+$skinCluster = $refPrefix + "body_geo_skinCluster";
+copySkinWeights -ds $customGeoSkinName -ss $skinCluster -noMirror -surfaceAssociation closestPoint -influenceAssociation name;
+
+//adds an attribute to tag a geo as having been processed
+addAttr -ln "customGeofied"  -dt "string" $customGeoProperName;
+
+//Report complete
+print ($customGeoProperName + " bound to body") ;
+
+}	
+}	
+
+
+
+

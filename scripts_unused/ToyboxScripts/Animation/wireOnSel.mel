@@ -1,0 +1,9 @@
+// wireOnSel
+
+global proc wireOnSel () {
+	if (`displayPref -q -wsa`=="none")
+		displayPref -wsa "full";
+	else
+		displayPref -wsa "none";
+
+}

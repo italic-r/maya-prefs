@@ -1,0 +1,3616 @@
+//
+//  PoseMan v 1.3.3
+//  Modify this at your own risk
+//
+//  Updated at: 03/11/2009
+//
+//  Description:
+//  This script create a tool to manage character poses
+
+//  Install:
+//  Copy poseMan.mel into /user/documents/maya/version/scripts, /user/documents/maya/scripts or whatever path that include MAYA_SCRIPT_PATH environment
+//  Use:
+//  type poseMan in maya command line and press enter.
+
+//
+//  Tested just on windows xp
+//
+
+//
+//  Contact
+//  hisconer@gmail.com
+//
+//  Blog
+//  http://inartx.com/poseman/
+
+//
+// Scripting tips
+//
+
+// Load character by mel (req: poseman opened)
+// openCharacter_pm "characterPath"
+// Create new character by mel:
+// newCharacter_pm "characterPath" "characterName" "section1 section2 section3"
+
+
+// -----------------
+// Init PoseMan proc
+// -----------------
+global proc poseMan () {
+	
+	global string $POSEMAN_LOGO;
+	
+	// ***********************************
+	// POSEMAN LOGO
+	// ***********************************
+	$POSEMAN_LOGO = "C:/Documents and Settings/francis.vega/Mis documentos/maya/2009/prefs/icons/poseMan.bmp";
+	
+	global int $gCharacterImage;
+	global string $gCurrentChar;
+	$gCurrentChar = "";
+
+	// Borramos todas las posibles ventanas
+	if (`window -exists newCharacterWindow`) deleteUI newCharacterWindow;
+	if (`window -exists newSectinWindow`) deleteUI newSectinWindow;
+	if (`window -exists selectCharacterWindow`) deleteUI selectCharacterWindow;
+	if (`window -exists characterWindow`) deleteUI characterWindow;
+	if (`window -exists poseListWindow`) deleteUI poseListWindow;
+	if (`window -exists sectionWindow`) deleteUI sectionWindow;
+	if (`window -exists capturePoseWindow`) deleteUI capturePoseWindow;
+	if (`window -exists aboutPoseManWindow`) deleteUI aboutPoseManWindow;
+	if (`window -exists renameCharacterWindow`) deleteUI renameCharacterWindow;
+	if (`window -exists renamePoseWindow`) deleteUI renamePoseWindow;
+	if (`window -exists renameSectionWindow`) deleteUI renameSectionWindow;
+	if (`window -exists cleanModeWindow`) deleteUI cleanModeWindow;
+	if (`window -exists newSectionWindow`) deleteUI newSectionWindow;
+	if (`window -exists reorderWindow`) deleteUI reorderWindow;
+	if (`window -exists movePoseWindow`) deleteUI movePoseWindow;
+	if (`window -exists sliderMixPoseWindow`) deleteUI -window sliderMixPoseWindow;
+	
+	// Iniciamos poseman sin personajes
+	$gCharacterImage = 1;
+	
+	poseManProc;
+	
+}
+
+// ---------------------
+// PoseMAN Main proccess
+// ---------------------
+global proc poseManProc () {
+	
+	global string $poseMAN_version;
+	global string $poseMAN_UI_title;	
+	
+	$poseMAN_UI_title = "PoseMAN 1.3.3";
+
+	// PoseMAN main window
+	if (`window -exists poseManWindow`) {
+		deleteUI -window poseManWindow;
+	}
+	
+	// PoseMAN Window
+	window -menuBar 1 poseManWindow;
+	
+	global string $POSEMAN_LOGO;
+	global int $gCurrentTabId;
+	global int $gCharCount;
+	global int $gCharacterImage;
+	global int $gSizeableFlag;
+	global string $poseMAN_version;
+	global string $poseMAN_UI_title;
+	global string $gIconsPath;
+	global string $gPoseFile;
+	global string $gLogoFile;
+	global string $gCharFile;
+	global string $gCurrentChar;
+	global string $gCurrentCharPath;
+	global string $gMainLayout;
+	global string $gProjectURL;
+	global string $gTabs;
+	global string $gCurrentCharNamespace;
+	global string $imgExtension;
+	global string $PoseMANActive;
+	global string $gSetKeyOnPose;
+	global string $keyOnPoseLayout;
+	global string $showHideCharacterImageMenuItem;
+	global string $imgExtension;
+	global string $gMainFrameLayout;
+	
+	if (`about -windows`) {
+		// windows os
+		$gLogoFile = "poseManLogo.bmp";
+		$imgExtension = ".bmp";
+		$gSizeableFlag = 1;
+		
+	} else if (`about -linux` || `about -mac`) {		
+		// linux os
+		$gLogoFile = "poseManLogo.xpm";
+		$imgExtension = ".xpm";
+		$gSizeableFlag = 1;
+	}
+
+	if ($gCurrentTabId<1) { $gCurrentTabId = 1; }
+	
+	$gIconsPath = `internalVar -ubd`;
+
+	// Windows size
+	int $mainWindowWith = 300;
+
+	// Main layout
+	$gMainFrameLayout = `frameLayout -bs "in"  -lv 0 -bv 0 poseManFrameLayout`;
+	$gMainLayout = `formLayout`;
+             
+	// Character avatar / logo
+	string $characterThumbLayout = `columnLayout -adj 1 characterAvatarLayout`; 
+	string $characterIconTextButn = `iconTextButton -mw 0 -mh -0 -dcc "poseMan_captureNewPoseUI($gTabs)" -i1 $POSEMAN_LOGO -w 355 -h 80`;	
+
+	popupMenu;
+		if ($gCurrentChar != "") {
+			menuItem -l "Create new Sections..." -c "poseMan_addNewSectionUI";
+			menuItem -l "Create new Pose..." -c "poseMan_captureNewPoseUI($gTabs)";
+			menuItem -divider true;
+			menuItem -en 1 -l "Delete Sections..." -c "poseMan_deleteSectionUI";
+			menuItem -l "Delete Poses..." -c "poseMan_deletePoseUI($gTabs)";
+			menuItem -divider true;
+		}
+		menuItem -l "Learn Namespace from object" -c "poseMan_learnNS";
+		menuItem -l "Reset/Empty Namespace" -c "$gCurrentCharNamespace=\"\"";
+		menuItem -l "Hide Character image" -c "poseMan_HideCharAvatar";
+	setParent ..;
+		
+	// Character info
+	string $characterInfoLayout = `formLayout characterInfo`;
+	
+	// Character name
+	string $characterName = `text  -l "Character Name: " characterNameTextLayout`;
+		
+	// Button
+	string $getNamespaceInfoButton = `iconTextButton -w 20 -h 20 -i "EYEDROPPER.xpm" -l "Get NS" -c "poseMan_learnNS"`;
+	string $trashIconButton = `iconTextButton -dropCallback howToDropTRASH -w 30 -h 30 -i "SMALLTRASH.xpm"`;
+		
+	// Info
+	string $namespaceInfoText = `text -l ("Namespace: " + $gCurrentCharNamespace) namespaceInfoText`;
+		
+	formLayout -e
+		-attachForm $characterName "left" 0
+		
+		-af $trashIconButton "top" 0
+		-af $trashIconButton "right" 0
+		
+		-af $namespaceInfoText "top" 5
+		-ac $namespaceInfoText "right" 5 $trashIconButton
+		
+		-af $getNamespaceInfoButton "top" 1
+		-ac $getNamespaceInfoButton "right" 10 $namespaceInfoText
+	$characterInfoLayout;
+				
+	setParent..;
+	
+	// Global tabs layout
+	$gTabs = `tabLayout poseManTabLayout`;
+
+	int $showHideValue;
+	if ($gCharacterImage == 0) {
+		$showHideValue = -80;
+	} else {
+		$showHideValue = 0;
+	}
+	
+	// Layout
+	formLayout -e
+		-attachForm $characterThumbLayout "top" $showHideValue
+		-attachForm $characterThumbLayout "left" 0
+		-attachForm $characterThumbLayout "right" 0
+	
+		-attachControl $gTabs "top" 0 $characterThumbLayout
+		-attachForm $gTabs "left" 0
+		-attachForm $gTabs "right" 0
+		-attachForm $gTabs "bottom" 30
+		
+		-attachControl $characterInfoLayout "top" 5 $gTabs
+		-attachForm $characterInfoLayout "left" 8
+		-attachForm $characterInfoLayout "right" 2		
+	$gMainLayout;
+	
+	// PoseMAN - MAIN MENU
+
+	// @@@@@@@@@@@@@@@@@
+	// POSEMAN ITEM MENU
+	// @@@@@@@@@@@@@@@@@
+	// Character menu with character loaded
+	menu -label "Settings" -tearOff 0 -en 1 poseManMDropMenu;
+		menuItem -en 1 -label "Cells x4..." -c ("window -e -w ((4*82)+45) poseManWindow") cx4_layout;
+		menuItem -en 1 -label "Cells x6..." -c ("window -e -w ((6*82)+45) poseManWindow") cx6_layout;
+		menuItem -en 1 -label "Cells x8..." -c ("window -e -w ((8*82)+45) poseManWindow") cx8_layout;
+		menuItem -en 1 -label "Cells x10..." -c ("window -e -w ((10*82)+45) poseManWindow") cx10_layout;
+		menuItem -divider true;
+		$showHideCharacterImageMenuItem = `menuItem -en 1 -cb $gCharacterImage -label "Show / Hide Character image" -c "poseMan_ShowHideCharAvatar"`;
+		menuItem -divider true;
+		$keyOnPoseLayout = `menuItem -en 1 -cb 0 -label "Create Key on Pose" -c "poseMan_manageCheckBoxKeyOnPose"`;
+		menuItem -divider true;
+		menuItem -en 1 -label "Learn character Namespace" -c "poseMan_learnNS";
+		menuItem -en 1 -label "Reset/Empty Namespace" -c "$gCurrentCharNamespace=\"\"";
+		
+	// @@@@@@@@@@@@@@@@@@@
+	// CHARACTER ITEM MENU
+	// @@@@@@@@@@@@@@@@@@@
+	// Character menu with character loaded
+	menu -label "Character" -tearOff 0 -en 1 characterMenu;
+		menuItem -en 1 -label "New..." -c "poseMan_addNewCharacterUI";
+		menuItem -en 1 -label "Load..." -c "loadCharacterFileBrowser";		
+
+	// @@@@@@@@@@@@@@@@@@
+	// SECTIONS ITEM MENU
+	// @@@@@@@@@@@@@@@@@@
+	menu -label "sections" -tearOff 0 -en 0 sectionMenu;	
+		menuItem -en 1 -label "Create new section..." -c "poseMan_addNewSectionUI";
+		menuItem -en 1 -label "Rename section..." -c "poseMan_renameSectionUI($gTabs)";
+		menuItem -en 1 -label "Reorder section..." -c "poseMan_reorderSections";
+		menuItem -en 1 -label "Delete sections..." -c "poseMan_deleteSectionUI";
+	
+	// @@@@@@@@@@@@@@@
+	// POSES ITEM MENU
+	// @@@@@@@@@@@@@@@
+	// Poses menu with character loaded
+	menu -label "poses" -tearOff 0 -en 0 poseMenu;
+		menuItem -en 1 -label "Create new pose..." -c "poseMan_captureNewPoseUI($gTabs)";
+		menuItem -en 1 -label "Delete poses..." -c "poseMan_deletePoseUI($gTabs)";
+
+	if ($gCurrentChar == "") {
+		print ("// Welcome to PoseMan\n");
+	} else {
+		print ("// Character " + $gCurrentChar + " open\n");
+	}
+	
+	window -e -title $poseMAN_UI_title poseManWindow;
+	
+	showWindow poseManWindow;
+
+}
+
+
+
+
+// *************************************************************************************************************
+// PROCS character-relative
+// *************************************************************************************************************
+
+// ------------------------
+// Add new character Window
+// ------------------------
+global proc poseMan_addNewCharacterUI () {
+	global int $gSizeableFlag;
+		
+	if (`window -ex newCharacterWindow`) {
+		deleteUI -window newCharacterWindow;	
+	}
+	
+	string $newCharacterWindow = `window newCharacterWindow`;
+        string $mainLayout = `frameLayout -lv 0 -bv 0 -bs "etchedIn" newCharacterLayout`;
+        columnLayout -adj 1 -rs 1;
+		text -l "Character name" -align "left";
+		string $characterName = `textField -tx "" characterNameTextField`;
+		text -l "Section Name" -align "left";
+		string $firstSectionName = `textField  -tx "Default" sectionsNamesTextField`;
+
+		button -l "Create new character" -c "getCharacterPathToWrite";		
+			
+		textField -e -ec ("getCharacterPathToWrite;deleteUI "+$newCharacterWindow+"") $characterName;
+        window -e -sizeable $gSizeableFlag -w 300 -h 130 -title "Add new Character" newCharacterWindow;
+        
+    showWindow $newCharacterWindow;
+}
+
+global proc getCharacterPathToWrite () {
+	fileBrowser "saveChar" "Save" "poseman" 4;
+}
+
+global proc saveChar (string $path, string $type) {
+	
+	global string $gCurrentCharPath;
+	$gCurrentCharPath = $path;
+	
+	string $characterName = `textField -q -tx characterNameTextField`;
+	string $sectionName = `textField -q -tx sectionsNamesTextField`;
+	
+	string $characterDirectory = ($path + "/" + $characterName);
+	
+	if (`filetest -d $characterDirectory` == 0) {
+		poseMan_addNewCharacter $path $characterName $sectionName;
+	} else {
+		error "This character already exists in this directory";
+	}
+}
+
+
+// ---------------------------------------
+// Add new character Window to the project
+// ---------------------------------------
+global proc poseMan_addNewCharacter (string $characterPath, string $characterName, string $firstSectionName) {
+	
+	// string $projectURL = `workspace -q -fullName`;
+	global int $gCurrentTabId;
+	global string	$gCurrentCharPath;
+				$gCurrentCharPath = ($characterPath + "/" + $characterName + "/");
+	global string $gTabs;
+	string $buffer[];
+			
+	$characterName = poseMan_spacesToDown ($characterName);
+ 
+	if ($characterName != "") {	
+		if (poseMan_checkCharacterName($characterName) == 0) {
+			sysFile -makeDir ($characterPath + "/" + $characterName);
+			print ("// Character " + $characterName + " has been created\n");
+			
+			poseMan_addDefaultSection $firstSectionName;
+				
+			// Borramos la ventana de "nuevo personaje"
+			deleteUI newCharacterWindow;
+			
+			poseMan_refreshMainWindowWhenNewCharacter;
+			
+			// Activamos los menus
+			menu -e -en 1 -l "Sections" sectionMenu;
+			menu -e -en 1 -l "Poses" poseMenu;
+		
+		} else {
+			print "// This Character name already exists\n";
+		}
+		
+	} else {
+		print ("// Type any character name\n");
+	}
+}
+
+
+global proc readCamPreset (int $id) {
+
+	global string $poseManCameraName;
+	global string $gCurrentCharPath;
+	string $fileData;	
+	global float $poseManCameraPreset[];
+	
+	string $cameraShapes[] = `listRelatives $poseManCameraName`;
+	string $cameraShape = $cameraShapes[0];
+	float $v;
+	
+	if (`filetest -r ($gCurrentCharPath + "/" + "camera.p"+$id)`) {
+		evaluateMelFile ($gCurrentCharPath + "/" + "camera.p"+$id);
+		
+		setAttr ($cameraShape + "." + "horizontalFilmAperture") $poseManCameraPreset[0];
+		setAttr ($cameraShape + "." + "verticalFilmAperture") $poseManCameraPreset[1];
+		setAttr ($cameraShape + "." + "focalLength") $poseManCameraPreset[2];
+		setAttr ($cameraShape + "." + "lensSqueezeRatio") $poseManCameraPreset[3];
+		setAttr ($cameraShape + "." + "fStop") $poseManCameraPreset[4];
+		setAttr ($cameraShape + "." + "focusDistance") $poseManCameraPreset[5];
+		setAttr ($cameraShape + "." + "shutterAngle") $poseManCameraPreset[6];
+		setAttr ($cameraShape + "." + "centerOfInterest") $poseManCameraPreset[7];
+		setAttr ($poseManCameraName + "." + "tx") $poseManCameraPreset[8];
+		setAttr ($poseManCameraName + "." + "ty") $poseManCameraPreset[9];
+		setAttr ($poseManCameraName + "." + "tz") $poseManCameraPreset[10];
+		setAttr ($poseManCameraName + "." + "rx") $poseManCameraPreset[11];
+		setAttr ($poseManCameraName + "." + "ry") $poseManCameraPreset[12];
+		setAttr ($poseManCameraName + "." + "rz") $poseManCameraPreset[13];
+		setAttr ($poseManCameraName + "." + "sx") $poseManCameraPreset[14];
+		setAttr ($poseManCameraName + "." + "sy") $poseManCameraPreset[15];
+		setAttr ($poseManCameraName + "." + "sz") $poseManCameraPreset[16];
+		setAttr ($poseManCameraName + "." + "v") $poseManCameraPreset[17];
+
+		print ("// Camera preset " + $id + " has been setted\n");
+	} else {
+		print ("// There is no exists camera preset " + $id + "\n");
+	}
+}
+
+global proc writeCamPreset (int $id) {
+	global string $poseManCameraName;
+	global string $gCurrentCharPath;
+	
+	string $fileData;
+	
+	string $cameraShapes[] = `listRelatives $poseManCameraName`;
+	string $cameraShape = $cameraShapes[0];	
+	float $v;
+	
+	$fileData += "float $poseManCameraPreset[] = {(float)";
+	
+	$v = `getAttr ($cameraShape + "." + "horizontalFilmAperture")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($cameraShape + "." + "verticalFilmAperture")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($cameraShape + "." + "focalLength")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($cameraShape + "." + "lensSqueezeRatio")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($cameraShape + "." + "fStop")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($cameraShape + "." + "focusDistance")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($cameraShape + "." + "shutterAngle")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($cameraShape + "." + "centerOfInterest")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($poseManCameraName + "." + "tx")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($poseManCameraName + "." + "ty")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($poseManCameraName + "." + "tz")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($poseManCameraName + "." + "rx")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($poseManCameraName + "." + "ry")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($poseManCameraName + "." + "rz")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($poseManCameraName + "." + "sx")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($poseManCameraName + "." + "sy")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($poseManCameraName + "." + "sz")`;
+	$fileData += ($v + ", ");
+	$v = `getAttr ($poseManCameraName + "." + "v")`;
+	$fileData += ($v + ", ");
+	
+	$fileData = `substring $fileData 1 (size($fileData)-2)`;
+	$fileData += "};";	
+	
+	int $fileID = `fopen ($gCurrentCharPath + "/" + "camera.p"+$id) "w"`;	
+	fprint $fileID $fileData;
+	fclose $fileID;
+	
+	print ("// Camera preset " + $id + " has been writed\n");
+	
+}
+
+// -------------------------
+// Check if character exists
+// -------------------------
+global proc int poseMan_checkCharacterName (string $characterName) {
+	
+	global string $gCurrentCharPath;
+	// string $projectURL = `workspace -q -fullName`;
+	int $outPut;
+	
+	if (`filetest -d ($gCurrentCharPath + "/" + $characterName)`) {
+		$outPut = 1;
+	} else {
+		$outPut = 0;
+	}
+	
+	return $outPut;
+}
+
+
+
+
+// --------------------
+// About PoseMan Window
+// --------------------
+global proc poseMan_aboutPoseMan() {
+	
+	global string $gIconsPath;
+	global string $gLogoFile;
+	global string $poseMAN_UI_title;
+	global int $gSizeableFlag;
+	
+	if (`window -exists aboutPoseManWindow`) {
+		deleteUI -window aboutPoseManWindow;
+	}
+	
+	string $aboutPoseManWindow = `window aboutPoseManWindow`;
+		string $aboutLayout = `frameLayout -cll 0 -lv 0 -bv 0 -bs "etchedIn" -h 100`;
+			columnLayout -adj 0;
+			// image -i ($gIconsPath + $gLogoFile) -w 280 -h 100;
+			text -l ("\n"+$poseMAN_UI_title);
+			text -l "Mêlèe Island Project Tools\n";
+			text -l "Francis Vega (c) 2009\n";
+			button -w 100 -l "Close" -h 20 -c ("deleteUI -window "+$aboutPoseManWindow);
+		window -e -sizeable $gSizeableFlag -w 280 -h 230 -title "About PoseMAN" $aboutPoseManWindow;
+	showWindow $aboutPoseManWindow;
+}
+
+
+
+// ------------------------------
+// "learn" who namespaced is used
+// ------------------------------
+global proc poseMan_learnNS () {
+	string $theNS;
+	string $buffer[], $bufferObject[];
+	string $currentNSCharacter = `namespaceInfo -cur`;
+	global string $gCurrentCharNamespace;
+	string $lista[] = `ls -sl`;
+	
+	if (size($lista)>0) {
+		// Primero separamos solo un objeto
+		tokenize $lista[0] "|" $bufferObject;
+		
+		int $nTokens = `tokenize $bufferObject[0] $currentNSCharacter $buffer`;
+		if ($nTokens==2) {
+			// Tiene un namespace
+			$gCurrentCharNamespace = ($buffer[0] + $currentNSCharacter);
+			print ("// Namespace: " + $gCurrentCharNamespace+"\n");
+		} else if ($nTokens>2) {
+			$gCurrentCharNamespace = "";
+			for ($i=0;$i<($nTokens-1);$i++) {
+				$gCurrentCharNamespace += ($buffer[$i] + $currentNSCharacter);
+			}
+			print ("// Namespace : " + $gCurrentCharNamespace+"\n");
+		} else {
+			// es un objeto sin namespace
+			$gCurrentCharNamespace = "";
+			print ("// No Namespace found. The namespace environment has been reset" + $gCurrentCharNamespace + "\n");
+		}
+	} else {		
+		error "// Select object with Namespace info or has double namespace (reference inside referenfe)!";
+	}
+	
+	// Update namespace info at main UI
+	text -e -l ("Namespace: " + $gCurrentCharNamespace) namespaceInfoText;
+
+}
+
+
+// -------------------------------
+// Get array of characters From HD
+// -------------------------------
+global proc string[] poseMan_getCharacterFromHD () {
+	
+	global string $gCurrentCharPath;
+	// string $projectURL = `workspace -q -fullName`;
+	string $poseMAN_URL = ($gCurrentCharPath);
+	string $chars[];
+	string $charsAll[];
+	string $buffer[];
+	
+	if (`about -windows`) {
+		$chars = `getFileList -folder $poseMAN_URL -filespec "*."`;
+	} else {
+		$charsAll = `getFileList -folder $poseMAN_URL`;
+		for ($i=0;$i<size($charsAll);$i++) {
+			tokenize $charsAll[$i] "." $buffer;
+			if ($buffer[1] == "deleted" || $charsAll[$i] == ".DS_Store") {
+			} else {
+				$chars[size($chars)] = $charsAll[$i];
+			}
+		}		
+	}
+	return $chars;
+}
+
+
+// -------------------------------------------------------------
+// Abre un "OPEN" del sistema operativo para cargar un personaje
+// -------------------------------------------------------------
+global proc loadCharacterFileBrowser () {
+	fileBrowser "goChar" "Open" "mel" 4;	
+}
+
+// ------------------
+// Carga un personaje
+// ------------------
+global proc goChar (string $path, string $type) {
+
+	global string $gCurrentCharPath;	
+	$gCurrentCharPath = $path;
+	
+	if (`filetest -r ($path + "/" + "sections.conf")`) {
+		poseMan_refreshMainWindowWhenNewCharacter;
+	} else {
+		error "no poseman files found";
+	}
+}
+
+
+// ------------------------------
+// Carga un personaje (scripting)
+// ------------------------------
+global proc openCharacter_pm (string $characterPath) {
+	
+	if (`window -exists poseManWindow`) {
+		goChar $characterPath "";
+	} else {
+		error "PoseMan is not loaded";
+	}
+	
+}
+
+
+// -----------------------------
+// Crea un personaje (scripting)
+// -----------------------------
+global proc newCharacter_pm (string $characterPath, string $characterName, string $sections) {
+
+	string $buffer[];
+	string $fileData;
+	$characterName = `poseMan_spacesToDown $characterName`;
+
+	if (`filetest -d ($characterPath + "/" + $characterName)`==0) {
+		sysFile -makeDir ($characterPath + "/" + $characterName);
+		print ("// Character " + $characterName + " has been created\n");			
+		
+		tokenize $sections " " $buffer;
+	
+		for ($i=0;$i<size($buffer);$i++) {
+			sysFile -makeDir ($characterPath + "/" + $characterName + "/" + $buffer[$i]);
+			$fileData += ($buffer[$i] + " * ");
+			print ("// Section " + $buffer[$i] + " for Character " + $characterName + " has been created\n");
+		}
+
+		$fileID = `fopen ($characterPath + "/" + $characterName + "/" + "sections.conf") "w"`;
+		fprint $fileID $fileData;
+		fclose $fileID;		
+	} else {
+		print ("// Character directory exists\n");
+	}
+}
+	
+
+// ---------------------------------------------
+// Obtiene el nombre del personaje desde un path
+// ---------------------------------------------
+global proc string getCharacterFromPath (string $path) {
+
+	// /disk/net/mooly -> el nombre del personaje es mooly
+	
+	string $charName;
+	string $bits[];
+	int $tokens;
+	
+	$path = `pathonize $path`;
+	
+	$tokens = `tokenize $path "/" $bits`;
+	$charName = $bits[$tokens-1];
+	
+	return $charName;
+	
+}
+
+
+
+
+
+// *************************************************************************************************************
+// PROCS sections-relative
+// *************************************************************************************************************
+// ----------------------
+// Add new section window
+// ----------------------
+global proc poseMan_addNewSectionUI () {
+	
+	global int $gSizeableFlag;
+	
+	if (`window -exists newSectionWindow`) { deleteUI -window newSectionWindow; }
+	
+	string $newSectionWindow = `window newSectionWindow`;
+	
+		string $mainLayout = `frameLayout -lv 0 -bv 0 -bs "etchedIn" newSectionLayout`;
+		columnLayout -adj 1 -rs 1;
+			text -l "Type section name/s (spaces = multi)" -align "left";
+			string $nombreSeccion = `textField`;
+			
+			button -l "CREATE" -c ("poseMan_addNewSection(`textField -q -tx "+$nombreSeccion+"`);deleteUI "+$newSectionWindow+"");
+			
+		window -e -sizeable $gSizeableFlag -w 250 -h 92 -title "Add new Section" $newSectionWindow;
+	showWindow $newSectionWindow;
+}
+
+
+
+
+// --------------------------------
+// Add new show-type section window
+// --------------------------------
+global proc poseMan_addNewShowSectionUI () {
+	global int $gSizeableFlag;
+	
+	if (`window -exists newSectionWindow`) { deleteUI -window newSectionWindow; }
+	
+	string $newSectionWindow = `window newSectionWindow`;
+	
+		string $mainLayout = `frameLayout -lv 0 -bv 0 -bs "etchedIn" newSectionLayout`;
+		columnLayout -adj 1 -rs 1;
+			text -l "Type Show Section name" -align "left";
+			string $nombreSeccion = `textField`;
+			
+			button -l "Create" -c ("poseMan_addNewShowSection(`textField -q -tx "+$nombreSeccion+"`);deleteUI "+$newSectionWindow+"");
+			
+		window -e -sizeable $gSizeableFlag -w 250 -h 92 -title "Add new Section" $newSectionWindow;
+	showWindow $newSectionWindow;	
+}
+
+// ------------------------------------------------
+// Add defaults secionts at character creation time
+// ------------------------------------------------
+global proc poseMan_addDefaultSection (string $sectionName) {
+	string $buffer[];
+	global string $gCurrentSection;
+	global string $gCurrentCharPath;
+	global int $gCurrentTabId;
+	global string $gTabs;
+	string $fileData;
+	
+	tokenize $sectionName " " $buffer;
+	
+	for ($i=0;$i<size($buffer);$i++) {
+		sysFile -makeDir ($gCurrentCharPath + "/" + $buffer[$i]);
+		$fileData += ($buffer[$i] + " * ");
+		print ("// Section " + $buffer[$i] + " for Character " + $gCurrentCharPath + " has been created\n");
+	}
+
+	// Añadimos las secciones al recien creado sections.conf
+	$fileID = `fopen ($gCurrentCharPath + "/" + "sections.conf") "w"`;
+	fprint $fileID $fileData;
+	fclose $fileID;
+
+	$gCurrentTabId = 1;
+
+}
+
+// --------------------------------
+// Add new section to the character
+// -------------------------------- 
+global proc poseMan_addNewSection (string $sectionName) {
+	string $buffer[];
+	global string $gCurrentSection;
+	global int $gCurrentTabId;
+	global string $gTabs;
+	global string $gCurrentCharPath;
+	
+	$gCurrentSection = $sectionName;
+
+	tokenize $sectionName " " $buffer;
+
+	// string $projectURL = `workspace -q -fullName`;
+
+	for ($i=0;$i<size($buffer);$i++) {		
+		if (poseMan_checkSectionName($sectionName) == 0) {			
+			sysFile -makeDir ($gCurrentCharPath + "/" + $buffer[$i]);			
+			poseMan_addSectionToConfigFile ($buffer[$i]);
+			// Añadimos el nuevo tab
+			addNewTabAsSection $buffer[$i] $gTabs;
+			
+			print ("// Section " + $buffer[$i] + " for Character " + $gCurrentCharPath + " has been created\n");
+		} else {
+			error ("// This section name already exists!");
+		}
+	}
+	
+	string $nTabs[] = `tabLayout -q -ca $gTabs`;
+	int $tabIndex = `size($nTabs)`;
+		
+	// tabLayout -e -sti ($tabIndex+1) $gTabs;
+}
+
+// -------------------------------------
+// Add new show section to the character
+// ------------------------------------- 
+global proc poseMan_addNewShowSection (string $sectionName) {
+	string $buffer[];
+	global string $gCurrentSection;
+	global int $gCurrentTabId;
+	global string $gTabs;
+	global string $gCurrentCharPath;
+	
+	$gCurrentSection = $sectionName;
+
+	tokenize $sectionName " " $buffer;
+
+	for ($i=0;$i<size($buffer);$i++) {		
+		if (poseMan_checkSectionName($sectionName) == 0) {			
+			sysFile -makeDir ($gCurrentCharPath + "/" + $buffer[$i]);			
+			poseMan_addSectionToConfigFile ($buffer[$i]);
+			// Añadimos el nuevo tab
+			addNewTabAsSection $buffer[$i] $gTabs;
+			
+			print ("// Section " + $buffer[$i] + " for Character " + $gCurrentCharPath + " has been created\n");
+		} else {
+			error ("// This section name already exists!");
+		}
+	}
+	
+	string $nTabs[] = `tabLayout -q -ca $gTabs`;
+	int $tabIndex = `size($nTabs)`;
+
+}
+
+
+// --------------------------
+// Add a tab as section in UI 
+// --------------------------
+global proc addNewTabAsSection(string $sectionName, string $menu) {	
+	// Añadimos el nuevo tab
+	shelfLayout -h 300 -cw 82 -ch 102 -p $menu $sectionName;
+}
+
+// -------------------------------------
+// Update section conf file from reorder
+// -------------------------------------
+global proc poseMan_addAllSectionsFromReorder (string $allSections[]) {
+	
+	// string $projectURL = `workspace -q -fullName`;
+	global string $gCurrentCharPath;	
+	string $filePath = ($gCurrentCharPath + "/" + "sections.conf");
+	string $nextLine;
+	string $fileData = "";
+	string $buffer[];
+	int $i;
+
+	for ($i=0;$i<size($allSections);$i++) {
+		$fileData += ($allSections[$i] + " * ");
+	}
+
+	$fileID = `fopen $filePath "w"`;	
+	fprint $fileID $fileData;
+	fclose $fileID;
+	
+	poseMan_refreshMainWindowWhenNewCharacter;
+}
+
+
+
+
+
+// -----------------------------------------
+// Get array of sections name from conf file
+// -----------------------------------------
+global proc string[] poseMan_getSectionsFromConfFile (string $charPath) {
+	
+	string $filePath = ($charPath + "/" + "sections.conf");
+	string $nextLine;
+	string $sectionsList[];
+
+	$fileID = `fopen $filePath "r"`;
+	$nextLine = `fgetline $fileID`;
+	fclose $fileID;
+	
+	tokenize $nextLine " * " $sectionsList;
+
+	return $sectionsList;
+}
+
+
+// -----------------------
+// Reorder sections window
+// -----------------------
+global proc poseMan_reorderSections () {
+	
+	global int $gSizeableFlag;
+	global string $gCurrentChar;
+	global string $gCurrentCharPath;
+
+	if (`window -exists reorderWindow`) {
+		deleteUI -window reorderWindow;
+	}
+
+	string $reorderWindow = `window reorderWindow`;
+
+		string $mainLayout = `frameLayout -lv 0 -bv 0 -bs "etchedIn" poseMan_deleteSectionLayout`;
+			columnLayout -adj 1 -rs 1;
+			string $sectionsListLayout = `textScrollList -numberOfRows 8 -allowMultiSelection 0`;
+			string $sectionsList[] = `poseMan_getSectionsFromConfFile $gCurrentCharPath`;
+			
+            string $sectionsListNoNumber[];
+			int $sizeOfSectionChars;
+            
+			for ($i=0;$i<size($sectionsList);$i++) {
+				textScrollList -e -append $sectionsList[$i] $sectionsListLayout;
+			}		
+			
+			button -l "Up" -c ("poseMan_goUp(\""+$sectionsListLayout+"\")");
+			button -l "Down" -c ("poseMan_goDown(\""+$sectionsListLayout+"\")");
+			separator -h 10;
+			button -l "OK" -c ("poseMan_addAllSectionsFromReorder(`textScrollList -q -ai "+$sectionsListLayout+"`);deleteUI "+$reorderWindow+"");
+			window -e -sizeable $gSizeableFlag -w 250 -h 220 -title "Reorder sections" $reorderWindow;
+             
+	showWindow $reorderWindow;
+}
+
+
+// -------------------------------
+// Get array of sections From HD
+// -------------------------------
+global proc string[] poseMan_getSectionsFromHD () {
+	
+	global string $gCurrentCharPath;
+	string $sections[];
+	string $allSections[];
+	string $buffer[];
+	
+	if (`about -windows`) {
+		$sections = `getFileList -folder ($gCurrentCharPath + "/") -filespec "*."`;
+	} else {
+		$allSections = `getFileList -folder ($gCurrentCharPath+ "/")`;
+		for ($i=0;$i<size($allSections);$i++) {
+			tokenize $allSections[$i] "." $buffer;
+			if ($buffer[1] == "deleted" || $allSections[$i] == ".DS_Store" || $buffer[1] == "conf" || $buffer[1] == "conf~" || $buffer[1] == "avatar") {
+			} else {
+				$sections[size($sections)] = $allSections[$i];
+			}
+		}		
+	}
+	return $sections;
+}
+
+
+// ---------------------------------------
+// Rename a section from section conf file
+// ---------------------------------------
+global proc poseMan_renameSectionFromConfigFile (string $sectionName, string $newSectionName) {
+	
+	global string $gCurrentCharPath;
+	//string $projectURL = `workspace -q -fullName`;
+	string $filePath = ($gCurrentCharPath + "/" + "sections.conf");
+	string $nextLine;
+	string $fileData = "";
+	string $buffer[];
+	int $i;
+
+	// leemos las secciones desde el fichero de configuración de secciones
+	string $sectionsList[] = `poseMan_getSectionsFromConfFile $gCurrentCharPath`;
+	
+	// Ahora hacemos un recorrido y cuando demos con la sección a renombrar, damos el cambiazao
+	for ($i=0;$i<size($sectionsList);$i++) {
+		if ($sectionsList[$i] == $sectionName) {
+			$fileData += ($newSectionName + " * ");
+		} else {
+			$fileData += ($sectionsList[$i] + " * ");
+		}
+	}
+	
+	$fileID = `fopen $filePath "w"`;	
+	fprint $fileID $fileData;			
+	fclose $fileID;
+		
+}
+
+
+// --------------------------------------------
+// Remove a section name from section conf file
+// --------------------------------------------
+global proc poseMan_removeSectionFromConfigFile (string $sectionName) {
+	
+	global string $gCurrentCharPath;
+	// string $projectURL = `workspace -q -fullName`;
+	string $filePath = ($gCurrentCharPath + "/" + "sections.conf");
+	string $nextLine;
+	string $fileData = "";
+	string $buffer[];
+	int $i;
+
+	// leemos las secciones desde el fichero de configuración de secciones
+	string $sectionsList[] = `poseMan_getSectionsFromConfFile $gCurrentCharPath`;
+				
+	// Ahora hacemos un recorrido y metemos todas las secciones en la variable final EXCEPTO la sección borrada
+	for ($i=0;$i<size($sectionsList);$i++) {
+		if ($sectionsList[$i] != $sectionName) {
+			$fileData += ($sectionsList[$i] + " * ");
+		}
+	}
+	
+	$fileID = `fopen $filePath "w"`;	
+	fprint $fileID $fileData;			
+	fclose $fileID;	
+}
+// ---------------------
+// Rename section window
+// ---------------------
+global proc poseMan_renameSectionUI (string $sectionToRename) {
+	
+	global string $gTabs;
+	global string $gCurrentChar;
+	global string $gCurrentCharPath;
+	
+	int $tabIndex = `tabLayout -q -sti $sectionToRename`;
+	string $sectionsList[] = `poseMan_getSectionsFromConfFile $gCurrentCharPath`;
+	
+	string $currentSection = $sectionsList[$tabIndex-1];
+
+	//$sectionToRename = `substring $sectionToRename 1 (size($sectionToRename)-5)`;
+	
+	if (`window -exists renameSectionWindow`) {
+		deleteUI -window renameSectionWindow;
+	}
+	
+	window renameSectionWindow;
+		columnLayout -adj 1;
+			
+			text -fn "boldLabelFont" -l ($currentSection) -align "center";
+			text -l "Type new Section Name name";
+			string $newSectionName = `textField`;
+			button -l "Rename" -c ("poseMan_renameSection(\""+$currentSection+"\", `textField -q -tx "+$newSectionName+"`);deleteUI renameSectionWindow");
+		
+	window -title "Rename Section" -e -w 200 -h 103 renameSectionWindow;
+	showWindow renameSectionWindow;
+}
+
+// --------------
+// Rename section
+// --------------
+global proc poseMan_renameSection (string $sectionName, string $newSectionName) {
+	
+	global string $gCurrentSection;
+	global string $gCurrentCharPath;
+	
+	// string $projectURL = `workspace -q -fullName`;
+	$newSectionName = poseMan_spacesToDown ($newSectionName);
+		
+	if (`filetest -r ($gCurrentCharPath + "/" + $newSectionName)`==1) {
+		error ("// This name ("+$newSectionName+") section already exist, type a new name!");
+	} else {		
+		sysFile -rename ($gCurrentCharPath + "/" + $newSectionName) ($gCurrentCharPath + "/" + $sectionName);	
+		poseMan_renameSectionFromConfigFile ($sectionName, $newSectionName);		
+		print ("// Section " + $sectionName + " has been renamed to " + $newSectionName + "\n");
+	}
+	
+	$gCurrentSection = $newSectionName;
+	
+	// todo: Cambiar el nombre de la pestana sin refrescar
+	poseMan_refreshMainWindowWhenNewCharacter;
+}
+
+
+// -----------------------
+// Check if section exists
+// -----------------------
+global proc int poseMan_checkSectionName (string $sectionName) {
+	
+	//string $projectURL = `workspace -q -fullName`;
+	global string $gCurrentCharPath;
+	
+	int $outPut = 0;
+	
+	if (`filetest -d ($gCurrentCharPath + "/" + $sectionName)`) {
+		$outPut = 1;
+	}
+	
+	return $outPut;
+}
+
+
+// ---------------------
+// Delete section window
+// ---------------------
+global proc poseMan_deleteSectionUI () {
+	
+	global string $gCurrentCharPath;
+	global string $gCurrentChar;
+	global int $gSizeableFlag;
+
+	if (`window -exists sectionWindow`) {
+		deleteUI -window sectionWindow;
+	}
+
+	string $sectionWindow = `window sectionWindow`;
+
+		string $mainLayout = `frameLayout -lv 0 -bv 0 -bs "etchedIn" poseMan_deleteSectionLayout`;
+			columnLayout -adj 1 -rs 1;
+			string $sectionsListLayout = `textScrollList -numberOfRows 8 -allowMultiSelection 1`;
+			string $sectionsList[] = `poseMan_getSectionsFromConfFile $gCurrentCharPath`;
+			
+            string $sectionsListNoNumber[];
+			int $sizeOfSectionChars;
+            
+			for ($i=0;$i<size($sectionsList);$i++) {
+				textScrollList -e -dcc ("poseMan_selectedSection (\""+$sectionsListLayout+"\");deleteUI "+$sectionWindow) -append $sectionsList[$i] $sectionsListLayout;
+			}			
+			
+			button -l "Cancel" -c ("deleteUI -window "+$sectionWindow);
+			button -l "Delete" -c ("poseMan_deleteSectionMultiple (`textScrollList -q -si "+$sectionsListLayout+"`);deleteUI "+$sectionWindow);
+            
+			window -e -sizeable $gSizeableFlag -w 250 -h 196 -title "Delete sections" $sectionWindow;
+             
+	showWindow $sectionWindow;
+}
+
+// ------------------------
+// Delete multiple sections
+// ------------------------
+global proc poseMan_deleteSectionMultiple (string $sectionName[]) {
+	
+	global int $gCurrentTabId;
+	global string $gCurrentCharPath;
+	string $sectionsList[];
+	string $deletedSectionName;
+	
+	for($i=0;$i<size($sectionName);$i++) {
+		
+		$deletedSectionName = `getFirstAvailableFileName ($gCurrentCharPath + "/" + $sectionName[$i])`;
+		
+		sysFile -rename $deletedSectionName ($gCurrentCharPath + "/" + $sectionName[$i]);
+		
+		poseMan_removeSectionFromConfigFile $sectionName[$i];
+		
+		print ("// The section " + $sectionName[$i] + " has been renamed to " + $sectionName[$i] +".deleted" + "\n");
+	}
+	
+	poseMan_refreshMainWindowWhenDeleteSections;
+	$gCurrentTabId = 1;
+	
+}
+
+
+global proc string getFirstAvailableFileName (string $filePath) {
+	
+	string $fileNameAvailable = $filePath;
+	int $n = 0;	
+	
+	while (`filetest -r $fileNameAvailable`) {		
+		$fileNameAvailable = ($filePath + ".deleted" + "." + $n);
+		$n++;
+	}
+	
+	return $fileNameAvailable;	
+}
+
+
+// ----------------
+// Delete a section
+// ----------------
+global proc poseMan_deleteSection (string $sectionName[]) {
+	
+	global string $gCurrentCharPath;
+	string $deletedSectionName;
+	
+	$deletedSectionName = `getFirstAvailableFileName ($gCurrentCharPath + "/" + $sectionName[0])`;
+	sysFile -rename $deletedSectionName ($gCurrentCharPath + "/" + $sectionName[0]);
+	poseMan_removeSectionFromConfigFile $sectionName[0];
+	
+	print ("// The section " + $sectionName[0] + " has been renamed to " + $sectionName[0] +".deleted" + "\n");
+	
+	poseMan_refreshMainWindowWhenDeleteSections;
+}
+
+
+// ----------------------------------
+// Know who section (tab) is selected
+// ----------------------------------
+global proc poseMan_selectedSection (string $layoutName) {
+	$poseMan_selectedSection = `textScrollList -q -si $layoutName`;
+	poseMan_deleteSection ($poseMan_selectedSection);
+}
+
+
+
+// ---------------------------------------
+// Add a section name to section conf file
+// ---------------------------------------
+global proc poseMan_addSectionToConfigFile (string $sectionName) {
+	
+	global string $gCurrentCharPath;
+	
+	// string $projectURL = `workspace -q -fullName`;
+	string $filePath = ($gCurrentCharPath + "/" + "sections.conf");
+	string $nextLine;
+	string $fileData = "";
+	string $buffer[];
+	int $i;
+	
+	// leemos las secciones desde el fichero de configuración de secciones
+	string $sectionsList[] = `poseMan_getSectionsFromConfFile $gCurrentCharPath`;
+
+	// Adjuntamos al final del array las nuevas poses		
+	$sectionsList[size($sectionsList)] = $sectionName;
+	
+	for ($i=0;$i<size($sectionsList);$i++) {
+		$fileData += ($sectionsList[$i] + " * ");
+	}
+	
+	$fileID = `fopen $filePath "w"`;
+	fprint $fileID $fileData;
+	fclose $fileID;
+}
+
+
+
+
+
+// *************************************************************************************************************
+// PROCS poses-relative
+// *************************************************************************************************************
+
+// -------------------------------
+// Add poses in a shelfLayout menu
+// -------------------------------
+global proc addFormsAsPoses (string $sectionName, string $menu) {
+	
+	string $listaPoses[];
+	global string $gCurrentCharPath;
+	string $poseIcon;
+	string $poseThumbnailFormLayout;
+	global string $imgExtension;
+	
+	// Añadimos las poses	
+	$listaPoses = poseMan_getPosesFromConfFile ($sectionName);
+	
+	for ($pose in $listaPoses) {
+		
+		$poseName = (`substring $pose 1 (size($pose)-5)`);
+		
+		// $poseThumbnailFormLayout = `formLayout -p $menu ("poseForm_"+$poseName)`;
+		$poseThumbnailFormLayout = `formLayout -p $menu`;
+		
+		// icono pose
+		$poseIcon = ($gCurrentCharPath + "/" + $sectionName+ "/" + $poseName + $imgExtension);
+		$thumbPose =
+			`iconTextButton
+				-dragCallback howToDragCB
+				-dropCallback howToDropCB`;
+		
+		iconTextButton -e -i1 $poseIcon -c ("poseMan_applyPoseFast(\""+$sectionName+"\", \""+$pose+"\")") -w 80 -h 80 -mh 0 -mw 0 $thumbPose;
+		
+		// Submenu
+		popupMenu;
+			menuItem -l ("Asign " + $poseName) -c ("poseMan_applyPose(\""+$sectionName+"\", \""+$pose+"\", 1)");
+			menuItem -divider true;
+			menuItem -en 1 -l "Mix pose Slider" -c ("sliderMix(\""+$sectionName+"\", \""+$pose+"\")");
+			menuItem -divider true;
+			menuItem -en 1 -l "Update (All controls)" -c ("poseMan_updatePose(\""+$sectionName+"\", \""+$pose+"\")");
+			menuItem -en 1 -l "Add selected controls" -c ("poseMan_addControlsToPose(\""+$sectionName+"\", \""+$pose+"\")");
+			menuItem -en 0 -l "Remove selected controls (wip)" -c ("poseMan_removeControlsFromPose(\""+$sectionName+"\", \""+$pose+"\")");
+			menuItem -en 1 -l "Select controls" -c ("poseMan_selectControlsFromPose(\""+$sectionName+"\", \""+$pose+"\")");
+			menuItem -divider true;
+			menuItem -en 1 -l "Override ..." -c ("poseMan_rewritePoseData(\""+$sectionName+"\", \""+$pose+"\")");
+			menuItem -en 1 -l "Override Thumbnail..." -c ("poseMan_reCaptureNewPoseUI(\""+$sectionName+"\", \""+$pose+"\")");
+			menuItem -divider true;
+			menuItem -en 1 -l "Move to..." -c ("poseMan_movePoseUI(\""+$sectionName+"\", \""+$pose+"\")");
+			menuItem -en 1 -l "Rename ..." -c ("poseMan_renamePoseUI(\""+$pose+"\")");
+			menuItem -l "Delete pose" -c ("poseMan_deletePoseSimple(\""+$sectionName+"\", \""+$pose+"\")");
+
+
+		// texto		
+		string $i1 = `text -align "center" -l $poseName -w 80 -h 20 -bgc 1 1 1`;
+		setParent ..;
+		
+		formLayout -e
+			-attachForm $thumbPose "top" 0
+			-attachForm $thumbPose "left" 0
+			-ac $i1 "top" 0 $thumbPose
+			-attachForm $i1 "left" 0	
+		$poseThumbnailFormLayout;
+	}
+
+}
+
+
+
+
+// DRAG AND DROP
+//
+global proc string[] howToDragCB ( string $dragControl, int $x, int $y, int $mods ) {
+    
+	//string $thumb = `getParentForm $dragControl 1`;
+	
+	return { $dragControl };
+}
+
+global proc howToDropCB ( string $drag, string $drop, string $msgs[], int $x, int $y, int $type ) {
+	//print ( "Drop on " + $drop + " from " + $msgs[0] + "\n" );
+	
+	global string $gTabs;
+	int $tabIndex = `tabLayout -q -sti $gTabs`;
+	string $sectionsList[] = `tabLayout -q -ca $gTabs`;
+	string $currentSection = $sectionsList[$tabIndex-1];
+		
+	// Localizamos el Shelf Layout
+	string $shelfLayout = `getParentForm $drag 2`;
+	//print ($shelfLayout + "\n"); 
+	
+	// Localizamos en thumbLayout del drop
+	string $thumbLayout = `getParentForm $drop 1`;
+	
+	// Localizamos en thumbLayout del drag
+	string $thumbLayout_DRAG = `getParentForm $drag 1`;
+	
+	// Los hijos del grid (FORM)
+	string $poseThumbLayouts[] = `shelfLayout -q -ca $shelfLayout`;
+
+	// EL NOMBR DE LA POSE QUE ARRASTRAMOS
+	string $thumbAndLabel[] = `formLayout -q -ca $thumbLayout`;
+	string $poseName = `text -q -l ($thumbLayout + "|" + $thumbAndLabel[1])`;	
+	
+	// Aislamos el form de la cadena form|form|form|form|	
+	string $buffer[];
+	tokenize $thumbLayout "|" $buffer;
+	string $singleDrop = $buffer[size($buffer)-1];
+		
+	// Buscamos el ID	
+	int $targetIndex = (`findElementAndGetIndex $singleDrop $poseThumbLayouts`) + 1;
+	
+	
+	
+	// Hacemos el cambio en el UI
+	shelfLayout -e -pos $thumbLayout_DRAG $targetIndex $shelfLayout;
+	
+	string $poseThumbLayouts[] = `shelfLayout -q -ca $shelfLayout`;
+	
+	string $cleanPoseNames[];	
+	string $hijos[];	
+	string $cleanPoseName;
+	string $cleanPoseNameLabel;
+	for ($cleanPoseName in $poseThumbLayouts) {
+		// $cleanPoseNames[size($cleanPoseNames)] = (`substring $cleanPoseName 10 (size($cleanPoseName))`);
+		$hijos = `formLayout -q -ca $cleanPoseName`;
+		//$cleanPoseNameLabel = `text -q -l ($thumbLayout + "|" + $hijos[1])`;
+		$cleanPoseNameLabel = `text -q -l ($hijos[1])`;
+		
+		$cleanPoseNames[size($cleanPoseNames)] = $cleanPoseNameLabel;
+	}
+	
+	// Volvermos a guardar las poses en poses.conf
+	updatePoseConfFile ($currentSection, $cleanPoseNames);
+}
+
+global proc howToDropTRASH ( string $drag, string $drop, string $msgs[], int $x, int $y, int $type ) {
+	
+	string $form = `getParentForm $drag 1`;
+	string $hijos[] = `formLayout -q -ca $form`;
+	string $text = $hijos[1];
+	string $label = `text -q -l $text`;
+	string $poseName = ($label + ".pose");
+	string $sectionName = `getParentForm $drag 2`;
+	string $buffer[];
+	tokenize $sectionName "|" $buffer;
+	$sectionName = $buffer[size($buffer)-1];
+	
+	poseMan_deletePoseSimple_DIRECT $sectionName $poseName;
+}
+
+
+// -------------------------------
+// Actualiza el archivo poses.conf
+// -------------------------------
+global proc updatePoseConfFile (string $sectionName, string $poseList[]) {
+	
+	global string $gCurrentChar;
+	global string $gCurrentCharPath;
+	global string $gTabs;
+	
+	string $filePath = ($gCurrentCharPath + "/" + $sectionName + "/poses.conf");
+
+	string $nextLine;
+	string $fileData = "";
+	string $buffer[];
+
+	for ($i=0;$i<size($poseList);$i++) {
+		$fileData += ($poseList[$i] + ".pose" + " * ");
+	}
+	
+	$fileID = `fopen $filePath "w"`;	
+	fprint $fileID $fileData;
+	fclose $fileID;
+
+}
+
+
+// ---------------------------------
+// Add a pose name to pose conf file
+// ---------------------------------
+global proc poseMan_addPoseToConfigFile (string $sectionName, string $poseName) {
+	
+	global string $gCurrentCharPath;
+	
+	// string $projectURL = `workspace -q -fullName`;
+	string $filePath = ($gCurrentCharPath + "/" + $sectionName + "/poses.conf");
+	string $nextLine;
+	string $fileData = "";
+	string $buffer[];
+	
+	$poseName = poseMan_spacesToDown ($poseName);
+	$poseName = ($poseName + ".pose");
+	
+	// leemos las poses desde el fichero de configuración de secciones
+	string $posesList[] = poseMan_getPosesFromConfFile ($sectionName);
+
+	// Adjuntamos al final del array las nuevas poses
+	$posesList[size($posesList)] = $poseName;
+	
+	for ($i=0;$i<size($posesList);$i++) {
+		$fileData += ($posesList[$i] + " * ");
+	}
+	
+	$fileID = `fopen $filePath "w"`;
+	fprint $fileID $fileData;
+	fclose $fileID;
+}
+
+
+
+// -------------------------------------
+// Add new pose from reference character
+// -------------------------------------
+global proc poseMan_addNewPoseFromReference (int $idTabSeccion, string $nombrePose) {
+	
+	global string $gCurrentCharPath;	
+	global string $gCurrentChar;
+	global int $gCurrentTabId;
+	global string $imgExtension;
+	
+	$nombrePose = poseMan_spacesToDown ($nombrePose);
+    
+	string $nombreSeccion[] = `poseMan_getSectionsFromConfFile $gCurrentCharPath`;
+
+	string $listaObjs[] = `ls -sl`;
+	
+	string $poseData = "// PoseMAN pose file\n\n";
+	// $poseData += ("// Example pose format\n// object * attribute * value * mixweight\n\n");
+	string $atributosKeyable[];
+	string $atributosKeyable_tmp[];
+	string $atributosKeyable_tmp2[];
+	string $buffer[], $buffer2[];
+	int $nTokens, $nTokens2;
+	string $nombreSinNS = "";
+
+	// Vamos objeto por objeto
+	for ($i=0;$i<size($listaObjs);$i++) {
+		$atributosKeyable = {};
+		$atributosKeyable_tmp = {};
+			
+		// Primero miramos si hay seleccionados atributos en el channelbox
+		$channelBoxAttrs = `selectedChannelBoxAttributes`;
+		$channelBoxAttrs = `convertSingleToLongAttr $channelBoxAttrs`;
+		$atributosKeyable = (`listAttr -k -u $listaObjs[$i]`);
+		
+		// Se han seleccinado por channel box
+		if (size($channelBoxAttrs)>0) {		
+			// obtenemos los atributos son keyables
+			$atributosKeyable_tmp2 = `cleanArray $channelBoxAttrs $atributosKeyable`;
+			$atributosKeyable = $channelBoxAttrs;
+		} 
+		
+			
+		for ($atributo in $atributosKeyable) {
+			
+			if (`getAttr -se ($listaObjs[$i]+"."+$atributo)`){
+				$atributosKeyable_tmp[size($atributosKeyable_tmp)] = $atributo;
+			}
+		}
+		
+		$atributosKeyable = $atributosKeyable_tmp;
+		
+		// Procesamos el nombre del objeto para quiarle el/los namespace/s		
+		// Primero separamos los diferentes objetos de la "ruta" del nombre compuesto tipo: nombre|nombre|nombre|etc..
+		$nTokens = `tokenize $listaObjs[$i] "|" $buffer`;
+		
+		for ($k=0;$k<$nTokens;$k++) {
+			// Ahora por cada uno, le quitamos el namespace
+			$nTokens2 = `tokenize $buffer[$k] ":" $buffer2`;
+			$nombreSinNS += ($buffer2[size($buffer2)-1] + "|");
+			$buffer2 = {""};
+		}
+		
+		$nombreSinNS = `substring $nombreSinNS 1 (size($nombreSinNS)-1)`;
+		
+		$poseData += ("ctrl:" + $nombreSinNS + "\n");
+
+		// Ahora pasamos atributo por atributo recogiendo el valor
+		for ($j=0;$j<size($atributosKeyable);$j++) {
+
+			// primero comprobamos si es de tipo "vector" o "non-vector"
+			// Si es vector no guardamos la primera referencia, así guardamos las siguientes 3, como atributos normales
+			if (`getAttr -type ($listaObjs[$i]+"."+$atributosKeyable[$j])`=="double3" || `getAttr -type ($listaObjs[$i]+"."+$atributosKeyable[$j])`=="string") {				
+				// float $vectorValor[] = (`getAttr ($listaObjs[$i] + "." + $atributosKeyable[$j])`);
+				// $valor = ($vectorValor[0] + "," + $vectorValor[1] + "," + $vectorValor[2]);
+				// $poseData += ($nombreSinNS + " * " + "<<" + $atributosKeyable[$j] + ">>" + " * " + $valor + " * " + "1" + "\n");				
+			} else {
+				float $valor = (`getAttr ($listaObjs[$i]+"."+$atributosKeyable[$j])`);
+				$poseData += ($nombreSinNS + " * " + $atributosKeyable[$j] + " * " + $valor + " * " + "1" + "\n");
+			}
+		}
+		
+		// $poseData += ("// set keyframe at all keyeable attrs\nsetKeyframe (\""+$listaObjs[$i]+"\");\n");
+		$poseData += ("\n");
+		
+		$nombreSinNS = "";
+	}
+
+	$poseData += "// End of PoseMAN file";
+
+	// string $projectURL = `workspace -q -fullName`;
+	string $poseURLFull = ($gCurrentCharPath + "/" + $nombreSeccion[$idTabSeccion-1] + "/");
+	
+	if (poseMan_checkPoseName($gCurrentChar, ($nombreSeccion[$idTabSeccion-1]), ($nombrePose+".pose")) == 0) {
+		$fileID = `fopen ($poseURLFull + $nombrePose+".pose") "w"`;
+		fprint $fileID $poseData;
+		fclose $fileID;
+		
+		// Thumbnail part...
+		// Renderiza el playblast
+		int $currentTime = `currentTime -q`;
+		select -cl;
+		
+		if (`about -windows`) {
+			setAttr "defaultRenderGlobals.imageFormat" 20;
+			playblast -v false -frame $currentTime -w 160 -h 160 -orn 0 -cf ($poseURLFull + $nombrePose + $imgExtension) -fmt "image";
+		} 
+		if (`about -linux` ||`about -mac`) {
+			setAttr "defaultRenderGlobals.imageFormat" 7;
+			playblast -v false -frame $currentTime -w 160 -h 160 -orn 0 -cf ($poseURLFull + $nombrePose + ".iff") -fmt "image";
+			system ("imgcvt " + ($poseURLFull + $nombrePose + ".iff"  + " " +  $poseURLFull + $nombrePose + ".xpm"));
+			sysFile -delete ($poseURLFull + $nombrePose + ".iff");
+		}
+				
+	} else {
+		error "// This name pose already exists!";	
+	}
+    
+	$gCurrentTabId = $idTabSeccion;    
+
+	// Añadimos la pose al archivo de poses
+	poseMan_addPoseToConfigFile ($nombreSeccion[$idTabSeccion-1],  $nombrePose);
+	
+	// Añadimos la pose al UI
+	addPoseToUI $nombreSeccion[$idTabSeccion-1] $nombrePose;
+}
+
+
+// --------------------
+// Añade una pose al ui
+// --------------------
+global proc addPoseToUI (string $sectionName, string $poseName) {
+	
+	global string $gCurrentChar;
+	global string $gCurrentCharPath;
+	global int $gCurrentTabId;
+	global string $imgExtension;
+	global int $gCurrentTabId;
+	global string $gProjectURL;
+	
+	// ACTUALIZAMOS LA POSE PUESTA
+	global string $gMainLayout;
+	global string $gTabs;
+	string $ventana = "poseManWindow";
+	string $formPrincipal = $gMainLayout;
+	string $tabs = $gTabs;
+	
+	string $menu = ($gTabs + "|" + $sectionName);
+	
+	$poseThumbnailFormLayout = `formLayout -p $menu`;
+	
+	$pose = ($poseName + ".pose");
+	
+	// icono pose
+	$poseIcon = ($gCurrentCharPath + "/" + $sectionName+ "/" + $poseName + $imgExtension);
+	$thumbPose =
+		`iconTextButton
+			-dragCallback howToDragCB
+			-dropCallback howToDropCB`;
+			
+	iconTextButton -e -i1 $poseIcon -c ("poseMan_applyPoseFast(\""+$sectionName+"\", \""+$pose+"\")") -w 80 -h 80 -mh 0 -mw 0 $thumbPose;
+	
+	// Submenu
+	popupMenu;
+		menuItem -l ("Asign " + $poseName) -c ("poseMan_applyPose(\""+$sectionName+"\", \""+$pose+"\", 1)");
+		menuItem -divider true;
+		menuItem -en 1 -l "Mix pose Slider" -c ("sliderMix(\""+$sectionName+"\", \""+$pose+"\")");
+		menuItem -divider true;
+		menuItem -en 1 -l "Update (All controls)" -c ("poseMan_updatePose(\""+$sectionName+"\", \""+$pose+"\")");
+		menuItem -en 1 -l "Add selected controls" -c ("poseMan_addControlsToPose(\""+$sectionName+"\", \""+$pose+"\")");
+		menuItem -en 0 -l "Remove selected controls (wip)" -c ("poseMan_removeControlsFromPose(\""+$sectionName+"\", \""+$pose+"\")");
+		menuItem -en 1 -l "Select controls" -c ("poseMan_selectControlsFromPose(\""+$sectionName+"\", \""+$pose+"\")");
+		menuItem -divider true;
+		menuItem -en 1 -l "Override ..." -c ("poseMan_rewritePoseData(\""+$sectionName+"\", \""+$pose+"\")");
+		menuItem -en 1 -l "Override Thumbnail..." -c ("poseMan_reCaptureNewPoseUI(\""+$sectionName+"\", \""+$pose+"\")");
+		menuItem -divider true;
+		menuItem -en 1 -l "Move to..." -c ("poseMan_movePoseUI(\""+$sectionName+"\", \""+$pose+"\")");
+		menuItem -en 1 -l "Rename ..." -c ("poseMan_renamePoseUI(\""+$pose+"\")");
+		menuItem -l "Delete pose" -c ("poseMan_deletePoseSimple(\""+$sectionName+"\", \""+$pose+"\")");
+
+	// texto		
+	string $i1 = `text -align "center" -l $poseName -w 80 -h 20 -bgc 1 1 1`;
+	setParent ..;
+	
+	formLayout -e
+		-attachForm $thumbPose "top" 0
+		-attachForm $thumbPose "left" 0
+		-attachForm $i1 "top" 80
+		-attachForm $i1 "left" 0	
+	$poseThumbnailFormLayout;
+}
+
+
+// --------------------
+// Borra la pose del UI
+// --------------------
+global proc deletePoseFromUI (string $sectionName, string $poseName) {
+
+	global string $gTabs;
+	
+	string $menu = ($gTabs + "|" + $sectionName);
+	string $hijosSeccion[] = `shelfLayout -q -ca $sectionName`;
+		
+	for ($form in $hijosSeccion) {
+		string $botonYtexto[] = `formLayout -q -ca $form`; 
+		string $textoForm = $botonYtexto[1];
+		string $label = `text -q -label $textoForm`;
+		if ($poseName == $label) {
+			deleteUI ($form);
+		}
+	}
+}
+
+
+// ------------------
+// Delete pose window
+// ------------------
+global proc poseMan_deletePoseUI (string $tabName) {
+	
+	global string $gCurrentCharPath;
+	global int $gSizeableFlag;
+	global string $gCurrentChar;
+	
+	int $tabIndex = `tabLayout -q -sti $tabName`;
+	string $sectionsList[] = `poseMan_getSectionsFromConfFile $gCurrentCharPath`;
+	
+	string $currentSection = $sectionsList[$tabIndex-1];
+	
+	if (`window -exists poseListWindow`) {
+		deleteUI -window poseListWindow;
+	}
+
+	string $posesListWindow = `window poseListWindow`;
+	
+		string $mainLayout = `frameLayout -lv 0 -bv 0 -bs "etchedIn" poseMan_deletePoseLayout`;
+			columnLayout -adj 1 -rs 1;
+			string $posesListLayout = `textScrollList -numberOfRows 8 -allowMultiSelection 1`;
+			string $posesList[] = poseMan_getPosesFromHD ($currentSection);
+			            
+			for ($i=0;$i<size($posesList);$i++) {
+				textScrollList -e -append $posesList[$i] -dcc ("poseMan_deletePose(\""+$currentSection+"\", eval(\"textScrollList -q -si "+$posesListLayout+"\"))") $posesListLayout;
+			}
+			
+			button -l "Cancel" -c ("deleteUI -window "+$posesListWindow);
+			button -l "Delete" -c ("poseMan_deletePose(\""+$currentSection+"\", eval(\"textScrollList -q -si "+$posesListLayout+"\"));");
+            
+            window -e -sizeable $gSizeableFlag -w 250 -h 180 -title "Delete Pose" $posesListWindow;
+        
+	showWindow $posesListWindow;
+}
+
+// -----------------------
+// Delete a character pose
+// -----------------------
+global proc poseMan_deletePose (string $sectionName, string $poseName[]) {
+	
+	global string $imgExtension;	
+	global string $gCurrentCharPath;
+	
+	string $poseNameFileOriginal;
+	string $poseNameFileMarkedAsDelete;
+	string $fileNoExtension;
+	string $poseFile;
+	string $imageFile;
+	string $pose;
+	
+	string $confirm = `confirmDialog
+		-title "Delete pose"
+		-message "Delete multiple poses?"
+		-button "Yes" -button "No" -defaultButton "Yes"
+		-cancelButton "No" -dismissString "No"`;
+	
+	
+	if ($confirm=="Yes") {
+		
+		deleteUI poseListWindow;
+		
+		for ($i=0;$i<size($poseName);$i++) {
+			
+			// pose.pose			
+			$poseNameFileOriginal = ($gCurrentCharPath + "/" + $sectionName + "/" + $poseName[$i]);
+			
+			// pose			
+			$fileNoExtension = `substring $poseName[$i] 1 (size($poseName[$i])-5)`;
+			
+			// pose.bmp
+			$imageFile = ($gCurrentCharPath + "/" + $sectionName + "/" + $fileNoExtension + $imgExtension);
+			
+			$deletedPoseFileName = `getFirstAvailableFileName $poseNameFileOriginal`;
+			$deletedPoseImageFileName = `getFirstAvailableFileName $imageFile`;
+						
+			sysFile -rename $deletedPoseFileName $poseNameFileOriginal;
+			sysFile -rename $deletedPoseImageFileName $imageFile;
+			
+			print ("El borrad = " + $deletedPoseImageFileName + " y el original " + $imageFile);
+			poseMan_removePoseFromConfigFile ($sectionName, $poseName[$i]);
+			
+			print ("// The pose "+$fileNoExtension+" has been deleted\n");
+			
+			// Borramos la pose del UI
+			$pose = `substring $poseName[$i] 1 (size($poseName[$i])-5)`;
+			
+			deletePoseFromUI $sectionName $pose;
+			
+		}
+		
+	}
+	
+}
+// --------------------------------------------
+// Delete a character pose from contextual menu
+// --------------------------------------------
+global proc poseMan_deletePoseSimple (string $sectionName, string $poseName) {
+	
+	global string $imgExtension;
+	global string $gCurrentCharPath;
+	string $poseNameFileOriginal;
+	string $bitMapFile;
+	string $poseNameFileMarkedAsDelete;
+	string $fileNoExtension;
+	
+	$fileNoExtension = `substring $poseName 1 (size($poseName)-5)`;
+	
+	string $confirm = `confirmDialog
+	-title "Delete pose"
+	-message ("Delete \"" + $fileNoExtension + "\" pose ?")
+	-button "Yes" -button "No" -defaultButton "Yes"
+	-cancelButton "No" -dismissString "No"`;
+
+	if ($confirm=="Yes") {
+		
+		// pose.pose
+		$poseNameFileOriginal = ($gCurrentCharPath + "/" + $sectionName + "/" + $poseName);
+
+		// pose
+		$fileNoExtension = `substring $poseName 1 (size($poseName)-5)`;
+		
+		// pose.bmp
+		$imageFile = ($gCurrentCharPath + "/" + $sectionName + "/" + $fileNoExtension + $imgExtension);
+		
+		$deletedPoseFileName = `getFirstAvailableFileName $poseNameFileOriginal`;
+		$deletedPoseImageFileName = `getFirstAvailableFileName $imageFile`;
+		
+		sysFile -rename $deletedPoseFileName $poseNameFileOriginal;
+		sysFile -rename $deletedPoseImageFileName $imageFile;
+			
+		print ("// The pose "+$poseName+" has been deleted\n");
+		
+		poseMan_removePoseFromConfigFile ($sectionName, $poseName);
+			
+		deletePoseFromUI $sectionName $fileNoExtension;
+		
+	}
+
+}
+
+// --------------------------------------------
+// Delete a character pose from contextual menu
+// --------------------------------------------
+global proc poseMan_deletePoseSimple_DIRECT (string $sectionName, string $poseName) {
+	
+	global string $imgExtension;
+	// string $projectURL = `workspace -q -fullName`;
+	global string $gCurrentCharPath;
+	string $poseNameFileOriginal;
+	string $poseNameFileMarkedAsDelete;
+	string $imageFile;
+	string $fileNoExtension;
+	string $deletedPoseImageFileName;
+	string $deletedPoseFileName;
+	
+	// pose.pose
+	$poseNameFileOriginal = ($gCurrentCharPath + "/" + $sectionName + "/" + $poseName);
+
+	// pose
+	$fileNoExtension = `substring $poseName 1 (size($poseName)-5)`;
+	
+	// pose.bmp
+	$imageFile = ($gCurrentCharPath + "/" + $sectionName + "/" + $fileNoExtension + $imgExtension);
+	
+	$deletedPoseFileName = `getFirstAvailableFileName $poseNameFileOriginal`;
+	$deletedPoseImageFileName = `getFirstAvailableFileName $imageFile`;
+	
+	sysFile -rename $deletedPoseFileName $poseNameFileOriginal;
+	sysFile -rename $deletedPoseImageFileName $imageFile;
+		
+	print ("// The pose "+$poseName+" has been deleted\n");
+	
+	poseMan_removePoseFromConfigFile ($sectionName, $poseName);
+		
+	deletePoseFromUI $sectionName $fileNoExtension;
+}
+
+
+// --------------------------
+// Create capture pose window
+// --------------------------
+global proc poseMan_captureNewPoseUI (string $tabName) {
+	
+	global string $gCurrentChar;
+	global string $gCurrentCharPath;
+	
+	string $objList[] = `ls -l -sl`;
+	
+	global string $poseManCameraName;
+	
+	$poseManCameraName = "Capture_Pose";
+	
+	if( `objExists $poseManCameraName` == false) {
+		string $poseManCamera[] = `camera -n $poseManCameraName`;
+		viewSet -p $poseManCamera[0];
+		$poseManCameraName = `camera -q -n $poseManCamera[0]`;
+		int $poseManCameraIndex = size($poseManCameraName);
+		string $poseManCameraShortName=  `substring $poseManCameraName 1 ($poseManCameraIndex-1)`;
+		rename $poseManCameraName $poseManCameraShortName;
+		$poseManCameraName = $poseManCameraShortName;
+		setAttr ($poseManCameraName + ".focalLength") 100;
+		hide $poseManCameraName;
+	} else {
+		print ("// Camera exists, skiping camera creation\n");
+	}	
+	
+	global string $gCurrentChar;
+	string $charactersList[] = `poseMan_getCharacterFromHD`;
+	string $sectionsList[] = `poseMan_getSectionsFromConfFile $gCurrentCharPath`;
+	
+	if (`window -exists capturePoseWindow`) {
+		deleteUI -window capturePoseWindow;
+	}
+
+	window capturePoseWindow;
+	
+	columnLayout -adj 1 mainForm;
+	
+	formLayout -p mainForm captureForm;
+		paneLayout -p captureForm -w 280 -h 280 myPane;
+		
+		string $pc = `modelPanel -mbv false -camera $poseManCameraName`;
+		modelEditor -e -grid 0 -da smoothShaded $pc;
+		modelEditor -e -allObjects 0 $pc;
+		modelEditor -e -nurbsSurfaces  1 $pc;
+		modelEditor -e -polymeshes  1 $pc;
+		modelEditor -e -subdivSurfaces  1 $pc;
+
+	formLayout -p mainForm cameraPreset;
+		text -l "Camera Presets" cameraText;
+		button -bgc 0.855 0.955 0.731 -l "1" -w 20 -h 20 -c ("writeCamPreset(1)") p1;
+		button -bgc 0.855 0.955 0.731  -l "2" -w 20 -h 20 -c ("writeCamPreset(2)") p2;
+		button -bgc 0.855 0.955 0.731  -l "3" -w 20 -h 20 -c ("writeCamPreset(3)") p3;
+		button -bgc 0.855 0.955 0.731  -l "4" -w 20 -h 20 -c ("writeCamPreset(4)") p4;
+		button -bgc 0.855 0.955 0.731  -l "5" -w 20 -h 20 -c ("writeCamPreset(5)") p5;
+		button -bgc 0.686 0.808 0.536  -l " << Write " -c "writeReadMode" -h 20 mode;
+		
+	formLayout -p mainForm actionForm;
+	
+		text -align "left" -l "Sections" sectionText;
+
+		int $tabIndex = `tabLayout -q -sti $tabName`;
+		string $opcionMenu = `optionMenu optLayout`;
+
+		for ($i=0;$i<size($sectionsList);$i++) {
+			menuItem -label $sectionsList[$i];
+		}
+
+		optionMenu -e -sl $tabIndex optLayout;		
+		
+		text -align "left" -l "Type Pose Name:" poseText;
+		textField -h 25 poseName;
+
+	formLayout -p mainForm buttonForm;
+		button -l "Create" -c ("poseMan_addNewPoseFromReference((eval(\"optionMenu -q -sl "+$opcionMenu+"\")), eval(\"textField -q -tx poseName\"));deleteUI capturePoseWindow;delete "+$poseManCameraName+"") createButton;
+		button -l "Apply" -en 0 applyButton;
+		button -l "Close" -c ("deleteUI capturePoseWindow;delete "+$poseManCameraName) closeButton;		
+	
+	formLayout -e
+		-af myPane top 0
+	captureForm;	
+	
+	formLayout -e
+		-af cameraText top 5
+		-af cameraText left 5
+		
+		-ac p1 top 5 cameraText
+		-ac p2 top 5 cameraText
+		-ac p3 top 5 cameraText
+		-ac p4 top 5 cameraText
+		-ac p5 top 5 cameraText
+		
+		-af p1 left 5		
+		
+		-ac p2 left 5 p1
+		-ac p3 left 5 p2
+		-ac p4 left 5 p3
+		-ac p5 left 5 p4
+		
+		-ac mode top 5 cameraText
+		-ac mode left 10 p5
+		
+	cameraPreset;
+		
+	formLayout -e
+		-af sectionText top 5
+		-af sectionText left 5
+		-af sectionText right 5
+		
+		-ac optLayout top 2 sectionText
+		-af optLayout left 5
+		-af optLayout right 5
+		
+		-ac poseText top 10 optLayout
+		
+		-ac poseName top 2 poseText
+		
+		-af poseText left 5
+		-af poseText right 5
+		
+		-af poseName left 5
+		-af poseName right 5
+	actionForm;
+		
+	formLayout -edit
+		-af createButton top 10
+		-af createButton left  5		
+		-af createButton bottom 10
+		-ac createButton right 5 applyButton
+		
+		-af applyButton top 10
+		-af applyButton bottom 10
+		-attachPosition applyButton left 5 33		
+		-attachPosition applyButton right 5 66
+		
+		-af closeButton top 10
+		-af closeButton bottom 10
+		-ap closeButton left 1 66		
+		-ap closeButton right  5 100
+	buttonForm;	
+		
+	window -e  -rtf 0 -t "Create New Pose"  -w 288 -h 490 capturePoseWindow;
+
+	showWindow capturePoseWindow;
+	
+	// set mode
+	writeReadMode;
+	
+	// reselect
+	select $objList;
+}
+
+// --------------------
+// Check if pose exists
+// --------------------
+global proc int poseMan_checkPoseName (string $characterName, string $sectionName, string $poseName) {
+	
+	global string $gCurrentCharPath;
+	//string $projectURL = `workspace -q -fullName`;
+	int $outPut;
+	
+	if (`filetest -f ($gCurrentCharPath + "/" + $sectionName + "/" + $poseName)`) {
+		$outPut = 1;
+	} else {
+		$outPut = 0;
+	}	
+	return $outPut;
+}
+
+
+// ------------------
+// Rename pose window
+// ------------------
+global proc poseMan_renamePoseUI (string $poseToRename) {
+	
+	global string $gTabs;
+
+	$poseToRename = `substring $poseToRename 1 (size($poseToRename)-5)`;
+	
+	if (`window -exists renamePoseWindow`) {
+		deleteUI -window renamePoseWindow;
+	}
+	
+	window renamePoseWindow;
+		columnLayout -adj 1;
+			
+			text -l ($poseToRename) -align "center";
+			text -l "Type new pose name";
+			string $newPoseName = `textField`;
+			button -l "Rename" -c ("poseMan_renamePose($gTabs, \""+$poseToRename+"\", `textField -q -tx "+$newPoseName+"`);deleteUI renamePoseWindow");
+		
+	window -title "Rename pose" -e -w 200 -h 103 renamePoseWindow;
+	showWindow renamePoseWindow;
+}
+
+// -------------
+// Rename a pose
+// -------------
+global proc poseMan_renamePose (string $sectionName, string $poseName, string $newPoseName) {
+	
+	//string $projectURL = `workspace -q -fullName`;
+	global string $gCurrentChar;
+	global string $gCurrentCharPath;
+	global string $imgExtension;
+
+	$newPoseName = poseMan_spacesToDown ($newPoseName);
+	
+	int $tabIndex = `tabLayout -q -sti $sectionName`;
+	string $sectionsList[] = `poseMan_getSectionsFromConfFile $gCurrentCharPath`;
+
+	string $currentSection = $sectionsList[$tabIndex-1];
+	
+	if (`filetest -r ($gCurrentCharPath + "/" + $currentSection + "/" + $newPoseName + ".pose")`==1) {
+		error ("// This name ("+$newPoseName+") pose already exist, type a new name!");
+	} else {
+		sysFile -rename ($gCurrentCharPath + "/" + $currentSection + "/" + $newPoseName + ".pose") ($gCurrentCharPath + "/"  + $currentSection + "/" + $poseName + ".pose");
+		sysFile -rename ($gCurrentCharPath + "/" + $currentSection + "/" + $newPoseName + $imgExtension) ($gCurrentCharPath + "/" + $currentSection + "/" + $poseName + $imgExtension);
+		poseMan_renamePoseFromConfigFile ($currentSection, $poseName, $newPoseName );
+		print ("// Pose " + $poseName + " has been renamed to " + $newPoseName + "\n");
+	}
+	
+	renamePoseFromUI $sectionName $poseName $newPoseName;
+}
+
+// -------------------
+// Rename a pose at UI
+// -------------------
+global proc renamePoseFromUI (string $sectionName, string $poseName, string $newPoseName) {
+
+	global string $gTabs;
+	global string $gCurrentChar;
+	
+	// Con esto averiguamos a que form pertenece la pose
+	string $sectionLabel = `tabLayout -q -st poseManTabLayout`;
+	string $poses[] = `shelfLayout -q -ca $sectionLabel`;
+	string $pose;
+	string $poseFormLayout;
+	for ($pose in $poses) {
+
+		string $k[] = `formLayout -q -ca $pose`;
+		string $textLayout = $k[1];
+		string $text = `text -q -l $textLayout`;
+
+		if ($text == $poseName) {
+			$poseFormLayout = $pose;
+		}
+
+	}
+	
+	string $formLayoutChilds[] = `formLayout -q -ca $poseFormLayout`;
+	string $textLayout = $formLayoutChilds[1];
+	string $iconButton = $formLayoutChilds[0];
+	
+	string $menus[] = `iconTextButton -q -pma $iconButton`;
+	
+	iconTextButton -e -c ("poseMan_applyPoseFast(\""+$sectionLabel+"\", \""+$newPoseName+".pose\")") $iconButton;
+	
+	string $popupChilds[] = `popupMenu -q -ia $menus[0]`;	
+	
+	string $updateAllMenuItem = $popupChilds[6];
+	string $moveMenuItem = $popupChilds[12];
+	string $renameMenuItem = $popupChilds[13];
+	string $deleteMenuItem = $popupChilds[14];
+	
+	menuItem -e -c ("poseMan_movePoseUI(\""+$sectionLabel+"\", \""+$newPoseName+".pose\")") $moveMenuItem;
+	menuItem -e -c ("poseMan_renamePoseUI(\""+$newPoseName+".pose\")") $renameMenuItem;	
+	menuItem -e -c ("poseMan_deletePoseSimple(\""+$sectionLabel+"\", \""+$newPoseName+".pose\")") $deleteMenuItem;
+	menuItem -e -c ("poseMan_updatePose(\""+$sectionLabel+"\", \""+$newPoseName+".pose\")") $updateAllMenuItem;
+	
+	text -e -align "center" -l $newPoseName -w 80 -h 20 $textLayout;
+
+}
+
+// ------------
+// Apply a pose
+// ------------
+global proc poseMan_applyPose (string $sectionName, string $poseName, float $mix) {
+	
+	//string $projectURL = `workspace -q -fullName`;
+	string $buffer[];
+	string $bufferNamespace[];
+	global string $gCurrentCharNamespace;
+	global string $gCurrentCharPath;
+	string $filePoseData;
+	string $nombreSinNamespace;
+	$fileID = `fopen ($gCurrentCharPath + "/" + $sectionName + "/" + $poseName) "r"`;
+	string $objList[] = `ls -sl`;
+	
+	// leemos una linea
+	$nextLine = `fgetline $fileID`;
+	
+	// leemos todas las lineas
+	while ( !`feof $fileID` ) {
+		// La línea es // o \n
+		if (`substring $nextLine 1 2` == "//" || `substring $nextLine 1 2` == "\n" || `substring $nextLine 1 5` == "ctrl:") {
+			// ***
+		} else {
+			tokenize $nextLine " * " $buffer;		    
+			$nombreDelObjeto = $buffer[0];
+			$propiedadDelObjeto = $buffer[1];
+			$valorDelObjeto = $buffer[2];
+
+			// comprobamos si el objeto existe
+			if( `objExists ($gCurrentCharNamespace + $nombreDelObjeto)` == true ) {
+				
+				// Componemos la línea de mixAttr
+				if (size($objList)>0) {
+					for ($i=0;$i<size($objList);$i++) {
+						// si tiene namespace
+						tokenize $objList[$i] ":" $bufferNamespace;
+						if (size($bufferNamespace)>1) {
+							$nombreSinNamespace = $bufferNamespace[1];
+						}
+						if ($nombreDelObjeto == $nombreSinNamespace) {
+							$filePoseData += ("poseMan_mixAttr (\""+$nombreDelObjeto+"\", \""+$gCurrentCharNamespace+"\", \""+$propiedadDelObjeto+"\", \""+$valorDelObjeto+"\", \""+$mix+"\", -1000000);\n");
+						}
+					}
+				} else {
+					$filePoseData += ("poseMan_mixAttr (\""+$nombreDelObjeto+"\", \""+$gCurrentCharNamespace+"\", \""+$propiedadDelObjeto+"\", \""+$valorDelObjeto+"\", \""+$mix+"\", -1000000);\n");
+				}
+			} else {
+				// No se añade a filePoseData las líneas de un objeto que no existe.
+			}
+		}
+		
+		$nextLine = `fgetline $fileID`;	
+	}
+    
+	// Cerramos el archivo
+	fclose $fileID;
+	
+	// Evaluamos la pose
+	eval ($filePoseData);
+	    
+	// info
+	print ("// "+(`substring $poseName 1 (size($poseName)-5)`)+" pose asigned\n");    
+}
+
+// -------------------
+// Apply a pose (FAST)
+// -------------------
+global proc poseMan_applyPoseFast (string $sectionName, string $poseName) {
+	
+	global string $gCurrentCharNamespace;
+	global string $gCurrentCharPath;
+	
+	//string $projectURL = `workspace -q -fullName`;
+	string $buffer[];
+	string $bufferNamespace[];
+	string $bufferObj[];	
+	string $filePoseData = "";
+	string $filePoseObjects[];
+	string $nombreSinNamespace;
+	$fileID = `fopen ($gCurrentCharPath + "/" + $sectionName + "/" + $poseName) "r"`;
+	
+	string $objList[] = `ls -sl`;
+    
+	// leemos una linea
+	$nextLine = `fgetline $fileID`;
+
+	// leemos todas las lineas
+	while ( !`feof $fileID` ) {		
+		
+		// La línea es // o \n
+		if (`substring $nextLine 1 2` == "//" || `substring $nextLine 1 2` == "\n" || `substring $nextLine 1 5` == "ctrl:") {
+			// esta linea no nos vale
+		} else {
+
+			tokenize $nextLine " * " $buffer;
+			$nombreDelObjeto = $buffer[0];
+			$propiedadDelObjeto = $buffer[1];
+			$valorDelObjeto = $buffer[2];
+
+			if (size($objList)>0) {			
+				// comprobamos si el objeto existe
+				if( `objExists ($gCurrentCharNamespace + $nombreDelObjeto)` == true ) {				
+					$filePoseData += ("poseMan_mixAttrFast (\""+$nombreDelObjeto+"\", \""+$gCurrentCharNamespace+"\", \""+$propiedadDelObjeto+"\", \""+$valorDelObjeto +"\");\n");				
+				} 
+			} else {
+				// comprobamos si el objeto existe
+				if( `objExists ($gCurrentCharNamespace + $nombreDelObjeto)` == true ) {				
+					$filePoseData += ("poseMan_mixAttrFast (\""+$nombreDelObjeto+"\", \""+$gCurrentCharNamespace+"\", \""+$propiedadDelObjeto+"\", \""+$valorDelObjeto +"\");\n");				
+				}				
+			}
+		
+		}
+	
+	$nextLine = `fgetline $fileID`;
+	}
+    	
+	// Cerramos el archivo
+	fclose $fileID;
+	
+	// Evaluamos la pose
+	eval ($filePoseData);
+	    
+	// info
+	print ("// "+(`substring $poseName 1 (size($poseName)-5)`)+" pose asigned\n");
+}
+
+
+
+
+
+// ---------------------
+// Mix attributes (FAST)
+// ---------------------
+global proc poseMan_mixAttrFast (string $objeto, string $objectNamespace, string $propiedad, float $valor) {
+	
+	global string $gCurrentCharNamespace;
+	global string $gSetKeyOnPose;
+	
+	string $buffer[];
+	int $nTokens;
+	string $objetoCompleto;
+
+	// Procesamos el nombre del objeto para añadir el namespace en caso de que sea un nombre "compuesto" tipo nombre|nombre|nombre|....
+	tokenize $objeto "|" $buffer;
+
+	$objetoCompleto = "";
+
+	for ($i=0;$i<size($buffer);$i++) {
+		$objetoCompleto += ($gCurrentCharNamespace + $buffer[$i] + "|");
+	}
+
+	$objetoCompleto = `substring $objetoCompleto 1 (size($objetoCompleto)-1)`;
+
+	// asignamos valor
+	setAttr ($objetoCompleto + "." + $propiedad) $valor;
+
+	// currentTime $nFrame;
+	if ($gSetKeyOnPose == 1) {
+		setKeyframe $objetoCompleto;
+	}	
+}
+
+
+
+
+// --------------
+// Mix attributes
+// --------------
+global proc poseMan_mixAttr (string $objeto, string $objectNamespace, string $propiedad, float $valor, float $mix, int $nFrame) {
+    float $v1, $v2, $valor;
+    global string $gCurrentCharNamespace;
+	global string $gSetKeyOnPose;
+	string $buffer[] = {""};
+	int $nTokens;
+	string $objetoCompleto = "";
+	
+	// Procesamos el nombre del objeto para añadir el namespace en caso de que sea un nombre "compuesto" tipo nombre|nombre|nombre|....
+	tokenize $objeto "|" $buffer;
+
+	$objetoCompleto = "";
+	
+	for ($i=0;$i<size($buffer);$i++) {
+		$objetoCompleto += ($gCurrentCharNamespace + $buffer[$i] + "|");
+	}
+	
+	$objetoCompleto = `substring $objetoCompleto 1 (size($objetoCompleto)-1)`;
+    
+	// leemos el valor
+	$v1 = (`getAttr ($objetoCompleto + "." + $propiedad)`);
+	
+    // calculamos la mezcla (de grog!)
+    $v2 = ($valor*$mix) + ($v1*(1-$mix));
+
+    // asignamos valor
+	setAttr ($objetoCompleto + "." + $propiedad) $v2;
+	
+	if ($nFrame==-1000000) {
+		$nFrame = `currentTime -q`;
+	}
+	
+	// currentTime $nFrame;
+	if ($gSetKeyOnPose == 1) {
+		setKeyframe $objetoCompleto;
+	}	
+}
+
+// --------------------------------------------
+// Remove a pose name from pose conf file
+// --------------------------------------------
+global proc poseMan_removePoseFromConfigFile (string $sectionName, string $poseName) {		
+		
+	global string $gCurrentCharPath;
+	
+	// string $projectURL = `workspace -q -fullName`;
+	string $filePath = ($gCurrentCharPath + "/" + $sectionName + "/poses.conf");
+	string $nextLine;
+	string $fileData = "";
+	string $buffer[];
+
+	// leemos las poses desde el fichero de configuración de poses
+	string $posesList[] = poseMan_getPosesFromConfFile ($sectionName);
+
+	// Ahora hacemos un recorrido y metemos todas las poses en la variable final EXCEPTO la pose borrada
+	for ($i=0;$i<size($posesList);$i++) {
+		if ($posesList[$i] != $poseName) {
+			$fileData += ($posesList[$i] + " * ");
+
+		}
+	}
+	$fileID = `fopen $filePath "w"`;	
+	fprint $fileID $fileData;			
+	fclose $fileID;
+	
+	// Comprobamos si ya no existen poses, en ese caso, borramos poses.conf
+	string $posesFromHD[];
+	$posesFromHD = poseMan_getPosesFromHD ($sectionName);
+	if (size($posesFromHD) == 0) {
+		sysFile -delete $filePath;
+	}
+
+}
+// ---------------------------------------
+// Rename a pose from pose conf file
+// ---------------------------------------
+global proc poseMan_renamePoseFromConfigFile (string $sectionName, string $poseName, string $newPoseName) {
+	
+	global string $gCurrentCharPath;
+	
+	//string $projectURL = `workspace -q -fullName`;
+	string $filePath = ($gCurrentCharPath + "/" + $sectionName + "/poses.conf");
+	string $nextLine;
+	string $fileData = "";
+	string $buffer[];
+	int $i;
+
+	// leemos las poses desde el fichero de configuración de poses
+	string $posesList[] = poseMan_getPosesFromConfFile ($sectionName);
+	
+	// Ahora hacemos un recorrido y cuando demos con la pose a renombrar, damos el cambiazao
+	for ($i=0;$i<size($posesList);$i++) {
+		if ($posesList[$i] == ($poseName + ".pose")) {
+			$fileData += (($newPoseName + ".pose")+ " * ");
+		} else {
+			$fileData += ($posesList[$i] + " * ");
+		}
+	}
+	
+	$fileID = `fopen $filePath "w"`;	
+	fprint $fileID $fileData;			
+	fclose $fileID;		
+}
+
+// ---------------------------------
+// Select controls from pose "thumb"
+// ---------------------------------
+global proc poseMan_selectControlsFromPose (string $sectionName, string $poseName) {
+	
+	global string $gCurrentCharPath;
+	//string $projectURL = `workspace -q -fullName`;
+	string $buffer[];
+	string $controlsFromPoseData;
+	global string $gCurrentCharNamespace;
+	
+	select -cl;
+	
+	$fileID = `fopen ($gCurrentCharPath + "/" + $sectionName + "/" + $poseName) "r"`;
+    
+	// leemos una linea
+	$nextLine = `fgetline $fileID`;
+
+	while ( !`feof $fileID` ) {
+		// La lína es ctrl:
+		if (`substring $nextLine 1 5` == "ctrl:") {
+			tokenize $nextLine ":" $buffer;
+			$nombreDelObjeto = $buffer[1];
+			$controlsFromPoseData += ("select -add " + $gCurrentCharNamespace + $nombreDelObjeto + ";");
+		}
+		
+		$nextLine = `fgetline $fileID`;
+	}    
+	
+	fclose $fileID;
+	
+	eval($controlsFromPoseData);
+}
+
+// --------------------------
+// Create capture pose window
+// --------------------------
+global proc poseMan_reCaptureNewPoseUI (string $sectionName, string $poseName) {
+
+	//button -h 26 -w 235 -l "CREATE" -c ("poseMan_reCaptureNewPose(\""+$charName+"\", \""+$sectionName+"\", \""+$poseName+"\");deleteUI "+$capturePoseWindow+";delete "+$poseManCameraName+"");
+
+	string $poseNameNoExt = `substring $poseName 1 (size($poseName)-5)`;
+	
+	global string $poseManCameraName;
+	global string $gCurrentCharPath;
+	global string $poseManCameraName;
+	
+	$poseManCameraName = "Capture_Pose";
+	
+	if(`objExists $poseManCameraName` == false) {
+		string $poseManCamera[] = `camera -n $poseManCameraName`;
+		viewSet -p $poseManCamera[0];
+		$poseManCameraName = `camera -q -n $poseManCamera[0]`;
+		int $poseManCameraIndex = size($poseManCameraName);
+		string $poseManCameraShortName=  `substring $poseManCameraName 1 ($poseManCameraIndex-1)`;
+		rename $poseManCameraName $poseManCameraShortName;
+		$poseManCameraName = $poseManCameraShortName;
+		setAttr ($poseManCameraName + ".focalLength") 100;
+		hide $poseManCameraName;
+	} else {
+		print ("// Camera exists, skiping camera creation\n");
+	}	
+	
+	global string $gCurrentChar;
+	string $charactersList[] = `poseMan_getCharacterFromHD`;
+	string $sectionsList[] = `poseMan_getSectionsFromConfFile $gCurrentCharPath`;
+	
+	if (`window -exists capturePoseWindow`) {
+		deleteUI -window capturePoseWindow;
+	}
+
+	window capturePoseWindow;
+	
+	columnLayout -adj 1 mainForm;
+	
+	formLayout -p mainForm captureForm;
+		paneLayout -p captureForm -w 280 -h 280 myPane;
+		
+		string $pc = `modelPanel -mbv false -camera $poseManCameraName`;
+		modelEditor -e -grid 0 -da smoothShaded $pc;
+		modelEditor -e -allObjects 0 $pc;
+		modelEditor -e -nurbsSurfaces  1 $pc;
+		modelEditor -e -polymeshes  1 $pc;
+		modelEditor -e -subdivSurfaces  1 $pc;
+
+	formLayout -p mainForm cameraPreset;
+		text -l "Camera Presets" cameraText;
+		button -bgc 0.855 0.955 0.731 -l "1" -w 20 -h 20 -c ("writeCamPreset(1)") p1;
+		button -bgc 0.855 0.955 0.731  -l "2" -w 20 -h 20 -c ("writeCamPreset(2)") p2;
+		button -bgc 0.855 0.955 0.731  -l "3" -w 20 -h 20 -c ("writeCamPreset(3)") p3;
+		button -bgc 0.855 0.955 0.731  -l "4" -w 20 -h 20 -c ("writeCamPreset(4)") p4;
+		button -bgc 0.855 0.955 0.731  -l "5" -w 20 -h 20 -c ("writeCamPreset(5)") p5;
+		button -bgc 0.686 0.808 0.536  -l " << Write " -c "writeReadMode" -h 20 mode;
+		
+	formLayout -p mainForm actionForm;	
+		text -align "left" -fn "boldLabelFont" -l "Section:  " sectionText;
+		text -align "left" -l $sectionName sectionName;		
+		text -align "left" -fn "boldLabelFont" -l "Pose Name:  " poseText;
+		text -align "left" -l $poseNameNoExt poseName;
+
+	formLayout -p mainForm buttonForm;
+		button -l "Create" -c ("poseMan_reCaptureNewPose(\""+$sectionName+"\", \""+$poseName+"\");deleteUI capturePoseWindow;delete "+$poseManCameraName+"") createButton;
+		button -l "Apply" -en 0 applyButton;
+		button -l "Close" -c ("deleteUI capturePoseWindow;delete "+$poseManCameraName) closeButton;		
+	
+	formLayout -e
+		-af myPane top 0
+	captureForm;	
+	
+	formLayout -e
+		-af cameraText top 5
+		-af cameraText left 5
+		
+		-ac p1 top 5 cameraText
+		-ac p2 top 5 cameraText
+		-ac p3 top 5 cameraText
+		-ac p4 top 5 cameraText
+		-ac p5 top 5 cameraText
+		
+		-af p1 left 5		
+		
+		-ac p2 left 5 p1
+		-ac p3 left 5 p2
+		-ac p4 left 5 p3
+		-ac p5 left 5 p4
+		
+		-ac mode top 5 cameraText
+		-ac mode left 10 p5		
+	cameraPreset;
+		
+	formLayout -e
+		-af sectionText top 5
+		-af sectionText left 5
+		
+		-af sectionName top 5 
+		-ac sectionName left 5 sectionText
+		
+		-ac poseText top 2 sectionName
+		-af poseText left 5
+		
+		-ac poseName top 2 sectionName
+		-ac poseName left 5 poseText
+	actionForm;
+		
+	formLayout -edit
+		-af createButton top 10
+		-af createButton left  5		
+		-af createButton bottom 10
+		-ac createButton right 5 applyButton
+		
+		-af applyButton top 10
+		-af applyButton bottom 10
+		-attachPosition applyButton left 5 33		
+		-attachPosition applyButton right 5 66
+		
+		-af closeButton top 10
+		-af closeButton bottom 10
+		-ap closeButton left 1 66		
+		-ap closeButton right  5 100
+	buttonForm;	
+		
+	window -e  -rtf 0 -t "Create New Pose"  -w 288 -h 430 capturePoseWindow;
+
+	showWindow capturePoseWindow;
+	
+	// set mode
+	writeReadMode;	
+}
+
+// ------------------------------------
+// Capture JUST the thumbnail of a Pose
+// ------------------------------------
+global proc poseMan_reCaptureNewPose (string $sectionName, string $poseName) {
+	
+	global string $gCurrentCharPath;
+	string $poseURLFull = ($gCurrentCharPath + "/" + $sectionName + "/");
+	string $thumbPoseName = `substring $poseName 1 (size($poseName)-5)`;
+	int $currentTime = `currentTime -q`;
+
+	select -cl;
+	
+	if (`about -windows`) {
+		setAttr "defaultRenderGlobals.imageFormat" 20;
+		sysFile -delete  ($poseURLFull + $thumbPoseName + ".bmp");
+		playblast -v false -frame $currentTime -w 160 -h 160 -orn 0 -cf ($poseURLFull + $thumbPoseName + ".bmp") -fmt "image";		
+	} else {
+		sysFile -delete  ($poseURLFull + $thumbPoseName + ".xpm");
+		//setCurrentRenderer mayaHardware;
+		setAttr "defaultRenderGlobals.imageFormat" 7;
+		playblast -v false -frame $currentTime -w 160 -h 160 -orn 0 -cf ($poseURLFull + $thumbPoseName + ".iff") -fmt "image";
+		system ("imgcvt " + ($poseURLFull + $thumbPoseName + ".iff") + " " + ($poseURLFull + $thumbPoseName + ".xpm"));
+		sysFile -delete  ($poseURLFull + $thumbPoseName + ".iff");
+	}
+	
+	poseMan_refreshMainWindow;
+}
+
+// ----------------------------------
+// Move Poses between sections Window
+// ----------------------------------
+global proc poseMan_movePoseUI (string $sectionName, string $poseName) {
+	
+	global int $gSizeableFlag;
+	global string $gCurrentCharPath;
+	
+	if (`window -exists movePoseWindow`) {
+		deleteUI -window movePoseWindow;
+	}
+
+	string $movePoseWindow = `window movePoseWindow`;
+
+		string $mainLayout = `frameLayout -lv 0 -bv 0 -bs "etchedIn" poseMan_deleteSectionLayout`;
+			columnLayout -adj 1 -rs 1;
+			string $sectionsListLayout = `textScrollList -numberOfRows 8 -allowMultiSelection 0`;
+			string $sectionsList[] = `poseMan_getSectionsFromConfFile $gCurrentCharPath`;
+			
+            string $sectionsListNoNumber[];
+			int $sizeOfSectionChars;
+            
+			for ($i=0;$i<size($sectionsList);$i++) {
+				textScrollList -e -dcc ("poseMan_movePose (\""+$sectionName+"\", \""+$poseName+"\", `textScrollList -q -si "+$sectionsListLayout+"`)") -append $sectionsList[$i] $sectionsListLayout;
+			}
+			
+			button -l "Cancel" -c ("deleteUI -window "+$movePoseWindow);
+            button -l "Move Pose" -c ("poseMan_movePose (\""+$sectionName+"\", \""+$poseName+"\", `textScrollList -q -si "+$sectionsListLayout+"`)");
+
+            window -e -sizeable $gSizeableFlag -w 250 -h 196 -title "Select the section where move the pose" $movePoseWindow;
+             
+	showWindow $movePoseWindow;
+}
+
+// -------------------------------
+// Move the Poses between sections
+// -------------------------------
+global proc poseMan_movePose (string $sectionName, string $poseName, string $targetSection[]) {
+
+	global string $imgExtension;
+	global string $gCurrentCharPath;
+	string $thumbName;
+	
+	//string $projectURL = `workspace -q -fullName`;
+	
+	$thumbName = (`substring $poseName 1 (size($poseName)-5)` + $imgExtension);
+	
+	string $poseOriginal = ($gCurrentCharPath + "/" + $sectionName + "/" + $poseName);
+	string $thumbOriginal= ($gCurrentCharPath + "/" + $sectionName + "/" + $thumbName);	
+	string $poseTarget	 = ($gCurrentCharPath + "/" + $targetSection[0] + "/" + $poseName);
+	string $thumbTarget	 = ($gCurrentCharPath + "/" + $targetSection[0] + "/" + $thumbName);
+	
+	if (`filetest -r $poseTarget`) {
+		error ("// Ya existe ese nombre de poses\n");
+	} else {	
+		// mover el fichero de pose .pose
+		sysFile -rename $poseTarget $poseOriginal;
+		
+		// mover el fichero de thumbnail .bmp/.xpm
+		sysFile -rename $thumbTarget $thumbOriginal;
+		
+		// actualizamos los poses.conf correspondientes.
+		// Quitamos la pose de la sección de origen
+		poseMan_removePoseFromConfigFile ($sectionName, $poseName);
+		
+		// Añadimos la pose a la sección de destino
+		string $poseNameNoExt = `substring $poseName 1 (size($poseName)-5)`;
+		poseMan_addPoseToConfigFile ($targetSection[0], $poseNameNoExt);
+		
+		// Borramos la ventana "Mover pose"
+		deleteUI -window movePoseWindow;
+		
+		poseMan_refreshMainWindow;
+	}
+}
+
+// ----------------------------------------------
+// Update Pose from viewport (just same controls)
+// ----------------------------------------------
+global proc poseMan_updatePose (string $sectionName, string $poseName) {
+	
+	
+	// Objetos previos seleccionados
+	string $listaObjsPrevia[] = `ls -sl`;
+
+	// Select control from pose
+	poseMan_selectControlsFromPose ($sectionName, $poseName);
+	
+	string $listaObjs[] = `ls -sl`;
+	
+	// Escribimos la pose con los controles seleccionados
+	poseMan_writePoseFile ($sectionName, $poseName, $listaObjs);
+	
+	// Volvemos a seleccionar los objetos previos
+	select -cl;
+	for ($i=0;$i<size($listaObjsPrevia);$i++) {
+		select -add $listaObjsPrevia[$i];
+	}
+	
+	
+	print ("// "+(`substring $poseName 1 (size($poseName)-5)`)+" pose updated\n");
+}
+
+// -----------------------------
+// Add selected controls to pose
+// -----------------------------
+global proc poseMan_addControlsToPose (string $sectionName, string $poseName) {
+	
+	global string $gCurrentCharPath;
+	
+	// Aplicamos la pose
+	poseMan_applyPoseFast ($sectionName, $poseName);
+	
+	// Primero guardamos todos los controles en un array
+	string $newControls[] = `ls -sl`;
+	
+	// Ahora seleccionamos los controles actuales de la pose
+	poseMan_selectControlsFromPose ($sectionName, $poseName);
+	// y los guardamos en otro array
+	string $poseControls[] = `ls -sl`;
+	
+	// Sumamos los dos arrays, con lo que tenemos la lista de los objetos en una nueva lista
+	string $allControls[];
+	$allControls = poseMan_mixArrays ($newControls, $poseControls);
+	
+	// Escribimos la pose con los controles seleccionados
+	poseMan_writePoseFile ($sectionName, $poseName, $allControls);
+	
+	// Volvemos a seleccionar los objetos previos
+	select -cl;
+	for ($i=0;$i<size($newControls);$i++) {
+		select -add $newControls[$i];
+	}
+
+	print ("// "+(`substring $poseName 1 (size($poseName)-5)`)+" pose updated with new controls\n");
+	
+}
+
+// ----------------------------------
+// Remove selected controls from pose
+// ----------------------------------
+global proc poseMan_removeControlsFromPose (string $sectionName, string $poseName) {
+	// Aplicamos la pose
+	// poseMan_applyPoseFast ($sectionName, $poseName);
+	
+	// Primero guardamos todos los controles en un array
+	string $controlsToRemove[] = `ls -sl`;
+	
+	// Ahora seleccionamos los controles actuales de la pose
+	poseMan_selectControlsFromPose ($sectionName, $poseName);	
+	
+	// y los guardamos en otro array
+	string $poseControls[] = `ls -sl`;
+	
+	// restamos a toda la seleccion los controles para quitar
+	for ($i=0;$i<size($controlsToRemove);$i++) {
+		select -d $controlsToRemove[$i];
+	}
+	
+	// Guardamos el resultado 
+	string $allControls[] = `ls -sl`;
+	
+	// Escribimos la pose con los controles seleccionados
+	poseMan_writePoseFile ($sectionName, $poseName, $allControls);
+	
+	print ("// "+(`substring $poseName 1 (size($poseName)-5)`)+" pose updated with controls removed\n");
+}
+
+// -------------------
+// Get pose data again
+// -------------------
+global proc poseMan_rewritePoseData (string $sectionName, string $poseName) {
+	// Primero guardamos todos los controles en un array
+	string $controlsToRewrite[] = `ls -sl`;
+	
+	// Escribimos la pose con los controles seleccionados
+	poseMan_writePoseFile ($sectionName, $poseName, $controlsToRewrite);
+
+}
+
+// -------------------------------------
+// Global procedure to write a file pose
+// -------------------------------------
+global proc poseMan_writePoseFile (string $sectionName, string $poseName, string $poseControls[]) {
+	
+	global string $gCurrentCharPath;
+	string $poseData = "// PoseMAN pose file\n\n";
+	string $atributosKeyable[];
+	string $atributosKeyable_temp[];
+	string $buffer[], $buffer2[];
+	int $nTokens, $nTokens2;
+	string $nombreSinNS = "";
+	string $channelBoxAttrs[];
+	
+	// Vamos objeto por objeto
+	for ($i=0;$i<size($poseControls);$i++) {
+		
+		// Primero miramos si hay seleccionados atributos en el channelbox
+		$channelBoxAttrs = `selectedChannelBoxAttributes`;
+		$channelBoxAttrs = `convertSingleToLongAttr $channelBoxAttrs`;
+		
+		$atributosKeyable = (`listAttr -k -u $poseControls[$i]`);
+		
+		// Se han seleccinado por channel box
+		if (size($channelBoxAttrs)>0) {		
+			// obtenemos los atributos son keyables
+			$atributosKeyable_temp = `cleanArray $channelBoxAttrs $atributosKeyable`;			
+			$atributosKeyable = $channelBoxAttrs;
+		} 
+		// Procesamos el nombre del objeto para quiarle el/los namespace/s		
+		// Primero separamos los diferentes objetos de la "ruta" del nombre compuesto tipo: nombre|nombre|nombre|etc..
+		$nTokens = `tokenize $poseControls[$i] "|" $buffer`;
+		
+		for ($k=0;$k<$nTokens;$k++) {
+			// Ahora por cada uno, le quitamos el namespace
+			$nTokens2 = `tokenize $buffer[$k] ":" $buffer2`;
+			$nombreSinNS += ($buffer2[size($buffer2)-1] + "|");
+			$buffer2 = {""};
+		}
+		
+		$nombreSinNS = `substring $nombreSinNS 1 (size($nombreSinNS)-1)`;
+		
+		$poseData += ("ctrl:" + $nombreSinNS + "\n");
+		
+		// Ahora pasamos atributo por atributo recogiendo el valor
+		for ($j=0;$j<size($atributosKeyable);$j++) {
+			// recojemos los valores
+			if (`getAttr -type ($poseControls[$i]+"."+$atributosKeyable[$j])`=="double3" || `getAttr -type ($poseControls[$i]+"."+$atributosKeyable[$j])`=="string") {
+				// Nada
+			} else {
+				float $valor = (`getAttr ($poseControls[$i]+"."+$atributosKeyable[$j])`);
+				$poseData += ($nombreSinNS + " * " + $atributosKeyable[$j] + " * " + $valor + " * " + "1" + "\n");
+			}
+		}
+		
+		// $poseData += ("// set keyframe at all keyeable attrs\nsetKeyframe (\""+$listaObjs[$i]+"\");\n");
+		$poseData += ("\n");
+		
+		$nombreSinNS = "";
+	}
+
+	$poseData += "// End of PoseMAN file";
+
+	//string $projectURL = `workspace -q -fullName`;
+	string $poseURLFull = ($gCurrentCharPath + "/" + $sectionName + "/");	
+	
+	$fileID = `fopen ($poseURLFull + $poseName) "w"`;
+	fprint $fileID $poseData;
+	fclose $fileID;
+}
+
+// --------------------------
+// Get array of poses From HD
+// --------------------------
+global proc string[] poseMan_getPosesFromHD (string $sectionName) {
+	
+	global string $gCurrentCharPath;
+	// string $projectURL = `workspace -q -fullName`;
+	string $poseMAN_URL = ($gCurrentCharPath);
+	string $poses[];
+
+	if (`about -windows`) {
+		$poses = `getFileList -folder ($poseMAN_URL + "/" + $sectionName + "/") -filespec "*.pose"`;
+	} else {
+		$poses = `getFileList -folder ($poseMAN_URL + "/" + $sectionName + "/") -filespec "*.pose"`;
+	}
+	
+	return $poses;
+}
+
+
+
+// -------------------------------------------------
+// Get array of poses From Conf File (order purpose)
+// -------------------------------------------------
+global proc string[] poseMan_getPosesFromConfFile (string $sectionName) {
+	
+	global string $gCurrentCharPath;
+	string $filePath = ($gCurrentCharPath+ "/" + $sectionName + "/" + "poses.conf");	
+	string $nextLine;
+	string $poses[];
+
+	if (`filetest -r $filePath`) {
+		
+		$fileID = `fopen $filePath "r"`;
+		$nextLine = `fgetline $fileID`;
+		fclose $fileID;
+		
+		tokenize $nextLine " * " $poses;
+
+	}
+	
+	return $poses;
+}
+
+
+// --------------------
+// Slider mix main proc
+// --------------------
+global proc sliderMix (string $sectionName, string $poseName) {
+	global string $poseDataOnFile[];
+	global string $poseDataOnMaya[];
+	string $buffer[];
+	global string $gCurrentCharNamespace;
+	float $valor;
+	
+	// Obtenemos los datos de la pose en el archivo	
+	$poseDataOnFile = poseMan_getPosedataFromFile ($sectionName, $poseName);
+	
+	// Obtenemos los datos de la pose en el visor de maya
+	for ($i=0;$i<size($poseDataOnFile);$i++) {
+		
+		tokenize $poseDataOnFile[$i] "*" $buffer;		
+		$objeto = $buffer[0];
+		$propiedad = $buffer[1];
+		$valor = `getAttr ($gCurrentCharNamespace + $objeto + "." + $propiedad)`;
+		
+		$poseDataOnMaya[$i] = ($objeto + "*" + $propiedad + "*" + $valor + "\n");
+	}
+	
+	poseMan_sliderWindow ($poseName);
+
+}
+
+// ----------------------
+// Slider pose mix window
+// ----------------------
+global proc poseMan_sliderWindow (string $poseName) {
+	
+	if (`window -exists sliderMixPoseWindow`) {
+		deleteUI -window sliderMixPoseWindow;
+	}
+
+	string $sliderMixPoseWindow = `window -title "Mix pose" sliderMixPoseWindow`;
+
+	string $sliderMixPoseLayout = `formLayout`;
+	string $poseNameNoExt = `substring $poseName 1 (size($poseName)-5)`;
+	string $textSlider = `text -align "center" -l ("Mix slider pose - " + $poseNameNoExt)`;
+	string $theSlider = `floatSliderGrp -h 100 -adj 1 -minValue 0 -maxValue 1 -dc "getSliderValue" -pre 3 mixPoseSlider`;
+
+	formLayout -e
+		
+		-af $textSlider "top" 2
+		-af $textSlider "left" 2
+		-af $textSlider "right" 2
+	
+		-ac $theSlider "top" 10 $textSlider
+		-af $theSlider "left" 2
+		-af $theSlider "right" 2
+	
+	$sliderMixPoseLayout;
+
+	window -e -w 400 -h 80 $sliderMixPoseWindow;
+
+	showWindow $sliderMixPoseWindow;
+}
+
+// ---------------------------
+// Slider dragproc (the mixer)
+// ---------------------------
+global proc getSliderValue() {
+	
+	global string $poseDataOnFile[];
+	global string $poseDataOnMaya[];
+	global string $gCurrentCharNamespace;
+	float $mixedValue = 0.0;
+	float $mix = 0.0;
+	string $buffer[], $buffer2[];
+	
+	string $objeto_o;
+	string $propiedad_o;
+	float $valor_o = 0.0;
+	
+	string $objeto_t;
+	string $propiedad_t;
+	float $valor_t = 0.0;
+	
+	// Obtenemos el nivel de mezcla
+	$mix = `floatSliderGrp -q -v mixPoseSlider`;
+	
+	for ($i=0;$i<size($poseDataOnFile);$i++) {
+		
+		// Sacamos los valores del original	
+		tokenize $poseDataOnFile[$i] "*" $buffer;
+		$objeto_o = $buffer[0];
+		$propiedad_o = $buffer[1];
+		$valor_o = $buffer[2];
+		
+		// Sacamos los valores del target
+		tokenize $poseDataOnMaya[$i] "*" $buffer2;
+		$objeto_t = $buffer2[0];
+		$propiedad_t = $buffer2[1];
+		$valor_t = $buffer2[2];
+		
+		// Calculamos la mezcla	
+		$mixedValue = ($valor_o*$mix) + ($valor_t*(1-$mix));
+		
+		// Aplicamos la mezcla
+		setAttr ($gCurrentCharNamespace + $objeto_t + "."+ $propiedad_t) $mixedValue;
+	}
+}
+
+
+
+
+
+
+// *************************************************************************************************************
+// PROCS forms-relative
+// *************************************************************************************************************
+
+
+
+// ----------------------------------------------------------
+// Devuelve el formulario padre dependiendo el nivel indicado
+// ----------------------------------------------------------
+global proc string getParentForm (string $formString, int $level) {
+	
+	string $form;
+	string $buffer[];
+	
+	tokenize $formString "|" $buffer;
+	// $form = $buffer[size($buffer)-($level)-1];
+	
+	int $childs = (size($buffer)-($level));
+	for ($i=0;$i<$childs;$i++) {
+		$form += ($buffer[$i] + "|");
+	}
+	
+	$form = (`substring $form 1 (size($form)-1)`);
+	
+	return $form;
+	
+}
+
+
+global proc writeReadMode () {
+	string $mode = `button -q -l mode`;
+	
+	if ($mode == " << Write ") {
+		button -e -bgc 0.686 0.808 0.536 -l " Read >> " mode;
+
+		button -e  -en 0 -bgc 0.855 0.955 0.731 -c ("readCamPreset(1)") p1;
+		button -e  -en 1 -bgc 0.855 0.955 0.731 -c ("readCamPreset(1)") p1;
+		button -e  -en 0 -bgc 0.855 0.955 0.731 -c ("readCamPreset(2)") p2;
+		button -e  -en 1 -bgc 0.855 0.955 0.731 -c ("readCamPreset(2)") p2;
+		button -e  -en 0 -bgc 0.855 0.955 0.731 -c ("readCamPreset(3)") p3;
+		button -e  -en 1 -bgc 0.855 0.955 0.731 -c ("readCamPreset(3)") p3;
+		button -e  -en 0 -bgc 0.855 0.955 0.731 -c ("readCamPreset(4)") p4;
+		button -e  -en 1 -bgc 0.855 0.955 0.731 -c ("readCamPreset(4)") p4;
+		button -e  -en 0 -bgc 0.855 0.955 0.731 -c ("readCamPreset(5)") p5;
+		button -e  -en 1 -bgc 0.855 0.955 0.731 -c ("readCamPreset(5)") p5;
+		
+	} else {
+		button -e -bgc 0.822 0.396 0.396  -l " << Write " mode;
+
+		button -e -en 0 -bgc 0.955 0.731 0.731 -c ("writeCamPreset(1)") p1;
+		button -e -en 1 -bgc 0.955 0.731 0.731 -c ("writeCamPreset(1)") p1;
+		button -e -en 0 -bgc 0.955 0.731 0.731 -c ("writeCamPreset(2)") p2;
+		button -e -en 1 -bgc 0.955 0.731 0.731 -c ("writeCamPreset(2)") p2;
+		button -e -en 0 -bgc 0.955 0.731 0.731 -c ("writeCamPreset(3)") p3;
+		button -e -en 1 -bgc 0.955 0.731 0.731 -c ("writeCamPreset(3)") p3;
+		button -e -en 0 -bgc 0.955 0.731 0.731 -c ("writeCamPreset(4)") p4;
+		button -e -en 1 -bgc 0.955 0.731 0.731 -c ("writeCamPreset(4)") p4;
+		button -e -en 0 -bgc 0.955 0.731 0.731 -c ("writeCamPreset(5)") p5;
+		button -e -en 1 -bgc 0.955 0.731 0.731 -c ("writeCamPreset(5)") p5;
+	}
+	
+}
+
+
+// -----------------------------
+// Refresh PoseMAN (main) window
+// -----------------------------
+global proc poseMan_refreshMainWindow() {
+
+	global string $gTabs;	
+	
+	// Obtenemos nombres de tab, shelf e hijos de shelf.
+	string $hijosTab[] = `tabLayout -q -ca $gTabs`;
+	string $sections[] = $hijosTab;
+	string $hijosShelf[];
+	
+	// Borramos todos los hijos de todos los shelf, las poses.
+	for ($section in $sections) {
+		$hijosShelf = `shelfLayout -q -ca $section`;
+		for ($item in $hijosShelf) {
+			deleteUI $item;
+		}
+	}
+
+	// Añadimos las poses
+	for ($section in $sections) {		
+		addFormsAsPoses $section $section;
+	}
+	
+}
+
+
+
+global proc string[] mydgc ( string $dragControl, int $x, int $y, int $mods ) {
+    
+	print  $dragControl;
+	
+	return { $dragControl };
+}
+
+global proc mydpc ( string $drag, string $drop, string $msgs[], int $x, int $y, int $type ) {
+	print $drag;
+	print $drop;
+	print $msgs;
+	
+}
+	
+// -----------------------------
+// Refresh PoseMAN (main) window when create new character
+// -----------------------------
+global proc poseMan_refreshMainWindowWhenNewCharacter () {
+	
+	global string $gTabs;
+	global string $gCurrentChar;
+	global string $gCurrentCharPath;
+	global string $gTabs;
+	global int $gCurrentTabId;
+	global string $gMainLayout;
+	global string $gCurrentSection;
+
+	deleteUI $gTabs;
+	$gTabs = `tabLayout -p $gMainLayout poseManTabLayout`;				
+	
+	// Lista de secciones
+	string $sectionsList[] = `poseMan_getSectionsFromConfFile $gCurrentCharPath`;
+	
+	// ui
+	for ($seccion in $sectionsList) {
+		// SECCIONES
+		// Genera el shelfLayout por sección, donde van las poses
+		shelfLayout -p $gTabs -h 300 -cw 82 -ch 102 $seccion;
+			popupMenu;
+				menuItem -l "Create new Pose..." -c "poseMan_captureNewPoseUI($gTabs)";
+				menuItem -l "Delete Poses..." -c "poseMan_deletePoseUI($gTabs)";
+			setParent ..;
+		
+		// POSES (loop)
+		// Genera todos los layouts para las poses
+		addFormsAsPoses $seccion $seccion;
+	}
+
+	global string $gMainLayout;
+	// Elegimos el tab por defecto
+	tabLayout -e -sti 1 poseManTabLayout;
+	$gCurrentTabId = 1;
+	
+	formLayout -e
+		-ac $gTabs "top" 5 characterAvatarLayout
+		-af $gTabs "left" 0
+		-af $gTabs "right" 0
+		-af $gTabs "bottom" 35
+	$gMainLayout;
+	
+	int $secIndex = `findElementAndGetIndex $gCurrentSection $sectionsList`;
+	if ($secIndex == -1) {
+		$secIndex = 0;
+	}
+	
+	tabLayout -e -sti ($secIndex+1) poseManTabLayout;
+	
+	// Activamos los menus de crear secciones y poses
+	menu -e -en 1 -l "Sections" sectionMenu;
+	menu -e -en 1 -l "Poses" poseMenu;
+	
+	// añadimos el nombre del personaje al character info text layout
+	text -e -l ("Character name: " + $gCurrentChar) characterNameTextLayout;
+	
+	
+}
+
+
+
+
+// --------------------------------------------------
+// Refresh PoseMAN (main) window when delete sections
+// -------------------------------------------------
+global proc poseMan_refreshMainWindowWhenDeleteSections() {
+	
+	global string $gTabs;
+	global string $gCurrentChar;
+	global string $gCurrentCharPath;
+	global string $gTabs;
+	global int $gCurrentTabId;
+	global string $gMainLayout;
+
+	deleteUI $gTabs;
+	$gTabs = `tabLayout -p $gMainLayout poseManTabLayout`;
+	
+	// Lista de secciones
+	string $sectionsList[] = `poseMan_getSectionsFromConfFile $gCurrentCharPath`;
+	
+	// ui
+	for ($seccion in $sectionsList) {
+		// SECCIONES
+		// Genera el shelfLayout por sección, donde van las poses
+		shelfLayout -p $gTabs -h 300 -cw 82 -ch 102 $seccion;
+					
+		// POSES (loop)
+		// Genera todos los layouts para las poses
+		addFormsAsPoses $seccion $seccion;
+	}
+
+	global string $gMainLayout;
+	// Elegimos el tab por defecto
+	tabLayout -e -sti 1 poseManTabLayout;
+	$gCurrentTabId = 1;
+	
+	formLayout -e
+		-ac $gTabs "top" 5 characterAvatarLayout
+		-af $gTabs "left" 0
+		-af $gTabs "right" 0
+		-af $gTabs "bottom" 35
+	$gMainLayout;
+}
+
+// ----------------------------
+// Go Up proc of reorder window
+// ----------------------------
+global proc poseMan_goUp (string $layoutName) {
+	// Guardamos todos los items
+	string $allItems[] = `textScrollList -q -ai $layoutName`;
+	
+	// El id seleccionado	
+	int $selectedItemList[]	= `textScrollList -q -sii $layoutName`;
+	 
+	if ($selectedItemList[0]>1) {
+		int $selectedItem = ($selectedItemList[0]);
+		int $topItem = $selectedItem-1;
+		
+		string $seleccionado = $allItems[$selectedItem-1];
+		string $elDeArriba   = $allItems[$topItem-1];
+		
+		$allItems[$selectedItem-1] = $elDeArriba;
+		$allItems[$topItem-1] = $seleccionado;
+			
+		textScrollList -e -ra $layoutName;	
+		
+		for ($i=0;$i<size($allItems);$i++) {
+			textScrollList -e -append $allItems[$i] $layoutName;
+		}
+		
+		textScrollList -e -sii $topItem $layoutName;
+	}
+}
+
+
+// ------------------------------
+// Go Down proc of reorder window
+// ------------------------------
+global proc poseMan_goDown (string $layoutName) {
+	// Guardamos todos los items
+	string $allItems[] = `textScrollList -q -ai $layoutName`;
+	
+	// El id seleccionado	
+	int $selectedItemList[]	= `textScrollList -q -sii $layoutName`;
+	
+	if ($selectedItemList[0]<size($allItems)) {	
+		int $selectedItem = ($selectedItemList[0]);
+		int $DownItem = $selectedItem+1;
+	
+		string $seleccionado = $allItems[$selectedItem-1];
+		string $elDeArriba   = $allItems[$DownItem-1];
+	
+		$allItems[$selectedItem-1] = $elDeArriba;
+		$allItems[$DownItem-1] = $seleccionado;
+		
+		textScrollList -e -ra $layoutName;	
+	
+		for ($i=0;$i<size($allItems);$i++) {
+			textScrollList -e -append $allItems[$i] $layoutName;
+		}
+	
+		textScrollList -e -sii $DownItem $layoutName;
+	}
+}
+
+// -------------------------
+// read check box key on pose
+// -------------------------
+global proc poseMan_manageCheckBoxKeyOnPose () {
+	global string $gSetKeyOnPose;
+	global string $keyOnPoseLayout;	
+	$gSetKeyOnPose = `menuItem -q -cb $keyOnPoseLayout`;
+}
+
+// ---------------------------
+// Show / Hide Character Image
+// ---------------------------
+global proc poseMan_ShowHideCharAvatar () {
+	global string $gMainLayout;
+	global string $showHideCharacterImageMenuItem;
+	global int $gCharacterImage;
+	int $highValue;
+		
+	$gCharacterImage = `menuItem -q -cb $showHideCharacterImageMenuItem`;
+	
+	if ($gCharacterImage == 0) {
+		$highValue = -80;
+	}
+	
+	if ($gCharacterImage == 1) {
+		$highValue = 0;
+	}
+	
+	formLayout -e
+		-attachForm characterAvatarLayout "top" $highValue
+	$gMainLayout;
+}
+
+
+// ---------------------------
+// Show / Hide Character Image
+// ---------------------------
+global proc poseMan_HideCharAvatar () {
+	global string $gMainLayout;
+	global int $gCharacterImage;
+	global string $showHideCharacterImageMenuItem;
+
+	formLayout -e
+		-attachForm characterAvatarLayout "top" -80
+	$gMainLayout;
+	
+	$gCharacterImage = 0;
+	
+	menuItem -e -cb 0 $showHideCharacterImageMenuItem;
+}
+
+
+
+// *************************************************************************************************************
+// PROCS file-relative
+// *************************************************************************************************************
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// *************************************************************************************************************
+// PROCS general-relative
+// *************************************************************************************************************
+
+
+
+
+// --------------
+// Sum two arrays
+// --------------
+global proc string[] poseMan_mixArrays (string $a1[], string $a2[]) {
+	string $newArray[];
+
+	for ($i=0;$i<size($a1);$i++) {
+		$newArray[$i]=$a1[$i];
+	}
+
+	for ($i=0;$i<size($a2);$i++) {
+		$newArray[$i+size($a1)]=$a2[$i];
+	}
+
+	return $newArray;
+}
+
+// ------------------
+// Convert " " to "_"
+// ------------------
+global proc string poseMan_spacesToDown (string $cadena) {
+	string $buffer[];
+	string$fixString;
+
+	tokenize $cadena " " $buffer;
+
+	for ($i=0;$i<size($buffer);$i++) {
+		$fixString += ($buffer[$i] + "_" );
+	}
+
+	$fixString = `substring $fixString 1 (size($fixString)-1)`;
+
+	return $fixString;
+}
+
+
+// --------------------------------------------
+// Convierte todos los "\" en "/" de una cadena
+// --------------------------------------------
+global proc string pathonize (string $path) {
+	
+	string $fixedPath;
+	string $bits[];
+	string $bit;
+		
+	tokenize $path "\\" $bits;
+	
+	for ($bit in $bits) {
+		$fixedPath += ($bit + "/");
+	}
+	
+	return $fixedPath;
+}
+
+
+// ----------------------------------------------------------------------------------------------------
+// Encuentra un elemento en un array y devuélve la posición en el mismo, devuelve -1 si no lo encuentra
+// ----------------------------------------------------------------------------------------------------
+global proc int findElementAndGetIndex (string $elementToFind, string $theArray[]) {
+
+	int $theIndex;
+	
+	for ($i=0;$i<size($theArray);$i++) {
+		if($elementToFind == $theArray[$i]) {
+			break;
+		}
+		$theIndex++;
+	}
+	
+	if ($i==size($theArray)) {
+		$theIndex = -1;
+	}
+
+	return $theIndex;
+}
+
+// -----------------------------------------------------------------------
+// Devuelve un Array Ax con las coincidencias de un Array A1 y un Array A2
+// -----------------------------------------------------------------------
+global proc string[] cleanArray (string $rawArray[], string $filterArray[]) {
+	
+	string $result[];	
+	
+	for ($rawItem in $rawArray) {		
+		for ($filterItem in $filterArray) {
+			if ($rawItem == $filterItem) {
+				$result [size($result)] = $rawItem;
+				break;
+			}
+		}
+	}
+	
+	return $result;
+	
+}
+
+
+
+// -----------------------------------------------------------------
+// Convierte atributos abreviados en su forma larga: tx = transtaleX
+// -----------------------------------------------------------------
+global proc string[] convertSingleToLongAttr (string $single[]) {
+	
+	string $result[];	
+	string $item;
+
+	for ($item in $single) {		
+		if ($item == "tx")
+			$result[size($result)] = "translateX";
+		if ($item == "ty")
+			$result[size($result)] = "translateY";
+		if ($item == "tz")
+			$result[size($result)] = "translateZ";
+		if ($item == "rx")
+			$result[size($result)] = "rotateX";
+		if ($item == "ry")
+			$result[size($result)] = "rotateY";
+		if ($item == "rz")
+			$result[size($result)] = "rotateZ";
+		if ($item == "sx")
+			$result[size($result)] = "scaleX";
+		if ($item == "sy")
+			$result[size($result)] = "scaleY";
+		if ($item == "sz")
+			$result[size($result)] = "scaleZ";
+	}
+	
+	return $result;
+
+}
+
+
+
+
+// *************************************************************************************************************
+// PROCS. Work in progess
+// *************************************************************************************************************
+
+//--------------------------------------
+// Get an array with pose data from file
+//--------------------------------------
+// -------------------
+// Evaluate a mel file
+// -------------------
+global proc int evaluateMelFile (string $filePath) {
+	
+	int $output = 1;
+	string $data;
+	
+	if ($fileID = `fopen $filePath "r"`) {		
+		while (!`feof $fileID`) {		
+			$data += `fgetline $fileID`;
+		}
+		fclose $fileID;		
+		eval ($data);
+	} else {
+		$output = 0;
+	}
+	
+	return $output;
+}
+
+
+global proc string[] poseMan_getPosedataFromFile (string $sectionName, string $poseName) {
+	
+	global string $gCurrentCharNamespace;
+	global string $gCurrentCharPath;
+	
+	// string $projectURL = `workspace -q -fullName`;
+	string $buffer[];
+	int $count;	
+	string $filePoseData[];
+	
+	string $pyFile = ($gCurrentCharPath + "/" + $sectionName + "/" + $poseName);
+	
+	$fileID = `fopen ($gCurrentCharPath + "/" + $sectionName + "/" + $poseName) "r"`;
+
+	// leemos una linea
+	$nextLine = `fgetline $fileID`;
+
+	// string $datos[] = python ("pyPoseEval(\""+$pyFile+"\")");
+	
+	// leemos todas las lineas
+	while ( !`feof $fileID` ) {
+		
+		
+		
+		
+		// La línea es // o \n
+		if (`substring $nextLine 1 2` == "//" || `substring $nextLine 1 2` == "\n" || `substring $nextLine 1 5` == "ctrl:") {
+		
+		} else {
+		
+			tokenize $nextLine " * " $buffer;
+
+			$nombreDelObjeto = $buffer[0];
+			$propiedadDelObjeto = $buffer[1];
+			$valorDelObjeto = $buffer[2];
+			
+			if(`objExists ($gCurrentCharNamespace + $nombreDelObjeto)`) {				
+				
+				// Componemos la línea de mixAttr
+				$filePoseData[$count] = ($nombreDelObjeto + "*" + $propiedadDelObjeto + "*" + $valorDelObjeto+"\n");
+				$count++;
+			} else {
+				// pasamos del objeto porque no existe
+			}			
+		}
+
+		$nextLine = `fgetline $fileID`;
+	}
+
+	// Cerramos el archivo
+	fclose $fileID;
+
+	return $filePoseData;
+}
+
+
+// -------------------------------------
+// Return differences between two arrays
+// -------------------------------------
+global proc string[] poseMan_getDifferences (string $firstArray[], string $secondArray[]) {
+	
+	string $newSecctionsFromFile[];
+	$existe = false;
+		
+	for($i=0;$i<size($firstArray);$i++) {
+		
+		// vamos comparandola con las del hd
+		for ($j=0;$j<size($secondArray);$j++) {
+			if ($firstArray[$i] == $secondArray[$j]) {
+				$existe = true;
+				break;
+			}
+		}
+		
+		if (!$existe) {
+			$newSecctionsFromFile[size($newSecctionsFromFile)] = $firstArray[$i];
+		} else {
+			$existe = false;
+		}		
+	}
+	
+	return $newSecctionsFromFile;
+}
+
+
+
+// -------------------------
+// Save PoseMan file project
+// -------------------------
+global proc poseMan_zipProjectFileBrowser () {
+	fileBrowserDialog -ds 1 -wt "Save PoseMAN project file" -m 2 -fc "poseMan_zipProject" -an "Save" -om "SaveAs"; 
+}
+
+
+// -------------------------------------------
+// Update poses conf file from UI drag 'n drop
+// -------------------------------------------
+global proc rewritePosesConf (string $sectionName, string $allPoses[]) {
+	
+	//string $projectURL = `workspace -q -fullName`;
+	global string $gCurrentCharPath;
+	string $filePath = ($gCurrentCharPath + "/" + $sectionName + "/poses.conf");
+	string $nextLine;
+	string $fileData = "";
+	string $buffer[];
+
+	for ($i=0;$i<size($allPoses);$i++) {
+		$fileData += ($allPoses[$i] + " * ");
+	}
+
+	$fileID = `fopen $filePath "w"`;	
+	fprint $fileID $fileData;
+	fclose $fileID;
+	
+	poseMan_refreshMainWindow;
+
+}
+
+

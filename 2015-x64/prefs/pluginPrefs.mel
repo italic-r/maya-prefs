@@ -1,0 +1,8 @@
+//Maya Preference 2015 (Release 1)
+//
+//
+evalDeferred("autoLoadPlugin(\"\", \"dgProfiler\", \"dgProfiler\")");
+evalDeferred("autoLoadPlugin(\"\", \"objExport\", \"objExport\")");
+evalDeferred("autoLoadPlugin(\"\", \"ik2Bsolver\", \"ik2Bsolver\")");
+evalDeferred("autoLoadPlugin(\"\", \"fbxmaya\", \"fbxmaya\")");
+evalDeferred("autoLoadPlugin(\"\", \"modelingToolkit\", \"modelingToolkit\")");

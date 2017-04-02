@@ -1,0 +1,677 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: Onion Skin
+''    Author:  
+''    Last Updated: Feb 24, 2007
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/animation/4523.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//                               Onion Skin v 0.8.3
+//
+// Creation Date : 7th FEB 2007
+//
+// Author : Syed Ali Ahsan
+//
+// E-mail : yoda@cyber.net.pk
+//
+// Description:
+//                This script uses Maya imageplane to create something like traditional Onion Skin.
+//               
+//                Thanks to Mark Behm for some very nice ideas !!!
+// Instruction:
+// * Select the viewport you want to Onion skin.
+// * Press Onionize to snap shot a single frame. 
+//   or select multiple frames from timeslider with <shift> drag. Press Onionize
+// * If you select any MESH object, and Onionize (either multiframe or single frame)
+//   OnionSkin will create an outlined onion skin
+// * The referesh button will update the last set from frames.
+// * fix offseting button, fixes any OnionSkin misalignement.
+//			
+//////////////////////////////////////////////////////////////////////////
+//		Special thanks to:					//
+//									//
+//		* Melt van der Spuy  (Animation Mentor)			//	
+//		* Vincent Florio (Animation Mentor)			//
+//		* Keith Lango						//
+//		* Herman Gonzalas					//
+//		* Lord Ryan Santos					//
+//									//
+//		For feature ideas and testing				//
+//////////////////////////////////////////////////////////////////////////
+//
+//		  Todo:
+//			1. Better multiple frame support.
+//			2. Clean the garbage.
+//			
+//-----------------------------------------------------------------------------------------------------------
+// Main Procedure - onionMain() 
+//-----------------------------------------------------------------------------------------------------------
+//History :
+//0.8.3 - Viewport setFocus debug
+//0.8.2 - Hide controls when Onionizing
+//0.8.1 - Outline bug fix
+//0.8.0 - Outline for selected, viewport selection, multiframe.
+//0.7.9 - Fix for large scenes
+//0.7.8 - Added frame buttons
+//0.7.7 - Bug fix of viewport fit type
+//0.7.6 - Remembers modelPanel
+//0.7.5 - Added fix for Onion offset on wide viewports
+//0.7	- Added multi frame update feature
+//0.6.5 - Added compatibility for Maya 7
+//	snapshot frame size now 640x480
+//	Basic interface added
+//0.5 - Multiframe support
+
+global float $frameArray[];
+global string $modelPanel;
+global int $fitType;
+global int $viewportState[];
+global int $isolateMode;
+
+
+global proc onionMain() {
+
+global float $frameArray[];
+float $currentFrame = `currentTime -q`;
+
+int $arrayCount = `size($frameArray)`;
+$frameArray[$arrayCount] = $currentFrame;
+
+	if ($arrayCount >= 0)
+		button -e -en 1 BTNrefresh;
+
+	float $min = timeRange(0);
+	float $max = timeRange(1);
+	
+	float $range = $max - $min;
+
+	
+	if ($range == 1)
+	{
+		
+		onionEXE ($frameArray[$arrayCount]);
+		
+	}
+	else
+	{
+		clear ($frameArray);
+		int $j=0;
+		
+		for ($i=$min; $i < $max; $i++)
+		{
+			$frameArray[$j] = $i;
+			$j++;
+		}
+		
+		onionRefresh();
+	}
+
+}
+
+global proc onionRefresh() {
+	
+	global string $modelPanel;
+	global float $frameArray[];
+
+	
+	if (objExists ("OnionIP"))
+	{	delete("OnionIP");
+		setFocus $modelPanel;
+	}
+	
+		for ($i=0; $i<size($frameArray); $i++)
+		{
+			onionEXE ($frameArray[$i]);
+		}
+}
+
+
+global proc onionEXE(float $currentFrame)
+{
+
+global string $modelPanel;
+global int $viewportState[];
+global int $checkViewport;
+global int $isolateMode;
+
+float $startFrame = $currentFrame;
+float $endFrame = $currentFrame;
+
+
+string $workspaceDir = `workspace -q -fn`;
+
+//Get current selected object
+$sel = `ls -sl -fl`;
+
+//Store the original image format.
+int $origImageFormat = `getAttr "defaultRenderGlobals.imageFormat"`;
+
+//Set image type to JPG
+setAttr "defaultRenderGlobals.imageFormat" 8;
+
+
+setFocus $modelPanel;
+
+int $toon = $isolateMode;
+
+if ($toon)
+{
+	if (makeToon() == 0)
+		return;
+}
+
+
+//Delete any previous image plane
+if (objExists ("OnionIP"))
+{
+	
+	//Make it transparent
+	setAttr "OnionIP.alphaGain" 1;
+
+	//Bring it to the front
+	setAttr "OnionIP.depth" 500;
+
+	
+	
+	//hide controls
+	$viewportState[0] = `modelEditor -q -nurbsCurves $modelPanel`;
+	modelEditor -e -nurbsCurves 0 $modelPanel;
+	
+	playblast -format image -st $startFrame -et $endFrame -fo -clearCache 1 -filename ($workspaceDir + "/" + "OnionSkinTemp") -viewer 0 -showOrnaments 1 -percent 100;
+	
+	//Unhide
+	modelEditor -e -nurbsCurves $viewportState[0] $modelPanel;
+
+	//Make it transparent
+	setAttr "OnionIP.alphaGain" 0.5;
+
+	//Bring it to the front
+	setAttr "OnionIP.depth" 0.25;
+	
+}else
+{
+
+//hide controls
+$viewportState[0] = `modelEditor -q -nurbsCurves $modelPanel`;
+modelEditor -e -nurbsCurves 0 $modelPanel;
+
+// take snap shot
+playblast -format image -st $startFrame -et $endFrame -clearCache 1 -fo -filename ($workspaceDir + "/" + "OnionSkinTemp") -viewer 0 -showOrnaments 1 -percent 100;
+
+//hide controls
+modelEditor -e -nurbsCurves $viewportState[0] $modelPanel;
+
+}
+//Undo changes
+setAttr "defaultRenderGlobals.imageFormat" $origImageFormat;
+currentTime -e $currentFrame;
+
+// Snap shot fullname and address
+string $imageFileName = "OnionSkinTemp." + (framePadding($currentFrame,4)) + ".jpg";
+string $imageFullName = $workspaceDir + "/" +$imageFileName;
+
+
+// if its the first time, create the Onion Imageplane, "OnionIP"
+if (!(objExists ("OnionIP")))
+{
+	global string $modelPanel;
+	global int $fitType;
+
+	string $camera = `modelPanel -q -camera $modelPanel`;
+	string $cameraShape[] = `listRelatives -s $camera`;
+	modelEditor -e -cameras 1 $modelPanel;
+	camera -e -displayFilmGate off -displayResolution off -overscan 1.0 $camera;
+	createNode -name OnionIP imagePlane;
+	connectAttr OnionIP.message ($cameraShape[0] + ".imagePlane[0]");
+	
+	//Fit to resolution gate
+	if (`camera -q -o $camera`)
+		setAttr OnionIP.fit 1;
+	else 
+		setAttr OnionIP.fit $fitType;
+
+	//Make it transparent
+	setAttr "OnionIP.alphaGain" 0.5;
+
+	//Bring it to the front
+	setAttr "OnionIP.depth" 0.25;
+
+	button -e -en 1 BTNdeonionize;	
+	button -e -en 1 BTNfixOffset;
+	button -e -en 1 BTNhide;
+	button -e -en 1 BTNisolate;
+}
+//Imageplane Update
+setAttr -type "string" OnionIP.imageName $imageFullName;
+
+//Select back objects
+select $sel;
+
+deleteToon();
+
+}
+
+
+global proc string framePadding (int $frameNumber, int $padding) 
+{
+	string $strFN = $frameNumber;
+	string $finalNum1;
+
+	if (size($strFN) < $padding)
+		{
+			int $lessDigit =  $padding - (size($strFN));
+		
+			string $zeroz = "";
+			for ($i=0; $i < $lessDigit; $i++)
+				{
+					$zeroz +="0"; 
+				}
+			
+			$finalNum1 = $zeroz + $strFN;
+		
+		}
+	
+		else $finalNum1 = $strFN;
+		
+		return $finalNum1;
+
+		
+}
+
+
+
+global proc deleteOnion () 
+{
+if (objExists ("OnionIP"))
+{
+	global float $frameArray[];
+	global string $modelPanel;
+	global int $viewportState[];
+	
+	delete OnionIP;
+	button -e -en 0 BTNdeonionize;
+	button -e -en 0 BTNrefresh;
+	button -e -en 0 BTNfixOffset;
+	button -e -en 0 BTNhide;
+	button -e -en 0 BTNisolate;
+
+	clear($frameArray);
+
+
+}
+
+}
+
+
+global proc fixOffset () {
+
+	global int $fitType;
+	
+	if ($fitType == 1)
+	{
+		setAttr OnionIP.fit 0;
+		$fitType = 0;
+	}
+	else
+	{
+		setAttr OnionIP.fit 1;
+		$fitType = 1;
+	}
+
+	
+
+
+	}
+
+global proc stepForward() 
+{
+
+	playButtonStepForward;
+}
+
+global proc stepBack() 
+{
+
+	playButtonStepBackward;
+}
+
+global proc nextKey ()
+{
+	currentTime -edit `findKeyframe -timeSlider -which next`;
+}
+
+global proc prevKey ()
+{
+
+	currentTime -edit `findKeyframe -timeSlider -which previous`;
+}
+
+global proc int makeToon() 
+{
+	
+	global string $modelPanel;
+	global int $viewportState[];
+
+	string $mySel[];
+	string $myToonNode;
+	string $toonShapeNode[];
+	
+		if (objExists("pfxToon*"))
+			delete "pfxToon*";
+	
+	//Show Strokes
+			
+			modelEditor -e -strokes 1 $modelPanel;
+			
+			//Store viewport state
+			
+			$viewportState[0] = `modelEditor -q -nurbsCurves $modelPanel`;
+			$viewportState[1] = `modelEditor -q -nurbsSurfaces $modelPanel`;
+			$viewportState[2]= `modelEditor -q -polymeshes $modelPanel`;
+			$viewportState[3]= `modelEditor -q -subdivSurfaces $modelPanel`;
+			$viewportState[4]= `modelEditor -q -planes $modelPanel`;
+			$viewportState[5]= `modelEditor -q -lights $modelPanel`;
+			$viewportState[6]= `modelEditor -q -joints $modelPanel`;
+			$viewportState[7]= `modelEditor -q -ikHandles $modelPanel`;
+			$viewportState[8]= `modelEditor -q -deformers $modelPanel`;
+			$viewportState[9]= `modelEditor -q -dynamics $modelPanel`;
+			$viewportState[10]= `modelEditor -q -fluids $modelPanel`;
+			$viewportState[11]= `modelEditor -q -hairSystems $modelPanel`;
+			$viewportState[12]= `modelEditor -q -follicles $modelPanel`;
+			$viewportState[13]= `modelEditor -q -locators $modelPanel`;
+			$viewportState[14]= `modelEditor -q -dimensions $modelPanel`;
+			$viewportState[15]= `modelEditor -q -pivots $modelPanel`;
+			$viewportState[16]= `modelEditor -q -handles $modelPanel`;
+			$viewportState[17]= `modelEditor -q -textures $modelPanel`;
+			
+
+	$mySel = `ls -sl -fl`;
+	
+
+	
+	for ($i=0; $i < size($mySel);$i++)
+	{
+		
+		$nodeType = `nodeType $mySel[$i]`;
+		$myObjectShapeNode[0] = $mySel[$i];
+		
+		if ($nodeType == "transform" )
+		{
+		
+			$myObjectShapeNode = `listRelatives -s $mySel[$i]`;
+		
+			$nodeType = `nodeType $myObjectShapeNode[0]`;
+		}
+	
+		
+		if (($nodeType != "mesh") && ($nodeType != "nurbsSurface") )
+		{
+			if ($nodeType == "nurbsCurve")
+			return 1 ;
+			else
+			confirmDialog -title "Confirm" -message "Select Mesh" -button "Okay" -cancelButton "okay" -dismissString "okay";
+			return 0;
+		}
+			
+			$myToonNode = `createNode pfxToon`;
+			print ("toon Node =" + $myToonNode +"\n");
+	
+			$toonShapeNode = `listRelatives -s $myToonNode`;
+			
+
+			connectAttr ($myObjectShapeNode[0]+".worldMatrix[0]") ($toonShapeNode[0]+".inputSurface[0].inputWorldMatrix");
+			
+			if ($nodeType == "mesh")
+				connectAttr ($mySel[$i]+".outMesh") ($toonShapeNode[0]+".inputSurface[0].surface");
+			
+			if ($nodeType == "nurbsSurface")
+			{	
+				
+				$nurbsTesell = `createNode nurbsTessellate`;
+				
+				setAttr ($nurbsTesell + ".caching") 1;
+				connectAttr ($mySel[$i]+".local") ($nurbsTesell+".inputSurface");
+				connectAttr ($mySel[$i]+".explicitTessellationAttributes") ($nurbsTesell+".explicitTessellationAttributes");
+				connectAttr ($mySel[$i]+".curvatureTolerance") ($nurbsTesell+".curvatureTolerance");
+				connectAttr ($mySel[$i]+".uDivisionsFactor") ($nurbsTesell+".uDivisionsFactor");
+				connectAttr ($mySel[$i]+".vDivisionsFactor") ($nurbsTesell+".vDivisionsFactor");
+				connectAttr ($mySel[$i]+".modeU") ($nurbsTesell+".uType");
+				connectAttr ($mySel[$i]+".modeV") ($nurbsTesell+".vType");
+				connectAttr ($mySel[$i]+".numberU") ($nurbsTesell+".uNumber");
+				connectAttr ($mySel[$i]+".numberV") ($nurbsTesell+".vNumber");
+				connectAttr ($mySel[$i]+".useChordHeight") ($nurbsTesell+".useChordHeight");
+				connectAttr ($mySel[$i]+".chordHeight") ($nurbsTesell+".chordHeight");
+				connectAttr ($mySel[$i]+".useChordHeightRatio") ($nurbsTesell+".useChordHeightRatio");
+				connectAttr ($mySel[$i]+".chordHeightRatio") ($nurbsTesell+".chordHeightRatio");
+				connectAttr ($mySel[$i]+".smoothEdge") ($nurbsTesell+".smoothEdge");
+				connectAttr ($mySel[$i]+".smoothEdgeRatio") ($nurbsTesell+".smoothEdgeRatio");
+				connectAttr ($mySel[$i]+".edgeSwap") ($nurbsTesell+".edgeSwap");
+				
+				
+				
+				connectAttr ($nurbsTesell+".outputPolygon") ($myToonNode+".inputSurface[0].surface");
+				
+			}
+			setAttr ($myToonNode+".borderLines") 0;
+			setAttr ($myToonNode+".borderLines") 1;
+			setAttr ($myToonNode+".displayPercent") 0.05;
+			setAttr ($myToonNode+".drawAsMesh") 0;
+			setAttr ($myToonNode+".creaseLines") 0;
+
+			//Hide the desired
+			modelEditor -e -nurbsCurves 0 $modelPanel;
+			modelEditor -e -nurbsSurfaces 0 $modelPanel;
+			modelEditor -e -polymeshes 0 $modelPanel;
+			modelEditor -e -subdivSurfaces 0 $modelPanel;
+			modelEditor -e -planes 0 $modelPanel;
+			modelEditor -e -lights 0 $modelPanel;
+			modelEditor -e -joints 0 $modelPanel;
+			modelEditor -e -ikHandles 0 $modelPanel;
+			modelEditor -e -deformers 0 $modelPanel;
+			modelEditor -e -dynamics 0 $modelPanel;
+			modelEditor -e -fluids 0 $modelPanel;
+			modelEditor -e -hairSystems 0 $modelPanel;
+			modelEditor -e -follicles 0 $modelPanel;
+			modelEditor -e -locators 0 $modelPanel;
+			modelEditor -e -dimensions 0 $modelPanel;
+			modelEditor -e -pivots 0 $modelPanel;
+			modelEditor -e -handles 0 $modelPanel;
+			modelEditor -e -textures 0 $modelPanel;
+			
+			
+			
+					
+		
+		
+	}
+	return 1;
+	
+}
+
+
+global proc deleteToon() {
+	
+	global string $modelPanel;
+	global int $polyMeshState;
+	global int $nurbsSurfaceState;
+	global int $nurbsCurve;
+	global int $viewportState[];
+	
+	if (objExists("pfxToon*"))
+	{
+		delete "pfxToon*";
+	
+	
+
+	//Restore viewport state
+			modelEditor -e -nurbsCurves $viewportState[0] $modelPanel;
+			modelEditor -e -nurbsSurfaces $viewportState[1] $modelPanel;
+			modelEditor -e -polymeshes $viewportState[2] $modelPanel;
+			modelEditor -e -subdivSurfaces $viewportState[3] $modelPanel;
+			modelEditor -e -planes $viewportState[4] $modelPanel;
+			modelEditor -e -lights $viewportState[5] $modelPanel;
+			modelEditor -e -joints $viewportState[6] $modelPanel;
+			modelEditor -e -ikHandles $viewportState[7] $modelPanel;
+			modelEditor -e -deformers $viewportState[8] $modelPanel;
+			modelEditor -e -dynamics $viewportState[9] $modelPanel;
+			modelEditor -e -fluids $viewportState[10] $modelPanel;
+			modelEditor -e -hairSystems $viewportState[11] $modelPanel;
+			modelEditor -e -follicles $viewportState[12] $modelPanel;
+			modelEditor -e -locators $viewportState[13] $modelPanel;
+			modelEditor -e -dimensions $viewportState[14] $modelPanel;
+			modelEditor -e -pivots $viewportState[15] $modelPanel;
+			modelEditor -e -handles $viewportState[16] $modelPanel;
+			modelEditor -e -textures $viewportState[17] $modelPanel;
+	}
+}
+
+global proc float timeRange(int $minmax)
+{
+	string $myString;
+	global string $gPlayBackSlider;
+	string $range = `timeControl -q -rng $gPlayBackSlider`;
+	
+	
+	$range = `substring $range 2 (size($range)-1)`;
+	
+
+	string $buffer[];
+	tokenize $range ":" $buffer;
+	
+
+	return ((float) $buffer[$minmax]);
+
+}
+
+global proc viewportSelect()
+{
+	global string $modelPanel;
+	
+	$modelPanel = `getPanel -wf`;
+	
+	$match = `match "modelPanel" $modelPanel`;
+
+	if ($match != "modelPanel")
+		confirmDialog -title "Confirm" -message "Select a viewport" -button "Okay" -cancelButton "okay" -dismissString "okay";
+	else
+	{
+		$cam = `modelPanel -q -cam $modelPanel`;
+		textField -e -text $cam txtViewport;
+		button -e -en 1 BTNonionize;
+		
+	}
+}
+
+global proc onionHide() {
+	
+	$displayMode =`getAttr OnionIP.displayMode`;
+	
+	if ($displayMode == 0)
+	{
+		setAttr OnionIP.displayMode 3;
+		button -e -width 230 -al "center" -label "Hide" BTNhide; 
+	}
+	else
+	{
+		setAttr OnionIP.displayMode 0;
+		button -e -width 230 -al "center" -label "UnHide" BTNhide;
+	}
+}
+
+global proc isolateMode () {
+	
+	global int $isolateMode;
+	
+	if ($isolateMode)
+	{
+		button -e -w 230 -label "Outline Mode OFF" BTNisolate;		
+		$isolateMode = 0;
+	}else
+	{
+		button -e -w 230 -label "Outline Mode ON" BTNisolate;		
+		$isolateMode = 1;
+	}
+}
+global proc goOnion() {
+	
+	global float $frameArray[];
+	global int $viewportState[];
+	global int $isolateMode;
+	
+	clear($frameArray);
+	clear ($viewportState);
+
+if (`window -exists WM_dbMain`)
+		deleteUI WM_dbMain;
+	
+
+	
+	window -title "OnionSkin v 0.8.3" WM_dbMain;
+	columnLayout;
+		rowColumnLayout -numberOfColumns 5
+			-columnWidth 1 25
+			-columnWidth 2 25
+			-columnWidth 3 130
+			-columnWidth 4 25
+			-columnWidth 5 25;
+		
+		
+		button -c "stepBack" -label "<" BTNstepBack;
+		button -c "prevKey" -label "|<" BTNprevKey;
+		button -en false -width 230 -al "center" -c "onionMain" -label "ONIONIZE" BTNonionize;
+		button -c "nextKey" -label ">|" BTNnextKey;
+		button -c "stepForward" -label ">" BTNstepForward;
+			
+		setParent ..;
+		
+		rowColumnLayout -numberOfColumns 2
+			-columnWidth 1 205
+			-columnWidth 2 25;
+		
+		textField -en false -tx "no viewport selected" -width 200 txtViewport;
+		button -c "viewportSelect" -label "Sel" BTNviewSel;
+
+	setParent ..;
+
+		columnLayout;
+		button -en false -width 230 -al "center" -c "onionHide" -label "Hide" BTNhide;
+		button -en false -width 230 -al "center" -c "onionRefresh" -label "Refresh" BTNrefresh;
+		button -en false -width 230 -al "center" -c "deleteOnion" -label "deleteAll" BTNdeonionize;
+		button -en false -width 230 -al "center" -c "fixOffset" -label "fix Offseting" BTNfixOffset;
+		button -en false -width 230 -al "center" -c "isolateMode" -label "Outline Mode OFF" BTNisolate;
+			
+		$isolateMode = 0;
+		showWindow WM_dbMain;
+		
+		
+		window -e -wh 239 189 -s 1 WM_dbMain;
+		window -q -wh WM_dbMain;
+
+		global int $fitType;
+		
+		$fitType = 0;
+
+		if (objExists ("OnionIP"))
+		{
+			button -e -en 1 BTNdeonionize;
+		}
+		
+		if (size($frameArray) > 0)
+		{
+			button -e -en 1 BTNrefresh;
+			
+		}
+		
+		
+		
+
+}
+
+goOnion();
+

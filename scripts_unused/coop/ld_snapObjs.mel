@@ -1,0 +1,90 @@
+/*
+|
+| Script:     | ld_snapObjs.mel
+| Version:    | 1.0.0
+| Copyright:  | Lee Dunham 2011
+| Written by: | Lee Dunham - leedunham@gmail.com
+| Usage:      | ld_snapObjs;
+| Required:   | ld_snapObjs.mel
+
+| Desc: Simple script to snap selected objects to designated target object, will work on verts also.
+	  Can also specify what axis to snap.
+
+| Todo: Allow min/max/average snap to bounding box.
+	  Further to all/most components.
+	  Rid of need to use specified target.
+
+*/
+
+//----Snap Objects
+global proc ld_snapObjs()
+{
+    if(`window -ex ld_snapObjects_win`)
+        deleteUI ld_snapObjects_win ;
+    window -t "Snap Object" -s false ld_snapObjects_win ;
+    columnLayout -adj true ;
+     text -l "Snap Objects" ;
+     separator -style "in" ;
+     rowLayout -nc 3 -adj 2 ;
+      text -l "Target" ;
+      textField snapTarget_tField ;
+      button -l "<<" -c "string $mySel[]=`ls -sl`;textField -e -tx $mySel[0] snapTarget_tField;" ;
+     setParent.. ;
+     rowLayout -nc 2 ;
+      columnLayout -adj true ;
+       checkBox -l "Translate" -v 1 -onc "checkBoxGrp -e -en 1 snapTransAxis_cBoxGrp" -ofc "checkBoxGrp -e -en 0 snapTransAxis_cBoxGrp" snapTrans_cBox ;
+       checkBoxGrp -numberOfCheckBoxes 3 -cw3 40 40 40 -va3 1 1 1 -vertical -labelArray3 "X" "Y" "Z" snapTransAxis_cBoxGrp ;
+      setParent.. ;
+      columnLayout -adj true ;
+       checkBox -l "Rotate" -v 1 -onc "checkBoxGrp -e -en 1 snapRotAxis_cBoxGrp" -ofc "checkBoxGrp -e -en 0 snapRotAxis_cBoxGrp" snapRot_cBox ;
+       checkBoxGrp -numberOfCheckBoxes 3 -cw3 40 40 40 -va3 1 1 1 -vertical -labelArray3 "X" "Y" "Z" snapRotAxis_cBoxGrp ;
+      setParent.. ;
+     setParent.. ;
+     button -l "Snap" -h 35 -c ld_snapObjsCmd ;
+    setParent.. ;
+    showWindow ld_snapObjects_win ;
+}
+//----Snap Objects Command
+global proc ld_snapObjsCmd()
+{
+    string $mySel[] = `ls -sl` ;
+    string $target=`textField-q -tx snapTarget_tField` ;
+    string $tFlag1="-rp" ;
+    if(`size($mySel)`>= 1 && size($target))
+    {
+        select -r $target ;
+        if(size(`filterExpand -sm 31`)>0)
+            $tFlag1="-t" ;
+        float $pos[] = `xform -q -ws $tFlag1 $target` ;
+        float $rot[] = `xform -q -ws -ro $target` ;    
+        
+        for($i=0;$i<`size($mySel)`;$i++)
+        {
+            select -r $mySel[$i] ;
+            string $objType = `objectType $mySel[$i]` ;
+            if (`checkBox -q -v snapTrans_cBox` == 1)
+            {
+                if(`checkBoxGrp -q -v1 snapTransAxis_cBoxGrp`)
+                    move -a -ws -rpr -x $pos[0] ;
+                if(`checkBoxGrp -q -v2 snapTransAxis_cBoxGrp`)
+                    move -a -ws -rpr -y $pos[1] ;
+                if(`checkBoxGrp -q -v3 snapTransAxis_cBoxGrp`)
+                    move -a -ws -rpr -z $pos[2] ;
+            }
+            if (`checkBox -q -v snapRot_cBox` == 1)    
+            {        
+                if(`checkBoxGrp -q -v1 snapRotAxis_cBoxGrp`)
+                    rotate -ws -x $rot[0] ;
+                if(`checkBoxGrp -q -v2 snapRotAxis_cBoxGrp`)
+                    rotate -ws -y $rot[1];
+                if(`checkBoxGrp -q -v3 snapRotAxis_cBoxGrp`)
+                    rotate -ws -z $rot[2] ;
+            }
+        }
+        select $mySel ;
+    }
+    else
+        error ">>> Need target and objects to snap." ;
+}
+
+ld_snapObjs ;

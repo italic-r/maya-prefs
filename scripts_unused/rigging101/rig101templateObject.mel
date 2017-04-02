@@ -1,0 +1,111 @@
+// rig101templateObject
+//
+//////////////////////////
+//
+// AUTHOR :		Javier "Goosh" Solsona
+//				(jsolsona@digital-dreams.net)
+//
+// Copyright (C) 2003 Rigging 101 - Javier Solsona, Lluis Llobera
+//
+// CREATION DATE :	24/02/2003
+//
+// VERSION :		1.0
+//
+// DESCRIPTION :	Templates or untemplates the objects selected
+//
+// HOW TO USE :		Select and object or number of objects, 
+//				type "rig101templateObjectPlus;" on the command line and click the button to template or untemplate
+//
+//////////////////////////
+
+//////////////////////////
+// Main Procedure
+//		This is the procedure that needs to be called
+//			in order for the script to work
+// //////////////////////////////////////////////
+
+global proc rig101templateObject()
+{
+string $wTemplateObject = "rig101templateObject";
+if (`window -exists $wTemplateObject`) deleteUI -window $wTemplateObject;
+window -title "Rig101 TemplateObject" -minimizeButton true -maximizeButton false -rtf true -wh 500 200 $wTemplateObject;
+columnLayout -adjustableColumn true -cal "left" ColumnLayout;
+
+frameLayout -labelVisible false -marginWidth 10 -marginHeight 10 -height 235 selectFrame;
+columnLayout;
+
+textScrollList -numberOfRows 14 -allowMultiSelection true -w 156 -selectCommand "selectTemplated()" templateObjectsList;
+
+separator -height 5 -st none;
+gridLayout -numberOfColumns 2 -cw 80 -ch 20;
+button -label "Template" -align "center" -w 75 -c "gTemplate()";
+button -label "Untemplate" -align "center" -w 75 -c "gUnTemplate()";
+
+getTemplateObjects();
+
+showWindow $wTemplateObject;
+}
+
+//////////////////////////
+//	PROC:	getTemplateObjects
+//	
+// //////////////////////////////////////////////
+
+global proc getTemplateObjects()
+{
+string $allObjects[];
+$allObjects = `ls -as`;
+
+for($obj in $allObjects)
+{
+	if (`getAttr ($obj+".template")`)
+		textScrollList -e -a $obj templateObjectsList; 
+
+}
+}
+
+//////////////////////////
+//	PROC:	selectTemplated
+//	
+// //////////////////////////////////////////////
+
+global proc selectTemplated() {
+
+string $selectedItems[] = `textScrollList -q -selectItem templateObjectsList`;
+
+select $selectedItems;
+}
+
+//////////////////////////
+//	PROC:	selectTemplated
+//	
+// //////////////////////////////////////////////
+
+global proc gUnTemplate() {
+
+string $allObjects[];
+$allObjects = `ls -sl`;
+
+for($obj in $allObjects)
+{
+	setAttr ($obj+".template") 0;
+	textScrollList -e -ri $obj templateObjectsList; 
+}
+}
+
+//////////////////////////
+//	PROC:	selectTemplated
+//	
+// //////////////////////////////////////////////
+
+global proc gTemplate() {
+
+string $allObjects[];
+$allObjects = `ls -sl`;
+
+for($obj in $allObjects)
+{
+	setAttr ($obj+".template") 1;
+	textScrollList -e -a $obj templateObjectsList; 
+}
+}

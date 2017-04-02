@@ -1,0 +1,65 @@
+/*
+/////////////////////////////////////////////////////////////////////////////
+
+ackSnapEndKeyValues 1.0			
+10/31/07
+Aaron Koressel	
+www.aaronkoressel.com
+				
+With selected curves, snaps the last key's value to the first key's
+value (or vice versa).  Useful for making sure keys line up correctly
+for cycles.  Not the same as copying the first key to the last: since
+this works on each curve independently, it's ok if your curves are offset
+in time.
+
+Use ackSetup to switch directions.  
+"left" - snaps last key to first key (default)
+"right" - snaps first key to last key
+
+////////////////////////////////////////////////////////////////////////////
+*/
+
+global proc ackSnapEndKeyValues() {
+	global string $ackSetup_pivot;
+	
+	//set default value if variable doesn't exist
+	if ($ackSetup_pivot == ""){
+		$ackSetup_pivot = "left";
+	}
+
+	//only run if at least one key is selected
+	$keyCount = `keyframe -an keys -q -keyframeCount`;
+	if ($keyCount != 0){	
+	
+		//loop over selected curves and process independently
+		string $selectedCurves[] = `keyframe -selected -q -name`;
+		for ($c = 0; $c < size($selectedCurves); $c++){
+		
+			//channel to use for this pass
+			$channel = $selectedCurves[$c];
+		
+			//get arrays
+			$valArray = `keyframe -q -valueChange $channel`;
+			$indexArray = `keyframe -q -indexValue $channel`;
+				
+					
+			//assign keys
+			switch ($ackSetup_pivot){
+				case "left":
+				case "last":
+					//snap last key to first key
+					$matchKey = $valArray[0];
+					keyframe -index $indexArray[size($indexArray)-1] -valueChange $matchKey $channel;
+					break;
+					
+				case "right":
+					//snap first key to last key
+					$matchKey = $valArray[size($valArray)-1];
+					keyframe -index $indexArray[0] -valueChange $matchKey $channel;
+					break;		
+			}
+			
+		
+		}
+	}
+}

@@ -1,0 +1,15 @@
+sliderMode = "blendToNeighbors"
+microTransform = "ultraSlow"
+lastUsedVersion = "2.01"
+animationBarLastState = False
+cycleCheck = False
+topWaveform = False
+displayAffected = False
+playbackAllViews = True
+scrubbingUndo = False
+zoomTowardsCenter = True
+tumbleOnObjects = False
+autoFramePlaybackRange = False
+selectionCounter = False
+saveAfterPlayblasting = False
+undoQueue = False

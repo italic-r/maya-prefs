@@ -1,0 +1,257 @@
+// -------------- Created By Jacob Moreno (JacobAnimation.com) ---------------
+// ---------------------------------------------------------------------------
+// ------------------------- Instructions for JAM: ---------------------------
+// ---------------------------------------------------------------------------
+// 1. Select an object to act as the driver and another to be driven by it
+// 2. Run the script or type "JAM" without quotation marks in the command line
+// 3. Voilà!
+
+global proc JAM() {
+    if (`menuItem -q -cb toggleCreateNurbsPrimitivesAsToolItem` == 1) {
+        menuItem -e -cb 0 toggleCreateNurbsPrimitivesAsToolItem;
+        toggleCreateNurbsPrimitiveAsTool;
+    }
+    string $selectedObjects[] = `ls -sl`;
+    string $controllingObject = $selectedObjects[0];
+    string $controlledObject = $selectedObjects[1];
+    string $parentObject;
+    string $childObject;
+    // Create a prompt dialog for user input
+    string $constraintStructure = `confirmDialog
+    -title "Constraint Structure"
+    -message "Choose the structure of the constraint:"
+    -button "Locator | Circle"
+    -button "Circle | Locator"
+    -button "Locator | Locator"
+    -button "Circle | Circle"
+    -button "Cancel"
+    -defaultButton "Locator | Circle"
+    -cancelButton "Cancel"
+    -dismissString "Cancel"`;
+    // Locator | Circle
+    if ($constraintStructure == "Locator | Circle") {
+        string $driver = `promptDialog
+        -title "Name Object"
+        -message "Specify Locator Name:"
+        -button "OK"
+        -button "Cancel"
+        -defaultButton "OK"
+        -cancelButton "Cancel"
+        -dismissString "Cancel"`;
+        // OK button pressed
+        if ($driver == "OK") {
+            $parentObject = `promptDialog -query -text`;
+            CreateLocator;
+            rename $parentObject;
+            string $driven = `promptDialog
+            -title "Name Object"
+            -message "Specify Circle Name:"
+            -button "OK"
+            -button "Cancel"
+            -defaultButton "OK"
+            -cancelButton "Cancel"
+            -dismissString "Cancel"`;
+            if ($driven == "OK") {
+                $childObject = `promptDialog -query -text`;
+                while ($childObject == $parentObject) {
+                    string $driven = `promptDialog
+                    -title "Name Object"
+                    -message "Name Must Be Unique\n------------------------\nSpecify Circle Name:"
+                    -button "OK"
+                    -button "Cancel"
+                    -defaultButton "OK"
+                    -cancelButton "Cancel"
+                    -dismissString "Cancel"`;
+                    $childObject = `promptDialog -query -text`;
+                }
+                CreateNURBSCircle;
+                rename $childObject;
+                select $childObject;
+                select -tgl $parentObject;
+                parent;
+                select $controllingObject;
+                select -tgl $parentObject;
+                parentConstraint;
+                select $controlledObject;
+                select -tgl $childObject;
+                parentConstraint;
+                parentConstraint -rm;
+                select $childObject;
+                select -tgl $controlledObject;
+                parentConstraint;
+            }
+            else {
+                delete $parentObject;
+            }
+        }
+    }
+    else if ($constraintStructure == "Circle | Locator") {
+        string $driver = `promptDialog
+        -title "Name Object"
+        -message "Specify Circle Name:"
+        -button "OK"
+        -button "Cancel"
+        -defaultButton "OK"
+        -cancelButton "Cancel"
+        -dismissString "Cancel"`;
+        // OK button pressed
+        if ($driver == "OK") {
+            $parentObject = `promptDialog -query -text`;
+            CreateNURBSCircle;
+            rename $parentObject;
+            string $driven = `promptDialog
+            -title "Name Object"
+            -message "Specify Locator Name:"
+            -button "OK"
+            -button "Cancel"
+            -defaultButton "OK"
+            -cancelButton "Cancel"
+            -dismissString "Cancel"`;
+            if ($driven == "OK") {
+                $childObject = `promptDialog -query -text`;
+                while ($childObject == $parentObject) {
+                    string $driven = `promptDialog
+                    -title "Name Object"
+                    -message "Name Must Be Unique\n------------------------\nSpecify Locator Name:"
+                    -button "OK"
+                    -button "Cancel"
+                    -defaultButton "OK"
+                    -cancelButton "Cancel"
+                    -dismissString "Cancel"`;
+                    $childObject = `promptDialog -query -text`;
+                }
+                CreateLocator;
+                rename $childObject;
+                select $childObject;
+                select -tgl $parentObject;
+                parent;
+                select $controllingObject;
+                select -tgl $parentObject;
+                parentConstraint;
+                select $controlledObject;
+                select -tgl $childObject;
+                parentConstraint;
+                parentConstraint -rm;
+                select $childObject;
+                select -tgl $controlledObject;
+                parentConstraint;
+            }
+            else {
+                delete $parentObject;
+            }
+        }
+    }
+    else if ($constraintStructure == "Locator | Locator") { 
+        string $driver = `promptDialog
+        -title "Name Object"
+        -message "Specify Locator 1 Name:"
+        -button "OK"
+        -button "Cancel"
+        -defaultButton "OK"
+        -cancelButton "Cancel"
+        -dismissString "Cancel"`;
+        // OK button pressed
+        if ($driver == "OK") {
+            $parentObject = `promptDialog -query -text`;
+            CreateLocator;
+            rename $parentObject;
+            string $driven = `promptDialog
+            -title "Name Object"
+            -message "Specify Locator 2 Name:"
+            -button "OK"
+            -button "Cancel"
+            -defaultButton "OK"
+            -cancelButton "Cancel"
+            -dismissString "Cancel"`;
+            if ($driven == "OK") {
+                $childObject = `promptDialog -query -text`;
+                while ($childObject == $parentObject) {
+                    string $driven = `promptDialog
+                    -title "Name Object"
+                    -message "Name Must Be Unique\n------------------------\nSpecify Locator 2 Name:"
+                    -button "OK"
+                    -button "Cancel"
+                    -defaultButton "OK"
+                    -cancelButton "Cancel"
+                    -dismissString "Cancel"`;
+                    $childObject = `promptDialog -query -text`;
+                }
+                CreateLocator;
+                rename $childObject;
+                select $childObject;
+                select -tgl $parentObject;
+                parent;
+                select $controllingObject;
+                select -tgl $parentObject;
+                parentConstraint;
+                select $controlledObject;
+                select -tgl $childObject;
+                parentConstraint;
+                parentConstraint -rm;
+                select $childObject;
+                select -tgl $controlledObject;
+                parentConstraint;
+            }
+            else {
+                delete $parentObject;
+            }
+        }
+    }
+    else if ($constraintStructure == "Circle | Circle") { 
+        string $driver = `promptDialog
+        -title "Name Object"
+        -message "Specify Circle 1 Name:"
+        -button "OK"
+        -button "Cancel"
+        -defaultButton "OK"
+        -cancelButton "Cancel"
+        -dismissString "Cancel"`;
+        // OK button pressed
+        if ($driver == "OK") {
+            $parentObject = `promptDialog -query -text`;
+            CreateNURBSCircle;
+            rename $parentObject;
+            string $driven = `promptDialog
+            -title "Name Object"
+            -message "Specify Circle 2 Name:"
+            -button "OK"
+            -button "Cancel"
+            -defaultButton "OK"
+            -cancelButton "Cancel"
+            -dismissString "Cancel"`;
+            if ($driven == "OK") {
+                $childObject = `promptDialog -query -text`;
+                while ($childObject == $parentObject) {
+                    string $driven = `promptDialog
+                    -title "Name Object"
+                    -message "Name Must Be Unique\n------------------------\nSpecify Circle 2 Name:"
+                    -button "OK"
+                    -button "Cancel"
+                    -defaultButton "OK"
+                    -cancelButton "Cancel"
+                    -dismissString "Cancel"`;
+                    $childObject = `promptDialog -query -text`;
+                }
+                CreateNURBSCircle;
+                rename $childObject;
+                select $childObject;
+                select -tgl $parentObject;
+                parent;
+                select $controllingObject;
+                select -tgl $parentObject;
+                parentConstraint;
+                select $controlledObject;
+                select -tgl $childObject;
+                parentConstraint;
+                parentConstraint -rm;
+                select $childObject;
+                select -tgl $controlledObject;
+                parentConstraint;
+            }
+            else {
+                delete $parentObject;
+            }
+        }
+    }
+}
+JAM;

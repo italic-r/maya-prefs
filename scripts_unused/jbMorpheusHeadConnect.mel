@@ -1,0 +1,157 @@
+/*
+TITLE: jbMorpheusHeadConnect
+VERSION: 1.0
+AUTHOR:Josh Burton
+	   www.joshburton.com
+DATE: September 23, 2010
+
+DESCRIPTION:
+Script for adding a Morpheus Head to the body rig.
+
+DISCLAIMER:
+If your computer explodes, I didn't do it.
+
+HOW TO USE:
+1. Run script
+
+
+LIMITATIONS:
+1. Needs some setup stuff in the rig file
+
+HISTORY:
+08.27.10 - BIRTH!
+10.10.10 - added lock down stuff
+
+*/
+global proc jbMorpheusHeadConnect ()
+{
+select -cl;
+
+	//checks if the $hair was already added
+	if(`attributeExists "headAdded" head_mover_ctrl`){ 
+			warning ("This head is already connected") ;	 
+	}	else { 
+		
+//Positions Head
+float $rotHead[]=`xform -q -ws -rotation headPlace_locMe`;
+xform -ws -rotation $rotHead[0] $rotHead[1] $rotHead[2] head_mover_ctrl;
+float $transHead[]=`xform -q -ws -rp headPlace_locMe`;
+move -rpr $transHead[0] $transHead[1] $transHead[2] head_mover_ctrl;
+
+//Positions Controls from Head in UI
+float $rotCtrls[]=`xform -q -ws -rotation FacialMorphDeformation_ctrls_grp_locMe`;
+xform -ws -rotation $rotCtrls[0] $rotCtrls[1] $rotCtrls[2] FacialMorphDeformation_ctrls_grp;
+float $transCtrls[]=`xform -q -ws -rp FacialMorphDeformation_ctrls_grp_locMe`;
+move -rpr $transCtrls[0] $transCtrls[1] $transCtrls[2] FacialMorphDeformation_ctrls_grp;
+
+//Connect head scale
+connectAttr head_morph_anim.scaleY head_mover_ctrl.scaleX;
+connectAttr head_morph_anim.scaleY head_mover_ctrl.scaleY;
+connectAttr head_morph_anim.scaleY head_mover_ctrl.scaleZ;
+
+//Deletes unnecessaryFaceStuff
+select qssUnecessaryFaceStuff;
+delete;
+
+//Constrain head to Body
+parentConstraint -mo -weight 1 head_2_skin ConstrainMeToNeck_grp;
+
+//Parent Stuff
+parent FacialRig_grp Rigs_grp;
+parent FacialMorphDeformation_ctrls_grp morphOmatic_grp;
+parent faceAttributeHolders_grp Settings_grp;
+
+//Connect attributes
+connectAttr all_anim.faceRig faceVisibilityAttributeHolder.faceRig;
+connectAttr all_anim.eyeRig faceVisibilityAttributeHolder.eyeRig;
+connectAttr all_anim.faceShapers faceVisibilityAttributeHolder.faceShapers;
+
+connectAttr all_anim.face faceSmoothingAttributeHolder.face;
+connectAttr all_anim.faceStuff faceSmoothingAttributeHolder.faceStuff;
+
+//lock down selection stuff
+setAttr "all_anim|Geo_grp.overrideEnabled" 1;
+setAttr "FacialRig_grp|Geo_grp.overrideEnabled" 1;
+setAttr "DeformationRig.overrideEnabled" 1;
+setAttr "pelvis_skin.overrideEnabled" 1;
+
+//locks down joints from selection
+/*SelectAllJoints;
+string $joints[] =`ls -sl`;
+for ($joint in $joints) {
+	setAttr ($joint+".overrideEnabled") 1;
+	setAttr ($joint+".overrideDisplayType") 2;
+
+}
+
+select -cl;
+*/
+
+//eyeIK_left_anim_grp.translateX = masterIKToEyeIK_left_distShape.distance/all_anim.globalScale;
+
+//Fixin eye scale stuff when scaling the full character on full body rig
+	//creates md node
+	string $leftEyeMdNode = `createNode multiplyDivide -n ("leftEyeScaleFix_mdNode")`;
+	string $rightEyeMdNode = `createNode multiplyDivide -n ("rightEyeScaleFix_mdNode")`;
+	string $rightEyeDistanceNegativer = `createNode multiplyDivide -n ("rightEyeDistanceNegativer_mdNode")`;
+
+	setAttr ($leftEyeMdNode+".operation") 2;
+	setAttr ($rightEyeMdNode+".operation") 2;
+
+	//deletes existing connection
+	CBdeleteConnection "eyeIK_left_anim_grp.tx";
+	CBdeleteConnection "eyeIK_right_anim_grp.tx";
+
+	//inputs the distance
+	connectAttr masterIKToEyeIK_left_distShape.distance ($leftEyeMdNode+".input1X");
+	connectAttr masterIKToEyeIK_right_distShape.distance ($rightEyeMdNode+".input1X");
+
+	//connects world scale
+	connectAttr all_anim.scaleY ($leftEyeMdNode+".input2X");
+	connectAttr all_anim.scaleY ($rightEyeMdNode+".input2X");
+
+	//connects reverser to right side
+	connectAttr ($rightEyeMdNode+".outputX") ($rightEyeDistanceNegativer+".input1X");
+	setAttr ($rightEyeDistanceNegativer+".input2X") -1;
+
+	//connects results
+	connectAttr ($leftEyeMdNode+".outputX") eyeIK_left_anim_grp.translateX;
+	connectAttr ($rightEyeDistanceNegativer+".outputX") eyeIK_right_anim_grp.translateX;
+//////////////
+
+//moves the custom geo controllerje
+select -r CustomGeo_anim ;
+move -r -48.182798 0 0 ;
+move -r 0 9.43593 0 ;
+move -r -3.49589 0 0 ;
+move -r 0 2.353285 0 ;
+setAttr -lock true -keyable false -channelBox false "CustomGeo_anim.tx";
+setAttr -lock true -keyable false -channelBox false "CustomGeo_anim.ty";
+setAttr -lock true -keyable false -channelBox false "CustomGeo_anim.tz";
+setAttr -lock true -keyable false -channelBox false "CustomGeo_anim.rx";
+setAttr -lock true -keyable false -channelBox false "CustomGeo_anim.ry";
+setAttr -lock true -keyable false -channelBox false "CustomGeo_anim.rz";
+setAttr -lock true -keyable false -channelBox false "CustomGeo_anim.sx";
+setAttr -lock true -keyable false -channelBox false "CustomGeo_anim.sy";
+setAttr -lock true -keyable false -channelBox false "CustomGeo_anim.sz";
+setAttr -lock true -keyable false -channelBox false "CustomGeo_anim.v";
+select -cl  ;
+
+
+//Set some attributes
+setAttr NeckCircleCtrl_anim.tx -1;
+setAttr bodyMorphing_AttributeHolder.bodyFix 1;
+
+connectAttr FacialRigPoseBuffer.jawOpen bodyMorphing_AttributeHolder.bodyJawOpenFix;
+
+
+//add tag to know the head has been processed
+	addAttr -ln "headAdded"  -dt "string" head_mover_ctrl;
+}
+
+
+
+
+
+}
+

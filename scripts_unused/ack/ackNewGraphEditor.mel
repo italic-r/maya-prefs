@@ -1,0 +1,47 @@
+//////////////////////////////////////////////////////////
+//	ackNewGraphEditor 1.0			
+//	5/30/05					
+//	Aaron Koressel				
+//						
+//	Intelligently displays a new graph editor.  If one
+//  already exists but is invisible, it shows that one.
+//  Otherwise it creates a new one each time it's run.
+//  Current Maya functionality will only display one
+//  graph at a time.
+//////////////////////////////////////////////////////////
+global proc ackNewGraphEditor() {
+	string $x;
+	string $cur = 0;
+	int $max = 0;
+	int $fDone = 0;
+
+	//check for hidden panels and display that before creating a new one
+	string $invisiblePanels[] = `getPanel -invisiblePanels`;
+	for ($i in $invisiblePanels) {
+		$x = `match "graphEditor*" $i`;
+		if ($x != "") {
+			scriptedPanel -e -tearOff $i;
+			$fDone = 1;
+		}
+		if ($fDone == 1){break;}
+	}
+	
+	if ($fDone == 0){	//will have to create a new one
+		//ensure a unique name
+		string $existingPanels[] = `getPanel -type scriptedPanel`;
+
+		for ($i in $existingPanels) {
+			$x = `match "graphEditor*" $i`;
+			if ($x != "") {
+				$cur = `substring $i 12 (size ($i))`;
+				if (((int)$cur) > $max) {$max = $cur;}
+			}
+		}
+
+		string $newGraph = "Graph Editor"+(((int)$cur)+1);
+
+		//create graph
+		tearOffPanel $newGraph "graphEditor" true;
+	}
+
+}

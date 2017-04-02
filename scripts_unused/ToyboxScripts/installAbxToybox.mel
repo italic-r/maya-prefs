@@ -1,0 +1,19 @@
+
+string $userAppDir = `internalVar -uad`;
+string $userScriptDir = `internalVar -usd`;
+string $currentDir = `pwd`;
+
+string $subFolders[] = `getFileList -folder ($currentDir+"/Toybox Scripts/")`;
+for ($each in $subFolders){
+	if (`filetest -d ($currentDir+"/Toybox Scripts/"+$each)`){
+		sysFile -makeDir ($userAppDir+"/Toybox Scripts/"+$each);
+		string $subFiles[] = `getFileList -fs "*.*" -folder ($currentDir+"/Toybox Scripts/"+$each+"/")`;
+		for ($every in $subFiles){
+			 sysFile -cp ($userAppDir+"/Toybox Scripts/"+$each+"/"+$every) ($currentDir+"/Toybox Scripts/"+$each+"/"+$every) ;
+			 print ("Copying "+$currentDir+"/Toybox Scripts/"+$each+"/"+$every+" to "+$userAppDir+"Toybox Scripts/"+$each+"/"+$every+"\n");
+		}
+	}
+}
+//print ("Copying "+$currentDir+"/showToybox.mel to "+$userScriptDir+"/showToybox.mel\n");
+sysFile -cp ($userScriptDir+"/showToybox.mel") ($currentDir+"/showToybox.mel");
+rehash;

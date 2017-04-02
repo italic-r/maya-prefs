@@ -1,0 +1,6 @@
+Simply a list of plugins I have installed.
+
+ngSkinTools		http://www.ngskintools.com/downloads/
+mGear			https://gumroad.com/l/mgear
+SHAPES			http://www.braverabbit.de/shapes/try/
+AnimSchoolPicker	http://www.animschool.com/DownloadOffer.aspx

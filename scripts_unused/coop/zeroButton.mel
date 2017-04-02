@@ -1,0 +1,9 @@
+////////////////////////////////////////////////////////////////////////////////
+// Generated with MELANIE v0.4
+////////////////////////////////////////////////////////////////////////////////
+window -height 240 -width 320;
+	columnLayout -columnWidth 312 -height 221 -width 312;
+		button -command "rotate -os 0 0 0 " -height 28 -label "rotate 0" -width 80;
+		button -command "move -os 0 0 0 " -height 28 -label "translate 0" -width 80;
+
+showWindow;

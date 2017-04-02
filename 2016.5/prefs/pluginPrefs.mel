@@ -1,0 +1,15 @@
+//Maya Preference 2016.5 (Release 1)
+//
+//
+evalDeferred("autoLoadPlugin(\"\", \"dgProfiler\", \"dgProfiler\")");
+evalDeferred("autoLoadPlugin(\"\", \"atomImportExport\", \"atomImportExport\")");
+evalDeferred("autoLoadPlugin(\"\", \"AbcImport\", \"AbcImport\")");
+evalDeferred("autoLoadPlugin(\"\", \"ikSpringSolver\", \"ikSpringSolver\")");
+evalDeferred("autoLoadPlugin(\"\", \"autoLoader\", \"autoLoader\")");
+evalDeferred("autoLoadPlugin(\"\", \"ik2Bsolver\", \"ik2Bsolver\")");
+evalDeferred("autoLoadPlugin(\"\", \"AbcExport\", \"AbcExport\")");
+evalDeferred("autoLoadPlugin(\"\", \"objExport\", \"objExport\")");
+evalDeferred("autoLoadPlugin(\"\", \"cvwrap\", \"cvwrap\")");
+evalDeferred("autoLoadPlugin(\"\", \"ngSkinTools\", \"ngSkinTools\")");
+evalDeferred("autoLoadPlugin(\"\", \"quatNodes\", \"quatNodes\")");
+evalDeferred("autoLoadPlugin(\"\", \"fbxmaya\", \"fbxmaya\")");

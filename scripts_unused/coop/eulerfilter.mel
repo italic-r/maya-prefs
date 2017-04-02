@@ -1,0 +1,7 @@
+//euler filter 
+global proc eulerFilter()
+{ 
+	string $A[] = `ls -sl`; 
+	performEulerFilter graphEditor1FromOutliner; 
+	filterCurve  $A.rotateZ $A.rotateY $A.rotateX;
+}  

@@ -1,0 +1,204 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: Pose 2 Shelf v1.1
+''    Author: Erick Miller
+''    Last Updated: May 30, 2002
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=animation#1702
+''  
+''  History:
+''    Pose 2 Shelf v1.0 on May 6, 2002 by Erick Miller
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+
+
+
+/*
+
+Title: pose2shelf.mel
+Author: Erick Miller
+Email: erickmiller@yahoo.com
+Date: May 2002
+Version: 1.1
+Compatibility: Maya v3 & v4 +
+
+Install Instructions:
+
+	1. Copy the mel script (pose2shelf.mel) to your local user/scripts folder:
+		(win2000 example path to mel scripts folder): 
+		C:\Documents and Settings\*USERNAME*\My Documents\maya\#.#\scripts	  
+	
+   	2. MAKE SURE YOUR SHELF IS VISBLE!
+   		
+   		Then just source the script in the script editor, or type:
+   								  
+			source pose2shelf.mel;
+								  
+	into the Maya command line, and hit enter.
+ 	You should now have a new shelf button, labeld "p2s" click it, and you will
+ 	get the script's Ui... 	The buttons all have roll-over annotations, and 
+ 	should be pretty self explanatory. You must have an object selected, 
+ 	and your shelf visible for this script to work. enjoy!
+
+*/
+
+
+
+global proc pose2shelf()
+{
+	if(`window -ex custButtonWin`){ deleteUI custButtonWin; }
+	else if(`windowPref -ex custButtonWin`){ windowPref -r custButtonWin; }
+	window 
+		-w 110
+		-title ("p2s") 
+		-s 0 custButtonWin;
+	columnLayout; 
+
+	text "Optional Label:";
+	textField 
+	-w 100
+	"_custButtonWin";
+
+	button 
+	-h 35
+	-w 100
+	-ann "Save Selected Node's \"setAttr\" Commands to a Shelf Button."
+	-label "pose2shelf."
+	-c ("saveSelectedNodeAttrsToShelf( `textField -q -tx _custButtonWin` );");
+	text "Or";
+
+	button 
+	-w 100
+	-ann "Save Current Selection's Selection Commands as a Shelf Button."
+	-label "selection2shelf."
+	-c ("saveNodeSelectionToShelf( `textField -q -tx _custButtonWin` );");
+
+	showWindow;
+}
+
+
+
+global proc string saveSelectedNodeAttrsToShelf(string $label)
+{
+	string $selected[] = `ls -sl`;
+	if ( !`size($selected)` ){
+		warning "Nothing is currently selected. No shelf button created, or action taken.";
+		return "Nothing is currently selected. No shelf button created, or action taken.";	
+	}
+	string $safeShelfCommand;
+	for ($node in $selected)
+	{
+		string $keyableAttrs[] = `listAttr -r -w -k -u -v -m -s $node`;
+		if ( !`size($keyableAttrs)`){
+			continue;	
+		} 
+		for ($attr in $keyableAttrs)
+		{
+			string $value = string ( `getAttr ($node+"."+$attr)` );
+			$safeShelfCommand = ("catch (`setAttr \""+$node +"."+$attr+"\" "+$value+"`);\n")+$safeShelfCommand;
+		}
+	}
+
+	global string $gShelfTopLevel;
+	if (`tabLayout -exists $gShelfTopLevel`)
+	{
+		print "\n\n\n";	
+		print "// Set Attribute commands put into shelf: \n\n";
+		print $safeShelfCommand;
+		print "\n";
+		if ($label == ""){ $label = "pose.";  }
+		shelfButton
+			-parent ($gShelfTopLevel + "|" + `tabLayout -q -st $gShelfTopLevel`)
+			-enableCommandRepeat 1
+			-enable 1
+			-width 34
+			-height 34
+			-manage 1
+			-visible 1
+			-annotation $label
+			-label $label 
+			-iol $label
+			-image1 "menuIconCharacters.xpm" 
+			-style "iconOnly" 
+			-command $safeShelfCommand;
+	}
+	else
+	{
+		error "You need a visible shelf for this work, dude!  Show your shelf, man!";
+	}
+	return $safeShelfCommand;
+}
+
+
+
+
+global proc string saveNodeSelectionToShelf(string $label)
+{
+	string $selected[] = `ls -sl`;
+	if ( !`size($selected)` ){
+		warning "Nothing is currently selected. No shelf button created, or action taken.";
+		return "Nothing is currently selected. No shelf button created, or action taken.";	
+	}
+	string $safeShelfCommand;
+	for ($node in $selected)
+	{
+		$safeShelfCommand = ("catch (`select -add \""+$node+"\"`);\n")+$safeShelfCommand;
+	}
+	$safeShelfCommand = "select -cl;\n"+$safeShelfCommand;
+	global string $gShelfTopLevel;
+	if (`tabLayout -exists $gShelfTopLevel`)
+	{
+		print "\n\n\n";	
+		print "// Selection commands put into shelf: \n\n";
+		print $safeShelfCommand;
+		print "\n";
+		if ($label == ""){ $label = "select.";  }
+		shelfButton
+			-parent ($gShelfTopLevel + "|" + `tabLayout -q -st $gShelfTopLevel`)
+			-enableCommandRepeat 1
+			-enable 1
+			-width 34
+			-height 34
+			-manage 1
+			-visible 1
+			-annotation $label
+			-label $label 
+			-iol $label
+			-image1 "aselect.xpm" 
+			-style "iconOnly" 
+			-command $safeShelfCommand;
+	}
+	else
+	{
+		error "You need a visible shelf for this work, dude!  Show your shelf, man!";
+	}
+	return $safeShelfCommand;
+}
+
+
+
+global proc install_pose2shelf()
+{
+	global string $gShelfTopLevel;
+	if (`tabLayout -exists $gShelfTopLevel`)
+	{
+		shelfButton
+		-parent ($gShelfTopLevel + "|" + `tabLayout -q -st $gShelfTopLevel`)
+		-label "p2s"
+		-iol "p2s"
+		-command "pose2shelf"
+		-image1 "menuiconcopy.xpm"
+		-annotation "Quickly and easily label and save selected pose or selection commands for characters and controls as re-usable shelf buttons.";
+	}
+	else{
+		error "You need a shelf for this Install to complete!  Show your shelf, man!";
+	}
+}
+
+install_pose2shelf;

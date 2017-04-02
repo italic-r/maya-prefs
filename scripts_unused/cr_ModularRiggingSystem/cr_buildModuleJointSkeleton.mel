@@ -1,0 +1,199 @@
+//---------------------------------------------------------------------------
+// cr_buildModuleJointSkeleton.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:	
+//		build skeleton from joint modules
+//
+// REQUIRES:
+//		cr_buildModuleJointSkeletonLib.mel
+//		cr_charUtilsLib.mel
+//		libString.mel
+//
+// AUTHOR:
+//		Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+cr_buildModuleJointSkeletonLib;
+cr_charUtilsLib;
+libString;
+
+global proc cr_buildModuleJointSkeleton() {
+	return;
+	}
+
+global proc string cr_getParentAttrModuleComponants(string $obj)
+{
+string $parentGrp;
+string $strip;
+string $parent;
+if(`attributeExists "parent" $obj`)
+	{
+	$parentGrp = `getAttr ($obj+".parent")`;
+	$strip = `objGetPrefix $parentGrp`;
+	$parent = ($strip + "_jnt");		
+	}
+return $parent;
+}
+
+global proc cr_buildModuleSkeleton()
+{
+
+string $sel[] = `ls -sl`;
+if(size($sel)>0)
+{
+string $result = `confirmDialog 
+	-title "Build Skeleton"
+	-message "The current operation will convert all different modules into actual Joints and prepare skeleton for animation rig installation.\n\nAre you sure you want continue?"
+	-messageAlign "center"
+	-button "OK" -button "Cancel"
+	-defaultButton "OK" -cancelButton "Cancel"
+	-dismissString "Cancel"`;
+if ($result == "Cancel")
+	error "operation canceled";
+
+if ($result == "OK") 
+	{
+	hide $sel[0];
+	
+	string $moduleList ;
+	
+	if(`attributeExists "spine" $sel[0]`)
+		{
+		string $spineModule = `getAttr ($sel[0]+".spine")`;
+		$moduleList += ($spineModule+" ");
+		}
+	
+	if(`attributeExists "neckHead" $sel[0]`)
+		{
+		string $neckModule = `getAttr ($sel[0]+".neckHead")`;
+		$moduleList += ($neckModule+" ");
+		}
+	
+	if(`attributeExists "arm" $sel[0]`)
+		{
+		string $armModule = `getAttr ($sel[0]+".arm")`;
+		$moduleList += ($armModule+" ");
+		}
+	
+	if(`attributeExists "leg" $sel[0]`)
+		{
+		string $legModule = `getAttr ($sel[0]+".leg")`;
+		$moduleList += ($legModule+" ");
+		}
+	
+	if(`attributeExists "tentacle" $sel[0]`)
+		{
+		string $headModule = `getAttr ($sel[0]+".tentacle")`;
+		$moduleList += ($headModule+" ");
+		}	
+	
+	string $moduleInf[] = stringToStringArray($moduleList," ");
+	
+	progressWindow -t "building Skeleton" -progress 0 -status ("building skeleton from modules :") -min 0 -max `size $moduleInf` -isInterruptable true;
+	
+	if(`attributeExists "spine" $sel[0]`)
+		{
+		string $spineMainPalcer = `getAttr ($sel[0]+".spine")`;
+		string $spineModuleLists[] = stringToStringArray($spineMainPalcer," ");
+		
+		for($i=0;$i<size($spineModuleLists);$i++)
+			{
+			string $parent = cr_getParentAttrModuleComponants($spineModuleLists[$i]);
+			select -r $spineModuleLists[$i];
+			cr_buildSpineJointSkeleton $parent;
+		
+			if(`progressWindow -q -isCancelled`) { progressWindow -endProgress; undoInfo -state on;return;}
+			progressWindow -e -step 1 -status ("building module skeleton on : "+$spineModuleLists[$i]);		
+			}
+		}
+	
+	if(`attributeExists "neckHead" $sel[0]`)
+		{
+		string $neckMainPalcer = `getAttr ($sel[0]+".neckHead")`;
+		string $neckModuleLists[] = stringToStringArray($neckMainPalcer," ");
+		
+		for($i=0;$i<size($neckModuleLists);$i++)
+			{
+			string $parent = cr_getParentAttrModuleComponants($neckModuleLists[$i]);
+			select -r $neckModuleLists[$i];
+			cr_buildNeckHeadJointSkeleton $parent;
+			
+			if(`progressWindow -q -isCancelled`) { progressWindow -endProgress; undoInfo -state on;return;}
+			progressWindow -e -step 1 -status ("building module skeleton on : "+$neckModuleLists[$i]);			
+			}
+		}
+	
+	if(`attributeExists "leg" $sel[0]`)
+		{
+		string $legMainPalcer = `getAttr ($sel[0]+".leg")`;
+		string $legModuleLists[] = stringToStringArray($legMainPalcer," ");
+		
+		for($i=0;$i<size($legModuleLists);$i++)
+			{
+			string $parent = cr_getParentAttrModuleComponants($legModuleLists[$i]);
+			select -r $legModuleLists[$i];
+			cr_buildLegJointSkeleton $parent;
+			
+			if(`progressWindow -q -isCancelled`) { progressWindow -endProgress; undoInfo -state on;return;}
+			progressWindow -e -step 1 -status ("building module skeleton on : "+$legModuleLists[$i]);			
+			}
+		}
+	
+	if(`attributeExists "arm" $sel[0]`)
+		{
+		string $armMainPalcer = `getAttr ($sel[0]+".arm")`;
+		string $armModuleLists[] = stringToStringArray($armMainPalcer," ");
+		
+		for($i=0;$i<size($armModuleLists);$i++)
+			{
+			string $parent = cr_getParentAttrModuleComponants($armModuleLists[$i]);
+			select -r $armModuleLists[$i];
+			cr_buildArmJointSkeleton $parent;
+			
+			if(`progressWindow -q -isCancelled`) { progressWindow -endProgress; undoInfo -state on;return;}
+			progressWindow -e -step 1 -status ("building module skeleton on : "+$armModuleLists[$i]);			
+			}
+		}
+	
+	if(`attributeExists "tentacle" $sel[0]`)
+		{
+		string $tentacleMainPalcer = `getAttr ($sel[0]+".tentacle")`;
+		string $tentacleModuleLists[] = stringToStringArray($tentacleMainPalcer," ");
+		
+		for($i=0;$i<size($tentacleModuleLists);$i++)
+			{
+			string $parent = cr_getParentAttrModuleComponants($tentacleModuleLists[$i]);
+			select -r $tentacleModuleLists[$i];
+			cr_buildTentacleJointSkeleton $parent;
+			
+			if(`progressWindow -q -isCancelled`) { progressWindow -endProgress; undoInfo -state on;return;}
+			progressWindow -e -step 1 -status ("building module skeleton on : "+$tentacleModuleLists[$i]);			
+			}
+		}	
+		
+	delete $sel[0];
+	progressWindow -endProgress;
+	}
+}
+else
+	error "No object is selected, plz try again...";
+}

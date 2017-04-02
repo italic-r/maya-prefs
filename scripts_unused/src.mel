@@ -1,0 +1,18 @@
+zooArrays_str;
+zooUtils;
+
+
+global proc src( string $tool ) {
+	string $home = `getenv HOME` +"/scripts/";
+	string $perforceBase = "d:/p4/";
+	string $repos[] = {};
+	string $subs[] = {};
+
+	$repos[( `size $repos` )] = $home;
+	for( $repo in $repos ) $subs = zooAddArray_str($subs,`zooGetRecursedSubDirs $repo`);
+	$subs = `zooAddArray_str $subs (zooListEnv("MAYA_SCRIPT_PATH"))`;
+
+	string $loc = `zooGetFileLocation $subs $tool mel`;
+	print( "source \""+ $loc + $tool +".mel\";\n" );
+	eval( "source \""+ $loc + $tool +".mel\";" );
+	}

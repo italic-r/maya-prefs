@@ -1,0 +1,5 @@
+import maya.cmds as mc 
+def toggleDispAff():
+	currentState = mc.displayPref(q = True, displayAffected = True)
+	mc.displayPref(displayAffected = not currentState)
+toggleDispAff()

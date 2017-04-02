@@ -1,0 +1,11 @@
+// toggleOverScan
+
+global proc toggleOverScan(){
+	string $currentPanel = `getPanel -withFocus`; 
+	string $cam = `modelPanel -q -cam $currentPanel`;
+	float $overscan = `getAttr ($cam+".ovr")`;
+	if ($overscan == 1.0)
+		setAttr ($cam+".ovr") 1.2;
+	else
+		setAttr ($cam+".ovr") 1.0;
+}

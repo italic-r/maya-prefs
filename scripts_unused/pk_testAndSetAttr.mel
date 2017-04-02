@@ -1,0 +1,10 @@
+/* DESCRIPTION: This script sets translate and rotate values to zero for any single or group of user selected objects.
+USAGE:  This procedure is called by  pk_setZero(); 
+*/
+global proc pk_testAndSetAttr (string $objName)
+{
+	//list keyable, unlocked attributes, matching the names "translate" and "rotate"
+	string $attrList[] = `listAttr -k -u -string "*translate*" -string "*rotate*"  $objName`;
+	for ($a in $attrList)
+		{ setAttr ($objName + "." + $a) 0;} 
+}

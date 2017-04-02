@@ -1,0 +1,80 @@
+﻿http://www.creativecrash.com/maya/script/hanging-rope-cord-generator-curve-generator
+
+tutorial for usage
+http://www.youtube.com/watch?v=hI3HCWr-gb0
+
+extruding along curves
+http://www.youtube.com/watch?v=u5jQqsiUlHQ
+
+"Rope / Cord Curve Generator for maya"
+
+This Script is designed to help you generate believable looking 
+hanging curves from and to multiple points, verts, components, 
+tranforms or objects in the order you have them selected.
+The script also has 2 randomizing attributes with sliders that
+ give you control over consistency.
+
+Some examples of what you would use this script for:
+-Telephone pole wires
+-Ropes
+-Chain instancing curve 
+
+Gui Description from the provided help documentation:
+
+
+Usage:
+
+1. “Weight Randomization”:
+
+- This slider’s limits are from 0.0 - 10.0
+
+- It gives the lowest point in each dip between points
+ some randomization.
+
+- Useful if you have even / consistent spacing and distance
+ between your points and you want some variation in the way it looks..
+
+2. “Attach Randomization”:
+
+- This slider’s limits are from 0.0 - 5.0
+
+- The sharp point at which the curve is “”attached” (not in real time)
+ to an object, or transform, can be randomized to prevent overlap with
+ multiple cord/ rope curves.
+
+- This slider adds an offset in a random direction from the exact 
+location of the point being sampled.
+
+3. “Cord Weight”:
+
+- This slider controls the overall “weight” of the coord, or how much
+ it dips down between points. This works in conjunction with the
+ “Weight Randomization” slider from the first bullet point.
+
+- Negative values will cause rope to rise instead of sink.
+
+4. “Generate”:
+
+- This button generates the curve after any settings have been tweaked / set.
+
+- At least 2 objects / transforms / components need to be selected or 
+this will return an error.
+
+5. “Revert to Selection”:
+
+- This button will reselect the components you had selected before, 
+in the order they were selected in to allow you to create multiple curves
+ with the same settings.
+
+- You must not select anything else prior to using this button, 
+or it will not work, or will return
+
+
+
+What this script does not do:
+
+-There is no history, so moving the objects you created the curves from will not move the curves with them.
+-Curve cv's are not evenly spaced, but a quick curve rebuild wil fix that.
+-No components of this script will animate the curve, that will be up to the user after the curves are generated! 
+
+Any question, comments, improvements, and suggestions please leave a message here and rate if you get a moment :) 

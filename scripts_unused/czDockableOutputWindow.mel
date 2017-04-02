@@ -1,0 +1,56 @@
+//-----------------------------------------------------------------------------
+// Name: 
+//  czDockableOutputWindow.mel
+//
+// Description: 
+//   Creates an output window that can be docked in Maya's main window.
+//   Contents can be cleared by right-clicking and selecting "Clear Output".
+//
+// Author: 
+//   Chris Zurbrigg (http://zurbrigg.com)
+//
+// Copyright (C) 2012 Chris Zurbrigg. All rights reserved.
+//-----------------------------------------------------------------------------
+
+global proc czDockableOutputWindow()
+{
+    string $windowTitle = "Output Window";
+    string $windowName = "czOutputWindowUI";
+    string $dockName = "czOutputWindowDock";
+    
+    // Show the dock (in its current position) if it already exists
+    // otherwise create it
+    if (`dockControl -exists $dockName`) {
+        dockControl -e -visible true $dockName;
+    }
+    else {
+        // Create the window
+        $mainWindow = `window -title $windowTitle $windowName`;
+        
+        // Create the main layout
+        $mainLayout = `formLayout -parent $mainWindow`;
+        
+        // Add the output window
+        $outputWindow = `cmdScrollFieldReporter -fst ""`;
+        
+        // Add a right click menu to clear the output window
+        $contextMenu = `popupMenu -parent $outputWindow`;
+        menuItem -label "Clear Output" 
+                 -command ("cmdScrollFieldReporter -e -clear " + $outputWindow);
+        
+        // Attach the output window to the form so it resizes correctly
+        formLayout -e -attachForm $outputWindow "top" 0 $mainLayout;
+        formLayout -e -attachForm $outputWindow "bottom" 0 $mainLayout;
+        formLayout -e -attachForm $outputWindow "left" 0 $mainLayout;
+        formLayout -e -attachForm $outputWindow "right" 0 $mainLayout;
+        
+        // Create and show the dockable UI
+        dockControl -area "left"
+                    -content $mainWindow
+                    -floating false
+                    -allowedArea "left"
+                    -allowedArea "right"
+                    -label $windowTitle
+                    $dockName;
+    }
+}

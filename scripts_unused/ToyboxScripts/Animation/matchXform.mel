@@ -1,0 +1,8 @@
+// matchXform
+// J. Adam Burke
+// matches the first objects position and rotation in worldspace with the second object
+$firsttwo = `selectedNodes`;
+$alignRot = `xform -q -a -ws -ro $firsttwo[1]`;
+$alignPos = `xform -q -a -ws -piv $firsttwo[1]`;
+rotate -a -ws $alignRot[0] $alignRot[1] $alignRot[2] $firsttwo[0];
+move -a -ws $alignPos[0] $alignPos[1] $alignPos[2] $firsttwo[0];

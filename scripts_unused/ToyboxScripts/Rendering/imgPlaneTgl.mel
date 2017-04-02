@@ -1,0 +1,15 @@
+// toggleImgPlane
+string $imagePlanes[] = `ls -type imagePlane`;
+for ($i=0;$i<size($imagePlanes);$i++){
+	
+	if (eval("getAttr "+$imagePlanes[$i]+".displayMode") != 0){
+		setAttr ($imagePlanes[$i]+".displayMode") 0;
+		setAttr ($imagePlanes[$i]+".useFrameExtension") 0;
+	}
+	else {
+		setAttr ($imagePlanes[$i]+".displayMode") 3;
+		if (`connectionInfo -id ($imagePlanes[$i]+".frameExtension")`==1)
+		setAttr ($imagePlanes[$i]+".useFrameExtension") 1;
+	}
+	
+}

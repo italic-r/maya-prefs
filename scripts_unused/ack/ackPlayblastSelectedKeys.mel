@@ -1,0 +1,35 @@
+//////////////////////////////////////////////////////////////
+//	ackPlayblastSelectedKeys 1.0									
+//	5/9/05											
+//	Aaron Koressel					
+//							
+//	Playblasts a range of time based on the first
+//  and last selected key.  Select the range of keys
+//  that you just tweaked and run this to see your changes.
+/////////////////////////////////////////////////////////////
+
+global proc ackPlayblastSelectedKeys() {
+
+	float $keys[] = `keyframe -q -selected -timeChange`;
+	float $lowHi[] = `ackGetArrayLowHi ($keys)`;
+	
+	global string $gPlayBackSlider;
+	string $curSound = `timeControl -q -sound $gPlayBackSlider`;
+	if ($curSound == "") {
+		playblast -startTime ($lowHi[0]) -endTime ($lowHi[1]);
+	} else {
+		playblast -startTime ($lowHi[0]) -endTime ($lowHi[1]) -sound $curSound;
+	}
+}
+
+global proc float[] ackGetArrayLowHi(float $theArray[]){
+	float $Low = $theArray[0];
+	float $Hi = $theArray[0];
+	
+	for ($i in $theArray){
+		if ($i < $Low) {$Low = $i;}
+		if ($i > $Hi) {$Hi = $i;}
+	}
+	float $Results[1] = {$Low, $Hi};
+	return $Results;
+}

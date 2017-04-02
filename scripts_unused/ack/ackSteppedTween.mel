@@ -1,0 +1,56 @@
+////////////////////////////////////////////////////////////////////////////////////
+//	ackSteppedTween 1.0			
+//	6/11/05					
+//	Aaron Koressel				
+//	
+//	For use in early blocking while everything is a stepped key and poses line
+//  up on the same frame.  Inserts a key linearly between two poses.  Use it as
+//  a quick starting place for creating a breakdown.  Operates on what's in the
+//  graph editor not what's selected.  Works on selected curves, or if none
+//  are selected, all curves.
+//
+//	TODO:
+//	-Have it work with overlapped animation.  Right now
+//	it only works correctly on poses where all keys are
+//  on the same time.  Would have to store an array per
+//  curve of next and prev key.
+////////////////////////////////////////////////////////////////////////////////////
+global proc ackSteppedTween () {
+	int $keyCount = 0;
+	int $prevKey;
+	int $nextKey;
+	string $onWhat[];
+	$curTime = `currentTime -q`;
+	
+	// get graph outliner 
+	string $connection = `editor -q -mainListConnection graphEditor1GraphEd`;
+	
+	// get selection from outliner
+	string $graphObject[] = `expandSelectionConnectionAsArray $connection`;
+	string $selectedCurves[] = `keyframe -selected -q -name`;
+
+	$keyCount = `keyframe -an keys -q -kc`;
+	
+	//convert previous and next key to linear (to get perfectly linear inbetween)
+	if ($keyCount == 0) {		//no curves selected
+		$onWhat = $graphObject;
+	} else {
+		$onWhat = $selectedCurves;
+	}
+	
+	$prevKey = `findKeyframe -time $curTime -which previous $onWhat`;
+	$nextKey = `findKeyframe -time $curTime -which next $onWhat`;
+	
+	//convert to linear
+	keyTangent -outTangentType linear -time $prevKey $onWhat;
+	keyTangent -inTangentType linear -time $nextKey $onWhat;
+	
+	//insert the key
+	setKeyframe -insert -time $curTime $onWhat;
+	
+	//set back to stepped
+	string $timeRange = $prevKey+":"+$nextKey;
+	keyTangent -ott step -time $timeRange $onWhat;	
+
+
+}

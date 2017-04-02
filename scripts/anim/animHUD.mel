@@ -1,0 +1,570 @@
+//--------------------------------------------------------
+//	Script Name: sceneCustomHUD_Modified
+//	Last Updated: April 05 2010
+//	Authors: Alexey.Borzukh aka NURB & Pavel.Antonenkov
+//	version 1.0.5
+//--------------------------------------------------------
+
+//----- delete current HUD & set up "Animaccord HUD" -----
+global proc showHud(){
+	string $buf[] = `headsUpDisplay -lh`;
+	for ($headsUpDisplay in $buf) headsUpDisplay -rem  $headsUpDisplay;	
+      //if (`objExists HUDRefreshExp`) delete HUDRefreshExp;
+	AnimaccordHUD;
+}
+
+//----- get system date -----
+global proc string sysDate(){
+	 string $cmd = "date /t";
+	 string $time = `system $cmd`;
+	 int $dateLen = size($time);
+	 int $dateStart = $dateLen -12;
+	 $time = `substring $time $dateStart $dateLen`;
+	 return $time;
+}
+
+//----- get scene frame counter -----
+global proc string frameCounter(){
+
+	//---- current frame -----
+	float $curTime = `currentTime -q`;
+	int $curTimeInt = $curTime;
+	string $cTimeString = $curTimeInt;
+	int $cTimePadd = size($cTimeString) + 3;
+	string $cTime = $curTime;
+	$cTime = `substring $cTime 1 $cTimePadd`;
+	print ($cTime);
+
+	//---- end frame -----
+	int $endTime = `playbackOptions -q -maxTime`;
+
+	string $frameCounter = ($cTime + " / " + $endTime);
+return $frameCounter;
+}
+
+//-------set timecode seconds padding---------
+global proc string secondsPadding(int $num)
+{
+ 	string $tmp;
+ 	int $pad;
+ 
+ 	$tmp = $num;
+ 	$pad = size($tmp);
+ 
+ 	if($pad == 1)
+ 	{
+  		return ("0" + $tmp);
+ 	}
+ 	else
+ 	{
+  return $tmp;
+ }
+}
+
+//-------set timecode frames padding
+global proc string framesPadding(int $num)
+{
+ 	string $tmp;
+ 	int $pad;
+ 
+	$tmp = $num;
+ 	$pad = size($tmp);
+ 
+ 	if($pad == 1)
+ 	{
+  		return ("0" + $tmp);
+ 	}
+ 	else
+ 	{
+  return $tmp;
+ }
+}
+
+//--------get timecode------------
+ 
+global proc string timecodeConvert()
+{
+
+ $ct = `currentTime -q`;
+ $fps = `currentTimeUnitToFPS`;
+
+ $s = ($ct % (60 * $fps)) / $fps;
+ $f = ($ct % $fps);
+
+if ($f == 0) {		
+		$f = 25;
+		$s = $s - 1;
+		}
+ $ss = secondsPadding($s);
+ $ff = framesPadding($f);
+	
+ return ($ss + ":" + $ff);
+}
+
+//---------update frame counter------------
+
+global proc frameCounterUpdate()
+{
+	if(`headsUpDisplay -q -ex "frameCounterHUD"` != 0)
+	{
+		expression -s "headsUpDisplay -r \"frameCounterHUD\";" 
+		-n "frameCounterUpdate" -ae 1 -uc "all";
+	} else {
+		delete "frameCounterUpdate";
+		}
+
+}
+
+//---------update timecode------------
+
+global proc timeCodeUpdate()
+{
+	if(`headsUpDisplay -q -ex "timeCodeHUD"` != 0)
+	{
+		expression -s "headsUpDisplay -r \"timeCodeHUD\";" 
+		-n "timeCodeUpdate" -ae 1 -uc "all";
+	} else {
+		delete "timeCodeUpdate";
+		}
+
+}
+
+//----- set up Animaccord HUD -----
+global proc AnimaccordHUD(){
+
+	//----- HUD colors -----
+	displayColor -dormant headsUpDisplayLabels 18;
+	displayColor -dormant headsUpDisplayValues 17;
+
+
+	//----- ViewAxis -----
+	//----- this HUD element will not be visible in animHUD but it required to be present in HUD for MaYa Preferences functionality -----
+	headsUpDisplay -s 5
+			   -b 2
+			   -vis 0
+			   -pre "viewAxis"
+	HUDViewAxis;
+
+
+	//----- user -----
+	headsUpDisplay
+		-section 5
+		-block 1
+		-blockSize "small"
+		-labelFontSize "large"
+		-dataFontSize "large"
+		-label "Scene:"
+		-command "file -q -shn -sn"
+		-event "cameraChange"
+	animatorHUD;
+
+	//----- dateChanged to Name -----
+	headsUpDisplay
+		-section 5
+		-block 0
+		-blockSize "small"
+		-labelFontSize "small"
+		-dataFontSize "small"
+		-label "Animator:"
+		-command "getenv user"
+		-event "cameraChange"
+	dateHUD;
+
+	//----- camera name -----
+	headsUpDisplay
+		-section 7
+		-block 1
+		-blockSize "small"
+		-labelFontSize "large"
+		-dataFontSize "large"
+		-label "Camera:"
+		-preset "cameraNames"
+	cameraHUD;
+
+//	displayColor -dormant cameraNames 17;
+
+	//----- camera focal -----
+	headsUpDisplay
+		-section 7
+		-block 0
+		-blockSize "small"
+		-labelFontSize "small"
+		-dataFontSize "small"
+		-label ""
+		-preset "focalLength"
+	camFocalHUD;
+
+	//----- frameCounter -----
+	headsUpDisplay
+		-section 9
+		-block 1
+		-blockSize "small"
+		-labelFontSize "small"
+		-dataFontSize "large"
+		-label "frame"
+		-command  "frameCounter"
+		-event "timeChanged"
+//		-attachToRefresh
+	frameCounterHUD;
+
+if (`objExists frameCounterUpdate` != 1) frameCounterUpdate;
+
+	//----- time code -----
+	headsUpDisplay
+		-section 9
+		-block 0
+		-blockSize "small"
+		-labelFontSize "small"
+		-dataFontSize "large"
+		-label "timecode"
+		-command  "timecodeConvert"
+		-event "timeChanged"		
+//		-attachToRefresh
+	timeCodeHUD;
+
+if (`objExists timeCodeUpdate` != 1) timeCodeUpdate;
+	
+//---------Create scriptNode to check if animHUD exists on file open, and if not - delete 'update' expressions
+if (`objExists noUpdate` != 1) {
+	scriptNode -st 1 -bs "source animHUD.mel;expressionRemover;delete noUpdate;" -n noUpdate;
+	}
+}
+
+//---------Remove not needed expressions------
+global proc expressionRemover() {
+	if (`headsUpDisplay -q -ex "frameCounterHUD"` != 1) {
+		string $allExpr[] = `ls -type "expression" "*Update*"`;
+		string $curExpr;
+		for ($curExpr in $allExpr) delete $curExpr;
+	}
+}
+
+//---------Anim HUD toggler----
+
+global proc animHUD() {
+	if (`headsUpDisplay -q -ex "frameCounterHUD"` != 0) {
+		string $buf[] = `headsUpDisplay -lh`;
+		for ($headsUpDisplay in $buf) headsUpDisplay -rem  $headsUpDisplay;	
+		//if (`objExists HUDRefreshExp`) delete HUDRefreshExp;
+		if (`objExists frameCounterUpdate`) delete frameCounterUpdate;
+		if (`objExists timeCodeUpdate`) delete timeCodeUpdate;
+		if (`objExists noUpdate`) delete noUpdate;
+
+//------------reasore saved HUD colors--------------
+		displayColor -rs;
+		colorIndex -rs;
+		displayRGBColor -rs;
+
+	//Object Details
+	
+	headsUpDisplay -s 4
+			   -b 0
+			   -vis (`optionVar -q objectDetailsVisibility`)
+			   -label  (uiRes("m_initAfter.kHUDTitleBackfaces"))
+			   -lw 135
+			   -dw 75
+			   -c "objectDetailsBackfaces()"
+			   -ev "SelectionChanged"
+			   -nc "attributeChange"
+			   HUDObjDetBackfaces;
+
+	headsUpDisplay -s 4
+			   -b 1
+			   -vis (`optionVar -q objectDetailsVisibility`)
+			   -label  (uiRes("m_initAfter.kHUDTitleSmoothness"))
+			   -lw 135
+			   -dw 75
+			   -c "objectDetailsSmoothness()"
+			   -ev "SelectionChanged"
+			   -nc "attributeChange"
+			   HUDObjDetSmoothness;
+
+	headsUpDisplay -s 4
+			   -b 2
+			   -vis (`optionVar -q objectDetailsVisibility`)
+			   -label (uiRes("m_initAfter.kHUDTitleInstance"))
+			   -lw 135
+			   -dw 75
+			   -c "objectDetailsInstance()"
+			   -ev "SelectionChanged"
+			   -nc "instanceChange"
+			   HUDObjDetInstance;
+
+	headsUpDisplay -s 4
+			   -b 3
+			   -vis (`optionVar -q objectDetailsVisibility`)
+			   -label (uiRes("m_initAfter.kHUDTitleDisplayLayer"))
+			   -lw 135
+			   -dw 75
+			   -c "objectDetailsDisplayLayer()"
+			   -ev "SelectionChanged"
+			   -nc "connectionChange"
+			   HUDObjDetDispLayer;
+
+	headsUpDisplay -s 4
+			   -b 4
+			   -vis (`optionVar -q objectDetailsVisibility`)
+			   -label (uiRes("m_initAfter.kHUDTitleDistanceFromCamera"))
+			   -lw 135
+			   -dw 75
+			   -pre "distanceFromCamera"
+			   HUDObjDetDistFromCam;
+
+	headsUpDisplay -s 4
+				-b 5
+				-vis (`optionVar -q objectDetailsVisibility`)
+				-label (uiRes("m_initAfter.kHUDTitleSelectedObjects")) 
+				-lw 135
+				-dw 75
+				-c "objectDetailsNumberOfSelectedObjects()"
+				-ev "SelectionChanged"
+				HUDObjDetNumSelObjs;
+
+	//Poly Count
+
+	headsUpDisplay -s 0
+			   -b 0
+			   -vis (`optionVar -q polyCountVisibility`)
+			   -label (uiRes("m_initAfter.kHUDTitleVerts")) 
+			   -lw 50
+			   -dw 50
+			   -pre "polyVerts"
+			   HUDPolyCountVerts;
+
+	headsUpDisplay -s 0
+			   -b 1
+			   -vis (`optionVar -q polyCountVisibility`)
+			    -label (uiRes("m_initAfter.kHUDTitleEdges")) 
+			   -lw 50
+			   -dw 50
+			   -pre "polyEdges"
+			   HUDPolyCountEdges;
+
+	headsUpDisplay -s 0
+			   -b 2
+			   -vis (`optionVar -q polyCountVisibility`)
+			  -label (uiRes("m_initAfter.kHUDTitleFaces")) 
+			   -lw 50
+			   -dw 50
+			   -pre "polyFaces"
+			   HUDPolyCountFaces;
+
+	headsUpDisplay -s 0
+			   -b 3
+			   -vis (`optionVar -q polyCountVisibility`)
+			    -label (uiRes("m_initAfter.kHUDTitleTris")) 
+			   -lw 50
+			   -dw 50
+			   -pre "polyTriangles"
+			   HUDPolyCountTriangles;
+
+	headsUpDisplay -s 0
+			   -b 4
+			   -vis (`optionVar -q polyCountVisibility`)
+			    -label (uiRes("m_initAfter.kHUDTitleUVs"))
+			   -lw 50
+			   -dw 50
+			   -pre "polyUVs"
+			   HUDPolyCountUVs;
+
+	// Subd details
+	headsUpDisplay -s 0
+			   -b 5
+			   -vis (`optionVar -q subdDetailsVisibility`)
+			   -label (uiRes("m_initAfter.kHUDTitleSubdivCurrentLevel")) 
+			   -lw 135
+			   -dw 30
+				-c "subdDetailsCurrentLevel()"
+			   -ev "SelectionChanged"
+			   -nc "attributeChange"
+			   HUDSubdLevel;
+
+	headsUpDisplay -s 0
+			   -b 6
+			   -vis (`optionVar -q subdDetailsVisibility`)
+			   -label (uiRes("m_initAfter.kHUDTitleSubdivMode"))
+			   -lw 135
+			   -dw 30
+				-c "subdDetailsCurrentMode()"
+			   -ev "SelectionChanged"
+			   HUDSubdMode;
+
+	//Camera Names
+	headsUpDisplay -s 7
+			   -b 0
+			   -vis (`optionVar -q cameraNamesVisibility`)
+			   -ao true
+			   -ba center
+			   -pre "cameraNames"
+			   HUDCameraNames;
+
+	// This HUD is used to display the string.
+	// Its visibility is toggled in toggleHWRendererModelPanel()
+	// and the setCameraNamesVisibility().
+	headsUpDisplay -s 2
+		   -b 1
+		   -vis (`optionVar -q cameraNamesVisibility`)
+		   -ba center		   
+		   -label (uiRes("m_initAfter.kHUDTitleCameraName")) 
+		   -pre "renderQuality"
+		   HUDHQCameraNames;
+	
+	string $titleIKBlend = (uiRes("m_initAfter.kHUDTitleIKBlend")) ;
+	string $titleCurrentCharacter = (uiRes("m_initAfter.kHUDTitleCurrentCharacter")) ;
+	string $titlePlaybackSpeed =  (uiRes("m_initAfter.kHUDTitlePlaybackSpeed")) ;
+	string $titleFbikKeyingMode = (uiRes("m_initAfter.kHUDFbikKeyingMode")) ;
+	string $titleFbikKeyType = (uiRes("m_initAfter.kHUDFbikKeyType")) ;	
+	string $titleCurrentFrame = (uiRes("m_initAfter.kHUDCurrentFrameLabel"));
+
+	int $section = 9;
+	int $lblWidth = 115;
+
+	if(`about -ev`) 
+	{
+		$section = 3;
+		$lblWidth = 135;
+	}
+
+	//Frame Rate
+
+	headsUpDisplay -s $section
+		   -b 0
+		   -vis (`optionVar -q frameRateVisibility`)
+		   -ba right
+		   -dfs large
+		   -da right
+		   -dp 1
+		   -pre "frameRate"
+		   HUDFrameRate;
+
+	// Current Frame
+	headsUpDisplay 
+			-section			$section
+			-block				1
+			-blockSize			"small"
+			-label				$titleCurrentFrame
+			-labelWidth			$lblWidth
+			-dataWidth			75
+			-labelFontSize		"small"
+			-dataFontSize		"small"
+			-allowOverlap		true
+			-blockAlignment		"center"
+			-preset				"currentFrame"
+			-vis (`optionVar -q currentFrameVisibility`)
+		HUDCurrentFrame;
+
+	// Animation Stuff
+
+	headsUpDisplay -s $section
+		   -b 2
+		  -label $titleIKBlend
+		   -dp 1
+		   -dfs "small"
+		   -lw $lblWidth
+		   -dw 75
+		   -c "animationDetailsIKFK()"
+		   -ev "SelectionChanged"
+		   -nc "attributeChange"
+		   HUDIKSolverState;
+
+	headsUpDisplay -s $section
+		   -b 3
+		   -label $titleCurrentCharacter
+		   -dp 1
+		   -dfs "small"
+		   -lw $lblWidth
+		   -dw 75
+		   -c "animationDetailsCurrentCharacter()"
+		   -ev "NewSceneOpened"
+		   HUDCurrentCharacter;
+
+	headsUpDisplay -s $section
+		   -b 4
+		   -label $titlePlaybackSpeed
+		   -dp 1
+		   -dfs "small"
+		   -lw $lblWidth
+		   -dw 75
+		   -c "animationDetailsPlaybackSpeed()"
+		   -ev "timeUnitChanged"
+		   HUDPlaybackSpeed;
+		   
+    headsUpDisplay -s $section
+		   -b 5
+		   -label $titleFbikKeyingMode
+		   -dp 1
+		   -dfs "small"
+		   -lw $lblWidth
+		   -dw 75
+		   -c "fbikDetailsKeyingMode()"
+		   -ev "SelectionChanged"
+		   HUDFbikKeyingMode;
+		   
+    headsUpDisplay -s $section
+		   -b 6
+		   -label $titleFbikKeyType
+		   -dp 1
+		   -dfs "small"
+		   -lw $lblWidth
+		   -dw 75
+		   -c "fbikDetailsKeyType()"
+		   -ev "SelectionChanged"
+		   HUDFbikKeyType;
+
+
+	headsUpDisplay -section $section
+			   -block 7
+			   -vis (`optionVar -q selectDetailsVisibility`)
+			   -lw $lblWidth
+			   -preset "softSelect"
+			   HUDSoftSelectState;
+
+	headsUpDisplay -section $section
+			   -block 8
+			   -vis (`optionVar -q selectDetailsVisibility`)
+			   -preset "reflection"
+			   -lw $lblWidth
+			   HUDReflectionState;
+
+	string $titleCurrentContainer = (uiRes("m_initAfter.kHUDCurrentContainerLabel"));
+	// Current container
+	headsUpDisplay 
+			-section			$section
+			-block				9
+			-blockSize			"small"
+			-label				$titleCurrentContainer
+			-labelWidth			$lblWidth
+//			-dataWidth			75
+			-labelFontSize		"small"
+			-dataFontSize		"small"
+//			-blockAlignment		"center"
+		    -command			"getCurrentContainer"
+			-event				"currentContainerChange"
+			-vis (`optionVar -q currentContainerVisibility`)
+		HUDCurrentContainer;
+
+	// None of the above animation HUDs had their visibility
+	// set according to the option var.  Do that now...
+	//
+	setAnimationDetailsVisibility(`optionVar -q animationDetailsVisibility`);
+	setFbikDetailsVisibility(`optionVar -q fbikDetailsVisibility`);
+
+	headsUpDisplay -section $section
+			   -block 10
+			   -vis (`optionVar -q focalLengthVisibility`)
+			   -preset "focalLength"
+			   -lw $lblWidth
+			   HUDFocalLength;
+
+
+	//View Axis
+
+	headsUpDisplay -s 5
+			   -b 0
+			   -vis (`optionVar -q viewAxisVisibility`)
+			   -pre "viewAxis"
+			   HUDViewAxis;
+	}
+
+else showHud;
+}

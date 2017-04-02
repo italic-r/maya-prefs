@@ -1,0 +1,197 @@
+/*
+//////////////////////////////////////////////////////////
+
+ackSetup 1.0			
+9/13/07					
+Aaron Koressel
+www.aaronkoressel.com
+
+Provides a global interface for controlling the parameters
+of compatible ack scripts.  For example setting the pivot
+direction to "left" will set the pivot state
+for all relevent scripts including ackNegateKeys, ackPushPull,
+ackSnapAnimation, etc.  These global settings can be set 
+from an interface or through hotkey commands.
+
+PARAMETERS:
+Pivot From
+------------------
+* Adjacent Left (Multi Pivot): uses the adjacent left key per curve
+as a pivot point.  If there is more than one curve selected there 
+will be multiple pivot points - each curve independently looking
+to the left adjacent key.
+
+* Adjacent Right (Multi Pivot): same as above but to the right.
+
+* Last Selected Key (Single Pivot): uses the last single key selected
+of all curves as the pivot point.  There is only one pivot point and
+all curves pivot from this key.
+
+Fixed Move Factor
+------------------
+Used by scripts that apply changes as fixed amounts.
+ 
+Scale Factor
+------------------
+Used by scripts that apply changes as percentages.
+
+COMPATIBILITY:
+Pivot From:
+ackNegateKeys
+ackPushPull
+ackSnapAnimation (Last Selected is ignored)
+ackSnapToTime (Last Selected is ignored)
+ackSnapEndKeyValues (Last Selected is ignored)
+
+Fixed Move Factor:
+ackMoveKeys (up/down)
+
+Scale Factor:
+ackMoveKeys (convergeLeft/convergeRight)
+ackPushPull
+
+
+SYNTAX:
+Run this to access the main setup interface:
+ackSetup "setup";
+
+Run these as hotkeys to change parameters on the fly:
+ackSetup "left";
+ackSetup "right";
+ackSetup "last";
+
+					
+					
+GLOBALS:
+if you want to change settings programmatically the following global
+variables are available to edit.
+
+string $ackSetup_pivot
+ - "left", "right", or "last"
+	
+float $ackSetup_fixedFactor
+
+float $ackSetup_scaleFactor
+ - should be > 0.0 and < 1.0
+
+//////////////////////////////////////////////////////////
+*/
+
+
+global proc ackSetup(string $cmd){
+	global string $ackSetup_pivot;
+	global float $ackSetup_fixedFactor;
+	global float $ackSetup_scaleFactor;
+	
+	//set default values if variable doesn't exist
+	if ($ackSetup_pivot == ""){
+		$ackSetup_pivot = "left";
+	}
+	if ($ackSetup_fixedFactor <= .0001 || $ackSetup_fixedFactor >= 2){
+		$ackSetup_fixedFactor = .05;
+	}
+	if ($ackSetup_scaleFactor <= .0001 || $ackSetup_scaleFactor >= .999){
+		$ackSetup_scaleFactor = .9;
+	}
+	
+	string $rdoPivot;
+	string $rdoLeft;
+	string $rdoRight;
+	
+	if ($cmd == "setup"){
+		string $helpPivot = "confirmDialog -m \"Used by:\\n ackNegateKeys\\n ackPushPull\\n ackSnapAnimation (Last Selected is ignored)\\n ackSnapToTime (Last Selected is ignored)\\n ackSnapEndKeyValues (Last Selected is ignored)\\n \";";
+		string $helpFixed = "confirmDialog -m \"Used by:\\n ackMoveKeys (up/down)\\n \";";
+		string $helpScale = "confirmDialog -m \"Used by:\\n ackMoveKeys (convergeLeft/convergeRight)\\n ackPushPull\\n \";";
+	
+		string $windowTitle = "ackSetup 1.0";
+		if ( `window -ex win_ackSetup` ) deleteUI win_ackSetup;
+		int $winWidth = 280;
+		int $winHeight = 280;
+
+
+		window -maximizeButton off -sizeable 0 -title $windowTitle -width $winWidth -height $winHeight -resizeToFitChildren 1 win_ackSetup;
+			columnLayout -columnOffset "left" 8 -rowSpacing 4;
+			
+				rowLayout -nc 1 -ct1 "left" -co1 150;
+					$defaultCmd	= "";
+					$defaultCmd += "$ackSetup_pivot = \"\"; ";
+					$defaultCmd += "$ackSetup_fixedFactor = 0; ";
+					$defaultCmd += "$ackSetup_scaleFactor = 0; ";
+					$defaultCmd += "ackSetup \"setup\";";
+					button
+						-label "Restore Defaults"
+						-command $defaultCmd;
+					setParent ..;
+			
+				separator -width $winWidth;
+				rowLayout -nc 2 -ct2 "left" "left" -co2 20 120;
+					text -label "Pivot From:";
+					button -label "?" -c $helpPivot;
+					setParent ..;
+				$rdoPivot = `radioCollection rdoAckPivot`;
+					$rdoLeft = `radioButton -label "Adjacent Left (Multi Pivot)" -onCommand "$ackSetup_pivot = \"left\"" rdoAckPivotLeft`;
+					$rdoRight = `radioButton -label "Adjacent Right (Multi Pivot)" -onCommand "$ackSetup_pivot = \"right\"" rdoAckPivotRight`;
+					$rdoLast = `radioButton -label "Last Selected Key (Single Pivot)" -onCommand "$ackSetup_pivot = \"last\"" rdoAckPivotLast`;
+
+
+				separator -width $winWidth;		
+				rowLayout -nc 2 -ct2 "left" "left" -co2 20 120;		
+					text -label "Fixed Move Factor:";
+					button -label "?" -c $helpFixed;
+					setParent ..;
+				floatSliderGrp
+					-field true
+					-cal 1 "left"
+					-value $ackSetup_fixedFactor
+					-minValue .001 -maxValue 2 -precision 3
+					-fieldStep .01 -sliderStep .01
+					-changeCommand "$ackSetup_fixedFactor = `floatSliderGrp -q -value slideFixedFactor`"
+					slideFixedFactor;
+
+				rowLayout -nc 2 -ct2 "left" "left" -co2 20 120;
+					text -label "Scale Factor:";
+					button -label "?" -c $helpScale;
+					setParent ..;
+				floatSliderGrp 
+					-field true
+					-cal 1 "left"
+					-value $ackSetup_scaleFactor
+					-minValue .001 -maxValue .999 -precision 3
+					-fieldStep .01 -sliderStep .01
+					-changeCommand "$ackSetup_scaleFactor = `floatSliderGrp -q -value slideScaleFactor`"
+					slideScaleFactor;
+				
+
+				//load current setting
+				switch ($ackSetup_pivot){
+					case "left":
+						radioCollection -e -select $rdoLeft $rdoPivot;	
+						break;
+					case "right":
+						radioCollection -e -select $rdoRight $rdoPivot;	
+						break;
+					case "last":
+						radioCollection -e -select $rdoLast $rdoPivot;	
+						break;
+				}
+
+		showWindow;
+		window -e -width $winWidth -height $winHeight win_ackSetup;
+		
+
+	//Command Switches
+	} else if ($cmd == "left") {
+		$ackSetup_pivot = "left";
+		if ( `window -ex win_ackSetup` ){ radioCollection -e -select rdoAckPivotLeft rdoAckPivot; }
+		
+	} else if ($cmd == "right") {
+		$ackSetup_pivot = "right";	
+		if ( `window -ex win_ackSetup` ){ radioCollection -e -select rdoAckPivotRight rdoAckPivot; }
+		
+	} else if ($cmd == "last") {
+		$ackSetup_pivot = "last";	
+		if ( `window -ex win_ackSetup` ){ radioCollection -e -select rdoAckPivotLast rdoAckPivot; }
+		
+	}
+	
+}

@@ -1,0 +1,30 @@
+/*
+/////////////////////////////////////////////////////////////
+
+ackToggleTranslateMode 1.1		
+6/1/05					
+Aaron Koressel				
+www.aaronkoressel.com
+
+Toggles between local translation and world translation.
+
+CHANGELOG:
+7/29/07		1.1
+Changed one of the modes to local instead of object.
+Local represents the exact channel that is being animated so
+it is far more relevant than object translation.
+
+//////////////////////////////////////////////////////////////
+*/
+ 
+global proc ackToggleTranslateMode() {
+	int $transX = `manipMoveContext -q -mode Move`;
+	
+	// 0 = Object, 1 = Local, 2 = World, 3 = Normal, 4 = Rotation Axis
+	if ($transX == 2) {
+		manipMoveContext -e -mode 1 Move;
+	} else {
+		manipMoveContext -e -mode 2 Move;
+	};
+
+}

@@ -1,0 +1,23 @@
+// Select the objects
+global proc cutAtt()
+
+
+ {
+ 
+
+string $myObjects [] = ` ls -sl`;
+
+string $myAttr [] = ` channelBox -q -sma mainChannelBox`;
+
+for ($myNode in $myObjects)
+	{
+
+            for ($myNodeAttr in $myAttr)
+		 {
+
+                 cutKey ( $myNode+"."+$myNodeAttr );
+
+		  }
+	}
+
+ }

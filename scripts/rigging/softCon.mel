@@ -1,0 +1,724 @@
+////////////////////////////////
+global proc softCon()
+{
+	
+		
+if (`window -q -ex scWindow` == true) deleteUI scWindow;
+	window -w 400 -h 680 -s false -t "softCon v1.2.0 .wf" scWindow;
+	
+	
+columnLayout -adjustableColumn true upper;	
+frameLayout -label "Translation SoftCon" -labelAlign "top" -borderStyle "etchedOut";
+
+	
+	string $refControlr =`formLayout -numberOfDivisions 100 `;
+		
+
+	
+	string $fact=`floatSliderGrp -label "Rigid Factor (1=Rigid)" -field true
+ 		-minValue 0.0 -maxValue 1.0
+ 		-fieldMinValue 0.0 -fieldMaxValue 1.0
+ 		-value 0.0 fact`;
+
+	string $a1=`button -bgc 0.6 0.6 1 -label "Apply T-Soft" -w 120 -command "doSoftCon()"`;
+
+	string $c1 = `checkBox -l "Maintain Offset"  -v 0 mof`;
+	string $c2 = `checkBox -l "Direct Link"  -v 0 drl`;
+		
+	string $t=`text -l "" t`;
+
+	formLayout -edit
+				-attachForm	$fact "top"   20  
+				-attachForm	$fact "right" 20  
+				
+				-attachForm	$a1 "top"   90  
+				-attachForm	$a1 "left"  120
+
+				-attachForm	$c1 "top"   50 
+				-attachForm	$c1 "left"  20
+				
+				-attachForm	$c2 "top"   50 
+				-attachForm	$c2 "left"  120
+						
+				-attachForm	$t "top"   110  
+				-attachForm	$t "left"  120
+				
+				
+				
+
+	$refControlr;			
+	
+setParent upper;
+
+
+frameLayout -label "Rotation SoftCon" -labelAlign "top" -borderStyle "etchedOut";
+
+	
+	string $refControl =`formLayout -numberOfDivisions 100 `;
+		
+
+	
+	string $fact=`floatSliderGrp -label "Rigid Factor (1=Rigid)" -field true
+ 		-minValue 0.0 -maxValue 1.0
+ 		-fieldMinValue 0.0 -fieldMaxValue 1.0
+ 		-value 0.0 factr`;
+
+	string $a1=`button -bgc 0.6 0.6 1 -label "Apply R-Soft" -w 120 -command "doRSoftCon()"`;
+
+	string $c1 = `checkBox -l "Maintain Offset"  -v 0 mofr`;
+	string $c2 = `checkBox -l "Direct Link"  -v 0 drlr`;
+	
+	
+	string $t=`text -l "" t`;
+
+	formLayout -edit
+				-attachForm	$fact "top"   20  
+				-attachForm	$fact "right" 20  
+				
+				-attachForm	$a1 "top"   90  
+				-attachForm	$a1 "left"  120
+
+				-attachForm	$c1 "top"   50 
+				-attachForm	$c1 "left"  20
+				
+				-attachForm	$c2 "top"   50 
+				-attachForm	$c2 "left"  120
+						
+				-attachForm	$t "top"   110  
+				-attachForm	$t "left"  120
+				
+				
+				
+
+	$refControl;			
+	
+setParent upper;
+
+	
+
+
+frameLayout -label "Parent SoftCon" -labelAlign "top" -borderStyle "etchedOut";
+
+	
+	string $refControl =`formLayout -numberOfDivisions 100 `;
+		
+
+	
+	string $fact=`floatSliderGrp -label "Rigid Factor (1=Rigid)" -field true
+ 		-minValue 0.0 -maxValue 1.0
+ 		-fieldMinValue 0.0 -fieldMaxValue 1.0
+ 		-value 0.0 factp`;
+
+	string $a1=`button -bgc 0.6 0.6 1 -label "Apply P-Soft" -w 120 -command "doPSoftCon()"`;
+
+	string $c1 = `checkBox -l "Maintain Offset"  -v 1 mofp`;
+	string $c2 = `checkBox -l "Direct Link"  -v 0 drlp`;
+	
+	
+	string $t=`text -l "" t`;
+
+	formLayout -edit
+				-attachForm	$fact "top"   20  
+				-attachForm	$fact "right" 20  
+				
+				-attachForm	$a1 "top"   90  
+				-attachForm	$a1 "left"  120
+
+				-attachForm	$c1 "top"   50 
+				-attachForm	$c1 "left"  20
+				
+				-attachForm	$c2 "top"   50 
+				-attachForm	$c2 "left"  120
+						
+				-attachForm	$t "top"   110  
+				-attachForm	$t "left"  120
+				
+				
+				
+
+	$refControl;			
+	
+setParent upper;
+
+
+frameLayout -label "Scale SoftCon" -labelAlign "top" -borderStyle "etchedOut";
+
+	
+	string $refControl =`formLayout -numberOfDivisions 100 `;
+		
+
+	
+	string $fact=`floatSliderGrp -label "Rigid Factor (1=Rigid)" -field true
+ 		-minValue 0.0 -maxValue 1.0
+ 		-fieldMinValue 0.0 -fieldMaxValue 1.0
+ 		-value 0.0 facts`;
+
+	string $a1=`button -bgc 0.6 0.6 1 -label "Apply S-Soft" -w 120 -command "doSSoftCon()"`;
+
+	string $c1 = `checkBox -l "Maintain Offset"  -v 0 mofs`;
+	string $c2 = `checkBox -l "Direct Link"  -v 0 drls`;
+	
+	
+	string $t=`text -l "" t`;
+
+	formLayout -edit
+				-attachForm	$fact "top"   20  
+				-attachForm	$fact "right" 20  
+				
+				-attachForm	$a1 "top"   90  
+				-attachForm	$a1 "left"  120
+
+				-attachForm	$c1 "top"   50 
+				-attachForm	$c1 "left"  20
+				
+				-attachForm	$c2 "top"   50 
+				-attachForm	$c2 "left"  120
+						
+				-attachForm	$t "top"   110  
+				-attachForm	$t "left"  120
+				
+				
+				
+
+	$refControl;			
+	
+setParent upper;
+
+
+frameLayout -label "Pin Locator" -labelAlign "top" -borderStyle "etchedOut";
+
+	
+	string $refControl =`formLayout -numberOfDivisions 100 `;
+		
+	string $a1=`button -bgc 0.6 0.6 1 -label "Apply Pin_Loc" -w 120 -command "doPinLoc()"`;
+
+		
+	string $t=`text -l "" t`;
+
+	formLayout -edit
+
+				-attachForm	$a1 "top"   20  
+				-attachForm	$a1 "left"  120
+
+				-attachForm	$t "top"   40  
+				-attachForm	$t "left"  120
+				
+								
+
+	$refControl;			
+	
+setParent upper;
+
+	
+
+
+
+
+	showWindow scWindow;
+	
+	window -e -w 400 -h 680 scWindow;
+	
+	
+	
+}
+
+
+
+
+global proc doPinLoc()
+{
+	string $sels[]=`ls -sl`;
+	string $pins[]=`spaceLocator -p 0 0 0 -n "pin"`;
+
+	expression -s ("float $tx="+$sels[0]+".tx;\nfloat $ty="+$sels[0]+".ty;\nfloat $tz="+$sels[0]+".tz;\nfloat $rx="+$sels[0]+".rx;\nfloat $ry="+$sels[0]+".ry;\nfloat $rz="+$sels[0]+".rz;\nfloat $xp[]=`xform -q -ws -piv "+$sels[0]+"`;\n"+$pins[0]+".tx=$xp[0];\n"+$pins[0]+".ty=$xp[1];\n"+$pins[0]+".tz=$xp[2];\n") -n "pin_exp" -o $pins[0] -ae 1 -uc all; ;
+
+	
+	
+	
+}
+
+
+global proc doPSoftCon()
+{
+	int $c1 = `checkBox -q -v mofp`;
+	int $c2 = `checkBox -q -v drlp`;
+	float $factp=`floatSliderGrp -q -v factp`;
+
+	string $sels[]=`ls -sl`;
+				
+	string $gr=`group -em -n "softParentConstraint1"`;
+	xform -os -piv 0 0 0 $gr;
+	
+	float $xps[]=`xform -q -ws -piv $sels[1]`;
+	
+	xform -ws -t $xps[0] $xps[1] $xps[2] $gr;
+	
+	select -r $gr;
+	select -add $sels[1];
+
+	doSoftConI(1,$c2,$factp);
+	
+	select -r $gr;
+	select -add $sels[1];
+	
+
+	doRSoftConI(1,$c2,$factp);
+	
+	select -r $sels[0];
+	select -add $gr;
+
+
+setAttr ($sels[1]+".tsoft_eval") 0;
+setAttr ($sels[1]+".rsoft_eval") 0;
+	
+
+	if ($c1==0)
+		parentConstraint -weight 1;
+	else
+		parentConstraint -mo -weight 1;
+
+setAttr ($sels[1]+".tsoft_eval") 1;
+setAttr ($sels[1]+".rsoft_eval") 1;
+
+	print ("P-Soft Constraint Applied. \n");
+	select -r $sels[1];
+	
+}
+
+
+global proc doSoftCon()
+{
+	int $c1 = `checkBox -q -v mof`;
+	int $c2 = `checkBox -q -v drl`;
+	float $fact=`floatSliderGrp -q -v fact`;
+	doSoftConI($c1,$c2,$fact);
+
+}
+
+global proc doRSoftCon()
+{
+	int $c1 = `checkBox -q -v mofr`;
+	int $c2 = `checkBox -q -v drlr`;
+	float $fact=`floatSliderGrp -q -v factr`;
+	doRSoftConI($c1,$c2,$fact);
+
+}
+
+global proc doSSoftCon()
+{
+	int $c1 = `checkBox -q -v mofs`;
+	int $c2 = `checkBox -q -v drls`;
+	float $fact=`floatSliderGrp -q -v facts`;
+	doSSoftConI($c1,$c2,$fact);
+
+}
+
+global proc doSoftConI(int $c1,int $c2,float $fact)
+{
+
+	
+	string $sels[]=`ls -sl`;
+	eval("global int $"+$sels[1]+"oppr");
+	eval (("$"+$sels[1]+"oppr=0"));
+
+	
+	if ($c2==1)
+	{
+	if ($c1==1)
+	{
+			
+		
+		string $sels[]=`ls -sl`;
+		string $obj1=$sels[0];
+		string $obj2=$sels[1];
+		
+		float $xv=`getAttr ($obj2+".tx")`-`getAttr ($obj1+".tx")`;
+		float $yv=`getAttr ($obj2+".ty")`-`getAttr ($obj1+".ty")`;
+		float $zv=`getAttr ($obj2+".tz")`-`getAttr ($obj1+".tz")`;
+
+		catchQuiet (`deleteAttr -attribute "tfactor" $obj2`);
+		catchQuiet (`deleteAttr -attribute "tsoft_eval" $obj2`);
+		
+		addAttr -ln tsoft_eval -at long  -min 0 -max 1 -dv 1 $obj2;
+		setAttr -e -keyable true ($obj2+".tsoft_eval");
+		
+		
+		
+		addAttr -ln tfactor -at double  -min 0 -max 1 -dv $fact $obj2;
+		setAttr -e -keyable true ($obj2+".tfactor");
+		
+
+		expression  -s ("int $ev="+$obj2+".tsoft_eval;\nif ($ev==1){\nundoInfo -swf 0;\nfloat $fact="+$obj2+".tfactor;\n\nglobal float $"+$obj2+"tx,$"+$obj2+"ty,$"+$obj2+"tz;\nfloat $x1="+$obj1+".tx;\r\nfloat $y1="+$obj1+".ty;\r\nfloat $z1="+$obj1+".tz;\r\n\r\nfloat $x2="+$obj2+".tx;\r\nfloat $y2="+$obj2+".ty;\r\nfloat $z2="+$obj2+".tz;\r\n\r\n\r\nglobal float $"+$obj2+"gx1;\r\nglobal float $"+$obj2+"gy1;\r\nglobal float $"+$obj2+"gz1;\r\n\r\nglobal int $"+$obj2+"oppr;\r\n\r\nglobal string $"+$obj2+"st3;\r\nglobal float $"+$obj2+"eHold;\r\n\r\nif ($"+$obj2+"oppr == 0)\r\n{\r\n$"+$obj2+"tx=$x2;\n$"+$obj2+"ty=$y2;\n$"+$obj2+"tz=$z2;\n\t$"+$obj2+"st3 = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHold=\"+$"+$obj2+"st3);\r\n\t\r\n\t\r\n\t$"+$obj2+"gx1=$x1;\r\n\t$"+$obj2+"gy1=$y1;\r\n\t$"+$obj2+"gz1=$z1;\r\n}\r\n\r\n\r\n$"+$obj2+"oppr=1;\r\n\r\n$"+$obj2+"st3 = `timerX`;\r\nglobal float $"+$obj2+"eCurrent;\r\neval (\"$"+$obj2+"eCurrent=\"+$"+$obj2+"st3);\r\n\r\nfloat $eDiff=$"+$obj2+"eCurrent-$"+$obj2+"eHold;\r\n\r\n\r\n\r\n\r\nif ($eDiff <.035)\n{\n\n"+$obj2+".translateX=(1-$fact)*($x2+0.2*($"+$obj2+"tx-$x2))+$fact*($x1+"+$xv+");\n"+$obj2+".translateY=(1-$fact)*($y2+0.2*($"+$obj2+"ty-$y2))+$fact*($y1+"+$yv+");\n"+$obj2+".translateZ=(1-$fact)*($z2+0.2*($"+$obj2+"tz-$z2))+$fact*($z1+"+$zv+");\n\n\n}\nif ($eDiff >=.035 && $eDiff <.82)\r\n{\r\n\n"+$obj2+".translateX=(1-$fact)*($x2+0.2*($"+$obj2+"tx-$x2))+$fact*($x1+"+$xv+");\n"+$obj2+".translateY=(1-$fact)*($y2+0.2*($"+$obj2+"ty-$y2))+$fact*($y1+"+$yv+");\n"+$obj2+".translateZ=(1-$fact)*($z2+0.2*($"+$obj2+"tz-$z2))+$fact*($z1+"+$zv+");\n\t$"+$obj2+"st3 = `timerX`;\r\n\teval (\"$"+$obj2+"eHold=\"+$"+$obj2+"st3);\r\n\t\r\n\tfloat $xDiff=$x1-$"+$obj2+"gx1;\r\n\tfloat $yDiff=$y1-$"+$obj2+"gy1;\r\n\tfloat $zDiff=$z1-$"+$obj2+"gz1;\r\n\t\r\n\t$"+$obj2+"tx="+$xv+"+$x1-$eDiff/0.06*$xDiff;\r\n\t$"+$obj2+"ty="+$yv+"+$y1-$eDiff/0.06*$yDiff;\r\n\t$"+$obj2+"tz="+$zv+"+$z1-$eDiff/0.06*$zDiff;\r\n\t\r\n\t\r\n\t$"+$obj2+"gx1=$x1;\r\n\t$"+$obj2+"gy1=$y1;\r\n\t$"+$obj2+"gz1=$z1;\t\r\n\t\r\n\t\r\n}\r\n\r\n\r\nelse if ($eDiff >.82)\r\n{\r\n\t$"+$obj2+"st3 = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHold=\"+$"+$obj2+"st3);\r\n\t\r\n\t\r\n\t$"+$obj2+"gx1=$x1;\r\n\t$"+$obj2+"gy1=$y1;\r\n\t$"+$obj2+"gz1=$z1;\r\n}\r\nundoInfo -swf 1;\n}")  -o $obj2 -n "TsoftCon1" -ae 1 -uc all ;
+		print ("T-Soft Constraint Applied. \n");
+		select -r $sels[1];
+		
+	}
+	
+	else
+	{
+		string $sels[]=`ls -sl`;
+		string $obj1=$sels[0];
+		string $obj2=$sels[1];
+	
+		catchQuiet (`deleteAttr -attribute "tfactor" $obj2`);
+		catchQuiet (`deleteAttr -attribute "tsoft_eval" $obj2`);
+		
+		addAttr -ln tsoft_eval -at long  -min 0 -max 1 -dv 1 $obj2;
+		setAttr -e -keyable true ($obj2+".tsoft_eval");	
+		
+		
+		
+		addAttr -ln tfactor -at double  -min 0 -max 1 -dv $fact $obj2;
+		setAttr -e -keyable true ($obj2+".tfactor");
+	
+
+		
+		
+		expression  -s ("int $ev="+$obj2+".tsoft_eval;\nif ($ev==1){\nundoInfo -swf 0;\nfloat $fact="+$obj2+".tfactor;\n\nglobal float $"+$obj2+"tx,$"+$obj2+"ty,$"+$obj2+"tz;\nfloat $x1="+$obj1+".tx;\r\nfloat $y1="+$obj1+".ty;\r\nfloat $z1="+$obj1+".tz;\r\n\r\nfloat $x2="+$obj2+".tx;\r\nfloat $y2="+$obj2+".ty;\r\nfloat $z2="+$obj2+".tz;\r\n\r\n\r\nglobal float $"+$obj2+"gx1;\r\nglobal float $"+$obj2+"gy1;\r\nglobal float $"+$obj2+"gz1;\r\n\r\nglobal int $"+$obj2+"oppr;\r\n\r\nglobal string $"+$obj2+"st3;\r\nglobal float $"+$obj2+"eHold;\r\n\r\nif ($"+$obj2+"oppr == 0)\r\n{\r\n$"+$obj2+"tx=$x2;\n$"+$obj2+"ty=$y2;\n$"+$obj2+"tz=$z2;\n\t$"+$obj2+"st3 = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHold=\"+$"+$obj2+"st3);\r\n\t\r\n\t\r\n\t$"+$obj2+"gx1=$x1;\r\n\t$"+$obj2+"gy1=$y1;\r\n\t$"+$obj2+"gz1=$z1;\r\n}\r\n\r\n\r\n$"+$obj2+"oppr=1;\r\n\r\n$"+$obj2+"st3 = `timerX`;\r\nglobal float $"+$obj2+"eCurrent;\r\neval (\"$"+$obj2+"eCurrent=\"+$"+$obj2+"st3);\r\n\r\nfloat $eDiff=$"+$obj2+"eCurrent-$"+$obj2+"eHold;\r\n\r\n\r\n\r\n\r\nif ($eDiff <.035)\n{\n\n"+$obj2+".translateX=(1-$fact)*($x2+0.2*($"+$obj2+"tx-$x2))+$fact*$x1;\n"+$obj2+".translateY=(1-$fact)*($y2+0.2*($"+$obj2+"ty-$y2))+$fact*$y1;\n"+$obj2+".translateZ=(1-$fact)*($z2+0.2*($"+$obj2+"tz-$z2))+$fact*$z1;\n\n\n}\nif ($eDiff >=.035 && $eDiff <.82)\r\n{\r\n\n"+$obj2+".translateX=(1-$fact)*($x2+0.2*($"+$obj2+"tx-$x2))+$fact*$x1;\n"+$obj2+".translateY=(1-$fact)*($y2+0.2*($"+$obj2+"ty-$y2))+$fact*$y1;\n"+$obj2+".translateZ=(1-$fact)*($z2+0.2*($"+$obj2+"tz-$z2))+$fact*$z1;\n\t$"+$obj2+"st3 = `timerX`;\r\n\teval (\"$"+$obj2+"eHold=\"+$"+$obj2+"st3);\r\n\t\r\n\tfloat $xDiff=$x1-$"+$obj2+"gx1;\r\n\tfloat $yDiff=$y1-$"+$obj2+"gy1;\r\n\tfloat $zDiff=$z1-$"+$obj2+"gz1;\r\n\t\r\n\t$"+$obj2+"tx=$x1-$eDiff/0.06*$xDiff;\r\n\t$"+$obj2+"ty=$y1-$eDiff/0.06*$yDiff;\r\n\t$"+$obj2+"tz=$z1-$eDiff/0.06*$zDiff;\r\n\t\r\n\t\r\n\t$"+$obj2+"gx1=$x1;\r\n\t$"+$obj2+"gy1=$y1;\r\n\t$"+$obj2+"gz1=$z1;\t\r\n\t\r\n\t\r\n}\r\n\r\n\r\nelse if ($eDiff >.82)\r\n{\r\n\t$"+$obj2+"st3 = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHold=\"+$"+$obj2+"st3);\r\n\t\r\n\t\r\n\t$"+$obj2+"gx1=$x1;\r\n\t$"+$obj2+"gy1=$y1;\r\n\t$"+$obj2+"gz1=$z1;\r\n}\r\nundoInfo -swf 1;\n}") -o $obj2 -n "softCon1" -ae 1 -uc all ;
+		
+		print ("T-Soft Constraint Applied. \n");
+		select -r $sels[1];
+		
+	}
+	
+	
+	}
+	
+	else
+	{
+	if ($c1==1)
+	{
+			
+		
+		string $sels[]=`ls -sl`;
+		string $obj1=$sels[0];
+		string $obj2=$sels[1];
+		
+		float $xv=`getAttr ($obj2+".tx")`-`getAttr ($obj1+".tx")`;
+		float $yv=`getAttr ($obj2+".ty")`-`getAttr ($obj1+".ty")`;
+		float $zv=`getAttr ($obj2+".tz")`-`getAttr ($obj1+".tz")`;
+
+		catchQuiet (`deleteAttr -attribute "tfactor" $obj2`);
+	
+		
+		catchQuiet (`deleteAttr -attribute "tsoft_eval" $obj2`);
+		addAttr -ln tsoft_eval -at long  -min 0 -max 1 -dv 1 $obj2;
+		setAttr -e -keyable true ($obj2+".tsoft_eval");	
+		
+		
+		
+		addAttr -ln tfactor -at double  -min 0 -max 1 -dv $fact $obj2;
+		setAttr -e -keyable true ($obj2+".tfactor");
+		setAttr -e  -lock false ($obj2+".shearXY");
+		
+		expression  -s ("int $ev=`getAttr "+$obj2+".tsoft_eval`;\nif ($ev==1){\nundoInfo -swf 0;\n float $fact=`getAttr "+$obj2+".tfactor`;\n\nglobal float $"+$obj2+"tx,$"+$obj2+"ty,$"+$obj2+"tz;\nfloat $x1="+$obj1+".tx;\r\nfloat $y1="+$obj1+".ty;\r\nfloat $z1="+$obj1+".tz;\r\n\r\nfloat $x2=`getAttr "+$obj2+".tx`;\r\nfloat $y2=`getAttr "+$obj2+".ty`;\r\nfloat $z2=`getAttr "+$obj2+".tz`;\r\n\r\n\r\nglobal float $"+$obj2+"gx1;\r\nglobal float $"+$obj2+"gy1;\r\nglobal float $"+$obj2+"gz1;\r\n\r\nglobal int $"+$obj2+"oppr;\r\n\r\nglobal string $"+$obj2+"st3;\r\nglobal float $"+$obj2+"eHold;\r\n\r\nif ($"+$obj2+"oppr == 0)\r\n{\r\n$"+$obj2+"tx=$x2;\n$"+$obj2+"ty=$y2;\n$"+$obj2+"tz=$z2;\n\t$"+$obj2+"st3 = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHold=\"+$"+$obj2+"st3);\r\n\t\r\n\t\r\n\t$"+$obj2+"gx1=$x1;\r\n\t$"+$obj2+"gy1=$y1;\r\n\t$"+$obj2+"gz1=$z1;\r\n}\r\n\r\n\r\n$"+$obj2+"oppr=1;\r\n\r\n$"+$obj2+"st3 = `timerX`;\r\nglobal float $"+$obj2+"eCurrent;\r\neval (\"$"+$obj2+"eCurrent=\"+$"+$obj2+"st3);\r\n\r\nfloat $eDiff=$"+$obj2+"eCurrent-$"+$obj2+"eHold;\r\n\r\n\r\n\r\n\r\nif ($eDiff <.035)\n{\n\nsetAttr "+$obj2+".translateX ((1-$fact)*($x2+0.2*($"+$obj2+"tx-$x2))+$fact*($x1+"+$xv+"));\nsetAttr "+$obj2+".translateY ((1-$fact)*($y2+0.2*($"+$obj2+"ty-$y2))+$fact*($y1+"+$yv+"));\nsetAttr "+$obj2+".translateZ ((1-$fact)*($z2+0.2*($"+$obj2+"tz-$z2))+$fact*($z1+"+$zv+"));\n"+$obj2+".shearXY=0;\n\n}\nif ($eDiff >=.035 && $eDiff <.82)\r\n{\r\n\nsetAttr "+$obj2+".translateX ((1-$fact)*($x2+0.2*($"+$obj2+"tx-$x2))+$fact*($x1+"+$xv+"));\nsetAttr "+$obj2+".translateY ((1-$fact)*($y2+0.2*($"+$obj2+"ty-$y2))+$fact*($y1+"+$yv+"));\nsetAttr "+$obj2+".translateZ ((1-$fact)*($z2+0.2*($"+$obj2+"tz-$z2))+$fact*($z1+"+$zv+"));\n"+$obj2+".shearXY=0;\n\t$"+$obj2+"st3 = `timerX`;\r\n\teval (\"$"+$obj2+"eHold=\"+$"+$obj2+"st3);\r\n\t\r\n\tfloat $xDiff=$x1-$"+$obj2+"gx1;\r\n\tfloat $yDiff=$y1-$"+$obj2+"gy1;\r\n\tfloat $zDiff=$z1-$"+$obj2+"gz1;\r\n\t\r\n\t$"+$obj2+"tx="+$xv+"+$x1-$eDiff/0.06*$xDiff;\r\n\t$"+$obj2+"ty="+$yv+"+$y1-$eDiff/0.06*$yDiff;\r\n\t$"+$obj2+"tz="+$zv+"+$z1-$eDiff/0.06*$zDiff;\r\n\t\r\n\t\r\n\t$"+$obj2+"gx1=$x1;\r\n\t$"+$obj2+"gy1=$y1;\r\n\t$"+$obj2+"gz1=$z1;\t\r\n\t\r\n\t\r\n}\r\n\r\n\r\nelse if ($eDiff >.82)\r\n{\r\n\t$"+$obj2+"st3 = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHold=\"+$"+$obj2+"st3);\r\n\t\r\n\t\r\n\t$"+$obj2+"gx1=$x1;\r\n\t$"+$obj2+"gy1=$y1;\r\n\t$"+$obj2+"gz1=$z1;\r\n}\r\nundoInfo -swf 1;\n}")  -o $obj2 -n "TsoftCon1" -ae 1 -uc all ;
+		print ("T-Soft Constraint Applied. \n");
+		select -r $sels[1];
+		
+	}
+	
+	else
+	{
+		string $sels[]=`ls -sl`;
+		string $obj1=$sels[0];
+		string $obj2=$sels[1];
+	
+		catchQuiet (`deleteAttr -attribute "tfactor" $obj2`);
+	
+		catchQuiet (`deleteAttr -attribute "tsoft_eval" $obj2`);
+		addAttr -ln tsoft_eval -at long  -min 0 -max 1 -dv 1 $obj2;
+		setAttr -e -keyable true ($obj2+".tsoft_eval");			
+		
+		addAttr -ln tfactor -at double  -min 0 -max 1 -dv $fact $obj2;
+		setAttr -e -keyable true ($obj2+".tfactor");
+		setAttr -e  -lock false ($obj2+".shearXY");
+		expression  -s ("int $ev=`getAttr "+$obj2+".tsoft_eval`;\nif ($ev==1){\nundoInfo -swf 0;\n float $fact=`getAttr "+$obj2+".tfactor`;\n\nglobal float $"+$obj2+"tx,$"+$obj2+"ty,$"+$obj2+"tz;\nfloat $x1="+$obj1+".tx;\r\nfloat $y1="+$obj1+".ty;\r\nfloat $z1="+$obj1+".tz;\r\n\r\nfloat $x2=`getAttr "+$obj2+".tx`;\r\nfloat $y2=`getAttr "+$obj2+".ty`;\r\nfloat $z2=`getAttr "+$obj2+".tz`;\r\n\r\n\r\nglobal float $"+$obj2+"gx1;\r\nglobal float $"+$obj2+"gy1;\r\nglobal float $"+$obj2+"gz1;\r\n\r\nglobal int $"+$obj2+"oppr;\r\n\r\nglobal string $"+$obj2+"st3;\r\nglobal float $"+$obj2+"eHold;\r\n\r\nif ($"+$obj2+"oppr == 0)\r\n{\r\n$"+$obj2+"tx=$x2;\n$"+$obj2+"ty=$y2;\n$"+$obj2+"tz=$z2;\n\t$"+$obj2+"st3 = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHold=\"+$"+$obj2+"st3);\r\n\t\r\n\t\r\n\t$"+$obj2+"gx1=$x1;\r\n\t$"+$obj2+"gy1=$y1;\r\n\t$"+$obj2+"gz1=$z1;\r\n}\r\n\r\n\r\n$"+$obj2+"oppr=1;\r\n\r\n$"+$obj2+"st3 = `timerX`;\r\nglobal float $"+$obj2+"eCurrent;\r\neval (\"$"+$obj2+"eCurrent=\"+$"+$obj2+"st3);\r\n\r\nfloat $eDiff=$"+$obj2+"eCurrent-$"+$obj2+"eHold;\r\n\r\n\r\n\r\n\r\nif ($eDiff <.035)\n{\n\nsetAttr "+$obj2+".translateX ((1-$fact)*($x2+0.2*($"+$obj2+"tx-$x2))+$fact*$x1);\nsetAttr "+$obj2+".translateY ((1-$fact)*($y2+0.2*($"+$obj2+"ty-$y2))+$fact*$y1);\nsetAttr "+$obj2+".translateZ ((1-$fact)*($z2+0.2*($"+$obj2+"tz-$z2))+$fact*$z1);\n"+$obj2+".shearXY=0;\n\n}\nif ($eDiff >=.035 && $eDiff <.82)\r\n{\r\n\nsetAttr "+$obj2+".translateX ((1-$fact)*($x2+0.2*($"+$obj2+"tx-$x2))+$fact*$x1);\nsetAttr "+$obj2+".translateY ((1-$fact)*($y2+0.2*($"+$obj2+"ty-$y2))+$fact*$y1);\nsetAttr "+$obj2+".translateZ ((1-$fact)*($z2+0.2*($"+$obj2+"tz-$z2))+$fact*$z1);\n"+$obj2+".shearXY=0;\n\t$"+$obj2+"st3 = `timerX`;\r\n\teval (\"$"+$obj2+"eHold=\"+$"+$obj2+"st3);\r\n\t\r\n\tfloat $xDiff=$x1-$"+$obj2+"gx1;\r\n\tfloat $yDiff=$y1-$"+$obj2+"gy1;\r\n\tfloat $zDiff=$z1-$"+$obj2+"gz1;\r\n\t\r\n\t$"+$obj2+"tx=$x1-$eDiff/0.06*$xDiff;\r\n\t$"+$obj2+"ty=$y1-$eDiff/0.06*$yDiff;\r\n\t$"+$obj2+"tz=$z1-$eDiff/0.06*$zDiff;\r\n\t\r\n\t\r\n\t$"+$obj2+"gx1=$x1;\r\n\t$"+$obj2+"gy1=$y1;\r\n\t$"+$obj2+"gz1=$z1;\t\r\n\t\r\n\t\r\n}\r\n\r\n\r\nelse if ($eDiff >.82)\r\n{\r\n\t$"+$obj2+"st3 = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHold=\"+$"+$obj2+"st3);\r\n\t\r\n\t\r\n\t$"+$obj2+"gx1=$x1;\r\n\t$"+$obj2+"gy1=$y1;\r\n\t$"+$obj2+"gz1=$z1;\r\n}\r\nundoInfo -swf 1;\n}") -o $obj2 -n "TsoftCon1" -ae 1 -uc all ;
+		
+		print ("T-Soft Constraint Applied. \n");
+		select -r $sels[1];
+		
+	}
+	
+	
+	}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+	
+	
+	
+	
+	
+	
+	
+}
+
+
+
+
+
+
+
+global proc doRSoftConI(int $c1,int $c2,float $fact)
+{
+
+	string $sels[]=`ls -sl`;
+	eval("global int $"+$sels[1]+"oppt");
+	eval (("$"+$sels[1]+"oppt=0"));
+
+	if ($c2==1)
+	{
+	if ($c1==1)
+	{
+			
+		
+		string $sels[]=`ls -sl`;
+		string $obj1=$sels[0];
+		string $obj2=$sels[1];
+		
+		float $xv=`getAttr ($obj2+".rx")`-`getAttr ($obj1+".rx")`;
+		float $yv=`getAttr ($obj2+".ry")`-`getAttr ($obj1+".ry")`;
+		float $zv=`getAttr ($obj2+".rz")`-`getAttr ($obj1+".rz")`;
+
+		catchQuiet (`deleteAttr -attribute "rfactor" $obj2`);
+		
+		catchQuiet (`deleteAttr -attribute "rsoft_eval" $obj2`);
+		addAttr -ln rsoft_eval -at long  -min 0 -max 1 -dv 1 $obj2;
+		setAttr -e -keyable true ($obj2+".rsoft_eval");	
+		
+		addAttr -ln rfactor -at double  -min 0 -max 1 -dv $fact $obj2;
+		setAttr -e -keyable true ($obj2+".rfactor");
+		
+		expression  -s ("int $ev="+$obj2+".rsoft_eval;\nif ($ev==1){\nundoInfo -swf 0;\n float $fact="+$obj2+".rfactor;\n\nglobal float $"+$obj2+"rx,$"+$obj2+"ry,$"+$obj2+"rz;\n\nfloat $x1="+$obj1+".rx;\r\nfloat $y1="+$obj1+".ry;\r\nfloat $z1="+$obj1+".rz;\r\n\r\nfloat $x2="+$obj2+".rx;\r\nfloat $y2="+$obj2+".ry;\r\nfloat $z2="+$obj2+".rz;\r\n\r\n\r\nglobal float $"+$obj2+"grx1;\r\nglobal float $"+$obj2+"gry1;\r\nglobal float $"+$obj2+"grz1;\r\n\r\nglobal int $"+$obj2+"oppt;\r\n\r\nglobal string $"+$obj2+"str;\r\nglobal float $"+$obj2+"eHoldr;\r\n\r\nif ($"+$obj2+"oppt == 0)\r\n{\r\n$"+$obj2+"rx=$x2;\n$"+$obj2+"ry=$y2;\n$"+$obj2+"rz=$z2;\n\t$"+$obj2+"str = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHoldr=\"+$"+$obj2+"str);\r\n\t\r\n\t\r\n\t$"+$obj2+"grx1=$x1;\r\n\t$"+$obj2+"gry1=$y1;\r\n\t$"+$obj2+"grz1=$z1;\r\n}\r\n\r\n\r\n$"+$obj2+"oppt=1;\r\n\r\n$"+$obj2+"str = `timerX`;\r\nglobal float $"+$obj2+"eCurrentr;\r\neval (\"$"+$obj2+"eCurrentr=\"+$"+$obj2+"str);\r\n\r\nfloat $eDiff=$"+$obj2+"eCurrentr-$"+$obj2+"eHoldr;\r\n\r\n\r\n\r\n\r\nif ($eDiff <.035)\n{\n\n"+$obj2+".rotateX=(1-$fact)*($x2+0.2*($"+$obj2+"rx-$x2))+$fact*($x1+"+$xv+");\n"+$obj2+".rotateY=(1-$fact)*($y2+0.2*($"+$obj2+"ry-$y2))+$fact*($y1+"+$yv+");\n"+$obj2+".rotateZ=(1-$fact)*($z2+0.2*($"+$obj2+"rz-$z2))+$fact*($z1+"+$zv+");\n\n\n}\n if ($eDiff >=.035 && $eDiff <.82)\r\n{\r\n\n"+$obj2+".rotateX=(1-$fact)*($x2+0.2*($"+$obj2+"rx-$x2))+$fact*($x1+"+$xv+");\n"+$obj2+".rotateY=(1-$fact)*($y2+0.2*($"+$obj2+"ry-$y2))+$fact*($y1+"+$yv+");\n"+$obj2+".rotateZ=(1-$fact)*($z2+0.2*($"+$obj2+"rz-$z2))+$fact*($z1+"+$zv+");\n\t$"+$obj2+"str = `timerX`;\r\n\teval (\"$"+$obj2+"eHoldr=\"+$"+$obj2+"str);\r\n\t\r\n\tfloat $xDiff=$x1-$"+$obj2+"grx1;\r\n\tfloat $yDiff=$y1-$"+$obj2+"gry1;\r\n\tfloat $zDiff=$z1-$"+$obj2+"grz1;\r\n\t\r\n\t$"+$obj2+"rx="+$xv+"+$x1-$eDiff/0.06*$xDiff;\r\n\t$"+$obj2+"ry="+$yv+"+$y1-$eDiff/0.06*$yDiff;\r\n\t$"+$obj2+"rz="+$zv+"+$z1-$eDiff/0.06*$zDiff;\r\n\t\r\n\t\r\n\t$"+$obj2+"grx1=$x1;\r\n\t$"+$obj2+"gry1=$y1;\r\n\t$"+$obj2+"grz1=$z1;\t\r\n\t\r\n\t\r\n}\r\n\r\n\r\nelse if ($eDiff >.82)\r\n{\r\n\t$"+$obj2+"str = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHoldr=\"+$"+$obj2+"str);\r\n\t\r\n\t\r\n\t$"+$obj2+"grx1=$x1;\r\n\t$"+$obj2+"gry1=$y1;\r\n\t$"+$obj2+"grz1=$z1;\r\n}\r\nundoInfo -swf 1;\n}") -o $obj2 -n "RsoftCon1" -ae 1 -uc all ;
+		print ("R-Soft Constraint Applied. \n");
+		select -r $sels[1];
+		
+	}
+	
+	else
+	{
+		string $sels[]=`ls -sl`;
+		string $obj1=$sels[0];
+		string $obj2=$sels[1];
+	
+		catchQuiet (`deleteAttr -attribute "rfactor" $obj2`);
+	
+		catchQuiet (`deleteAttr -attribute "rsoft_eval" $obj2`);
+		addAttr -ln rsoft_eval -at long  -min 0 -max 1 -dv 1 $obj2;
+		setAttr -e -keyable true ($obj2+".rsoft_eval");			
+	
+		addAttr -ln rfactor -at double  -min 0 -max 1 -dv $fact $obj2;
+		setAttr -e -keyable true ($obj2+".rfactor");
+		expression  -s ("int $ev="+$obj2+".rsoft_eval;\nif ($ev==1){\nundoInfo -swf 0;\n float $fact="+$obj2+".rfactor;\n\nglobal float $"+$obj2+"rx,$"+$obj2+"ry,$"+$obj2+"rz;\nfloat $x1="+$obj1+".rx;\r\nfloat $y1="+$obj1+".ry;\r\nfloat $z1="+$obj1+".rz;\r\n\r\nfloat $x2="+$obj2+".rx;\r\nfloat $y2="+$obj2+".ry;\r\nfloat $z2="+$obj2+".rz;\r\n\r\n\r\nglobal float $"+$obj2+"grx1;\r\nglobal float $"+$obj2+"gry1;\r\nglobal float $"+$obj2+"grz1;\r\n\r\nglobal int $"+$obj2+"oppt;\r\n\r\nglobal string $"+$obj2+"str;\r\nglobal float $"+$obj2+"eHoldr;\r\n\r\nif ($"+$obj2+"oppt == 0)\r\n{\r\n$"+$obj2+"rx=$x2;\n$"+$obj2+"ry=$y2;\n$"+$obj2+"rz=$z2;\n\t$"+$obj2+"str = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHoldr=\"+$"+$obj2+"str);\r\n\t\r\n\t\r\n\t$"+$obj2+"grx1=$x1;\r\n\t$"+$obj2+"gry1=$y1;\r\n\t$"+$obj2+"grz1=$z1;\r\n}\r\n\r\n\r\n$"+$obj2+"oppt=1;\r\n\r\n$"+$obj2+"str = `timerX`;\r\nglobal float $"+$obj2+"eCurrentr;\r\neval (\"$"+$obj2+"eCurrentr=\"+$"+$obj2+"str);\r\n\r\nfloat $eDiff=$"+$obj2+"eCurrentr-$"+$obj2+"eHoldr;\r\n\r\n\r\n\r\n\r\nif ($eDiff <.035)\n{\n\n"+$obj2+".rotateX=(1-$fact)*($x2+0.2*($"+$obj2+"rx-$x2))+$fact*$x1;\n"+$obj2+".rotateY=(1-$fact)*($y2+0.2*($"+$obj2+"ry-$y2))+$fact*$y1;\n"+$obj2+".rotateZ=(1-$fact)*($z2+0.2*($"+$obj2+"rz-$z2))+$fact*$z1;\n\n\n}\nif ($eDiff >=.035 && $eDiff <.82)\r\n{\r\n\n"+$obj2+".rotateX=(1-$fact)*($x2+0.2*($"+$obj2+"rx-$x2))+$fact*$x1;\n"+$obj2+".rotateY=(1-$fact)*($y2+0.2*($"+$obj2+"ry-$y2))+$fact*$y1;\n"+$obj2+".rotateZ=(1-$fact)*($z2+0.2*($"+$obj2+"rz-$z2))+$fact*$z1;\n\t$"+$obj2+"str = `timerX`;\r\n\teval (\"$"+$obj2+"eHoldr=\"+$"+$obj2+"str);\r\n\t\r\n\tfloat $xDiff=$x1-$"+$obj2+"grx1;\r\n\tfloat $yDiff=$y1-$"+$obj2+"gry1;\r\n\tfloat $zDiff=$z1-$"+$obj2+"grz1;\r\n\t\r\n\t$"+$obj2+"rx=$x1-$eDiff/0.06*$xDiff;\r\n\t$"+$obj2+"ry=$y1-$eDiff/0.06*$yDiff;\r\n\t$"+$obj2+"rz=$z1-$eDiff/0.06*$zDiff;\r\n\t\r\n\t\r\n\t$"+$obj2+"grx1=$x1;\r\n\t$"+$obj2+"gry1=$y1;\r\n\t$"+$obj2+"grz1=$z1;\t\r\n\t\r\n\t\r\n}\r\n\r\n\r\nelse if ($eDiff >.82)\r\n{\r\n\t$"+$obj2+"str = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHoldr=\"+$"+$obj2+"str);\r\n\t\r\n\t\r\n\t$"+$obj2+"grx1=$x1;\r\n\t$"+$obj2+"gry1=$y1;\r\n\t$"+$obj2+"grz1=$z1;\r\n}\r\nundoInfo -swf 1;\n}")  -o $obj2 -n "RsoftCon1" -ae 1 -uc all  ;
+		print ("R-Soft Constraint Applied. \n");	
+		select -r $sels[1];
+		
+	}
+	}
+	
+	
+	else
+	{
+		
+	if ($c1==1)
+	{
+			
+		
+		string $sels[]=`ls -sl`;
+		string $obj1=$sels[0];
+		string $obj2=$sels[1];
+		
+		float $xv=`getAttr ($obj2+".rx")`-`getAttr ($obj1+".rx")`;
+		float $yv=`getAttr ($obj2+".ry")`-`getAttr ($obj1+".ry")`;
+		float $zv=`getAttr ($obj2+".rz")`-`getAttr ($obj1+".rz")`;
+
+		catchQuiet (`deleteAttr -attribute "rfactor" $obj2`);
+		
+		catchQuiet (`deleteAttr -attribute "rsoft_eval" $obj2`);
+		addAttr -ln rsoft_eval -at long  -min 0 -max 1 -dv 1 $obj2;
+		setAttr -e -keyable true ($obj2+".rsoft_eval");	
+		
+		
+		addAttr -ln rfactor -at double  -min 0 -max 1 -dv $fact $obj2;
+		setAttr -e -keyable true ($obj2+".rfactor");
+		setAttr -e  -lock false ($obj2+".shearXZ");
+		expression  -s ("int $ev=`getAttr "+$obj2+".rsoft_eval`;\nif ($ev==1){\nundoInfo -swf 0;\n float $fact=`getAttr "+$obj2+".rfactor`;\n\nglobal float $"+$obj2+"rx,$"+$obj2+"ry,$"+$obj2+"rz;\n\nfloat $x1="+$obj1+".rx;\r\nfloat $y1="+$obj1+".ry;\r\nfloat $z1="+$obj1+".rz;\r\n\r\nfloat $x2=`getAttr "+$obj2+".rx`;\r\nfloat $y2=`getAttr "+$obj2+".ry`;\r\nfloat $z2=`getAttr "+$obj2+".rz`;\r\n\r\n\r\nglobal float $"+$obj2+"grx1;\r\nglobal float $"+$obj2+"gry1;\r\nglobal float $"+$obj2+"grz1;\r\n\r\nglobal int $"+$obj2+"oppt;\r\n\r\nglobal string $"+$obj2+"str;\r\nglobal float $"+$obj2+"eHoldr;\r\n\r\nif ($"+$obj2+"oppt == 0)\r\n{\r\n$"+$obj2+"rx=$x2;\n$"+$obj2+"ry=$y2;\n$"+$obj2+"rz=$z2;\n\t$"+$obj2+"str = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHoldr=\"+$"+$obj2+"str);\r\n\t\r\n\t\r\n\t$"+$obj2+"grx1=$x1;\r\n\t$"+$obj2+"gry1=$y1;\r\n\t$"+$obj2+"grz1=$z1;\r\n}\r\n\r\n\r\n$"+$obj2+"oppt=1;\r\n\r\n$"+$obj2+"str = `timerX`;\r\nglobal float $"+$obj2+"eCurrentr;\r\neval (\"$"+$obj2+"eCurrentr=\"+$"+$obj2+"str);\r\n\r\nfloat $eDiff=$"+$obj2+"eCurrentr-$"+$obj2+"eHoldr;\r\n\r\n\r\n\r\n\r\nif ($eDiff <.035)\n{\n\nsetAttr "+$obj2+".rotateX ((1-$fact)*($x2+0.2*($"+$obj2+"rx-$x2))+$fact*($x1+"+$xv+"));\nsetAttr "+$obj2+".rotateY ((1-$fact)*($y2+0.2*($"+$obj2+"ry-$y2))+$fact*($y1+"+$yv+"));\nsetAttr "+$obj2+".rotateZ ((1-$fact)*($z2+0.2*($"+$obj2+"rz-$z2))+$fact*($z1+"+$zv+"));\n\n"+$obj2+".shearXZ=0;\n\n\n}\n if ($eDiff >=.035 && $eDiff <.82)\r\n{\r\n\nsetAttr "+$obj2+".rotateX ((1-$fact)*($x2+0.2*($"+$obj2+"rx-$x2))+$fact*($x1+"+$xv+"));\nsetAttr "+$obj2+".rotateY ((1-$fact)*($y2+0.2*($"+$obj2+"ry-$y2))+$fact*($y1+"+$yv+"));\nsetAttr "+$obj2+".rotateZ ((1-$fact)*($z2+0.2*($"+$obj2+"rz-$z2))+$fact*($z1+"+$zv+"));\n\n"+$obj2+".shearXZ=0;\n\t$"+$obj2+"str = `timerX`;\r\n\teval (\"$"+$obj2+"eHoldr=\"+$"+$obj2+"str);\r\n\t\r\n\tfloat $xDiff=$x1-$"+$obj2+"grx1;\r\n\tfloat $yDiff=$y1-$"+$obj2+"gry1;\r\n\tfloat $zDiff=$z1-$"+$obj2+"grz1;\r\n\t\r\n\t$"+$obj2+"rx="+$xv+"+$x1-$eDiff/0.06*$xDiff;\r\n\t$"+$obj2+"ry="+$yv+"+$y1-$eDiff/0.06*$yDiff;\r\n\t$"+$obj2+"rz="+$zv+"+$z1-$eDiff/0.06*$zDiff;\r\n\t\r\n\t\r\n\t$"+$obj2+"grx1=$x1;\r\n\t$"+$obj2+"gry1=$y1;\r\n\t$"+$obj2+"grz1=$z1;\t\r\n\t\r\n\t\r\n}\r\n\r\n\r\nelse if ($eDiff >.82)\r\n{\r\n\t$"+$obj2+"str = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHoldr=\"+$"+$obj2+"str);\r\n\t\r\n\t\r\n\t$"+$obj2+"grx1=$x1;\r\n\t$"+$obj2+"gry1=$y1;\r\n\t$"+$obj2+"grz1=$z1;\r\n}\r\nundoInfo -swf 1;\n}") -o $obj2 -n "RsoftCon1" -ae 1 -uc all ;
+		print ("R-Soft Constraint Applied. \n");
+		select -r $sels[1];
+		
+	}
+	
+	else
+	{
+		string $sels[]=`ls -sl`;
+		string $obj1=$sels[0];
+		string $obj2=$sels[1];
+	
+		catchQuiet (`deleteAttr -attribute "rfactor" $obj2`);
+
+		catchQuiet (`deleteAttr -attribute "rsoft_eval" $obj2`);
+		addAttr -ln rsoft_eval -at long  -min 0 -max 1 -dv 1 $obj2;
+		setAttr -e -keyable true ($obj2+".rsoft_eval");	
+		
+		
+		
+		addAttr -ln rfactor -at double  -min 0 -max 1 -dv $fact $obj2;
+		setAttr -e -keyable true ($obj2+".rfactor");
+		setAttr -e  -lock false ($obj2+".shearXZ");
+
+		expression  -s ("int $ev=`getAttr "+$obj2+".rsoft_eval`;\nif ($ev==1){\nundoInfo -swf 0;\n float $fact=`getAttr "+$obj2+".rfactor`;\n\nglobal float $"+$obj2+"rx,$"+$obj2+"ry,$"+$obj2+"rz;\nfloat $x1="+$obj1+".rx;\r\nfloat $y1="+$obj1+".ry;\r\nfloat $z1="+$obj1+".rz;\r\n\r\nfloat $x2=`getAttr "+$obj2+".rx`;\r\nfloat $y2=`getAttr "+$obj2+".ry`;\r\nfloat $z2=`getAttr "+$obj2+".rz`;\r\n\r\n\r\nglobal float $"+$obj2+"grx1;\r\nglobal float $"+$obj2+"gry1;\r\nglobal float $"+$obj2+"grz1;\r\n\r\nglobal int $"+$obj2+"oppt;\r\n\r\nglobal string $"+$obj2+"str;\r\nglobal float $"+$obj2+"eHoldr;\r\n\r\nif ($"+$obj2+"oppt == 0)\r\n{\r\n$"+$obj2+"rx=$x2;\n$"+$obj2+"ry=$y2;\n$"+$obj2+"rz=$z2;\n\t$"+$obj2+"str = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHoldr=\"+$"+$obj2+"str);\r\n\t\r\n\t\r\n\t$"+$obj2+"grx1=$x1;\r\n\t$"+$obj2+"gry1=$y1;\r\n\t$"+$obj2+"grz1=$z1;\r\n}\r\n\r\n\r\n$"+$obj2+"oppt=1;\r\n\r\n$"+$obj2+"str = `timerX`;\r\nglobal float $"+$obj2+"eCurrentr;\r\neval (\"$"+$obj2+"eCurrentr=\"+$"+$obj2+"str);\r\n\r\nfloat $eDiff=$"+$obj2+"eCurrentr-$"+$obj2+"eHoldr;\r\n\r\n\r\n\r\n\r\nif ($eDiff <.035)\n{\n\nsetAttr "+$obj2+".rotateX ((1-$fact)*($x2+0.2*($"+$obj2+"rx-$x2))+$fact*$x1);\nsetAttr "+$obj2+".rotateY ((1-$fact)*($y2+0.2*($"+$obj2+"ry-$y2))+$fact*$y1);\nsetAttr "+$obj2+".rotateZ ((1-$fact)*($z2+0.2*($"+$obj2+"rz-$z2))+$fact*$z1);\n\n"+$obj2+".shearXZ=0;\n\n\n}\nif ($eDiff >=.035 && $eDiff <.82)\r\n{\r\n\nsetAttr "+$obj2+".rotateX ((1-$fact)*($x2+0.2*($"+$obj2+"rx-$x2))+$fact*$x1);\nsetAttr "+$obj2+".rotateY ((1-$fact)*($y2+0.2*($"+$obj2+"ry-$y2))+$fact*$y1);\nsetAttr "+$obj2+".rotateZ ((1-$fact)*($z2+0.2*($"+$obj2+"rz-$z2))+$fact*$z1);\n\n"+$obj2+".shearXZ=0;\n\t$"+$obj2+"str = `timerX`;\r\n\teval (\"$"+$obj2+"eHoldr=\"+$"+$obj2+"str);\r\n\t\r\n\tfloat $xDiff=$x1-$"+$obj2+"grx1;\r\n\tfloat $yDiff=$y1-$"+$obj2+"gry1;\r\n\tfloat $zDiff=$z1-$"+$obj2+"grz1;\r\n\t\r\n\t$"+$obj2+"rx=$x1-$eDiff/0.06*$xDiff;\r\n\t$"+$obj2+"ry=$y1-$eDiff/0.06*$yDiff;\r\n\t$"+$obj2+"rz=$z1-$eDiff/0.06*$zDiff;\r\n\t\r\n\t\r\n\t$"+$obj2+"grx1=$x1;\r\n\t$"+$obj2+"gry1=$y1;\r\n\t$"+$obj2+"grz1=$z1;\t\r\n\t\r\n\t\r\n}\r\n\r\n\r\nelse if ($eDiff >.82)\r\n{\r\n\t$"+$obj2+"str = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHoldr=\"+$"+$obj2+"str);\r\n\t\r\n\t\r\n\t$"+$obj2+"grx1=$x1;\r\n\t$"+$obj2+"gry1=$y1;\r\n\t$"+$obj2+"grz1=$z1;\r\n}\r\nundoInfo -swf 1;\n}")  -o $obj2 -n "RsoftCon1" -ae 1 -uc all  ;
+		print ("R-Soft Constraint Applied. \n");	
+		select -r $sels[1];
+		
+	}
+		
+		
+		
+		
+	}
+	
+	
+	
+	
+	
+	
+}
+
+
+
+global proc doSSoftConI(int $c1,int $c2,float $fact)
+{
+
+	string $sels[]=`ls -sl`;
+	eval("global int $"+$sels[1]+"opps");
+	eval (("$"+$sels[1]+"opps=0"));
+
+	if ($c2==1)
+	{
+	if ($c1==1)
+	{
+			
+		
+		string $sels[]=`ls -sl`;
+		string $obj1=$sels[0];
+		string $obj2=$sels[1];
+		
+		float $xv=`getAttr ($obj2+".sx")`-`getAttr ($obj1+".sx")`;
+		float $yv=`getAttr ($obj2+".sy")`-`getAttr ($obj1+".sy")`;
+		float $zv=`getAttr ($obj2+".sz")`-`getAttr ($obj1+".sz")`;
+
+		catchQuiet (`deleteAttr -attribute "sfactor" $obj2`);
+		
+		catchQuiet (`deleteAttr -attribute "ssoft_eval" $obj2`);
+		addAttr -ln ssoft_eval -at long  -min 0 -max 1 -dv 1 $obj2;
+		setAttr -e -keyable true ($obj2+".ssoft_eval");	
+		
+		addAttr -ln sfactor -at double  -min 0 -max 1 -dv $fact $obj2;
+		setAttr -e -keyable true ($obj2+".sfactor");
+		
+		expression  -s ("int $ev="+$obj2+".ssoft_eval;\nif ($ev==1){\nundoInfo -swf 0;\n float $fact="+$obj2+".sfactor;\n\nglobal float $"+$obj2+"sx,$"+$obj2+"sy,$"+$obj2+"sz;\n\nfloat $x1="+$obj1+".sx;\r\nfloat $y1="+$obj1+".sy;\r\nfloat $z1="+$obj1+".sz;\r\n\r\nfloat $x2="+$obj2+".sx;\r\nfloat $y2="+$obj2+".sy;\r\nfloat $z2="+$obj2+".sz;\r\n\r\n\r\nglobal float $"+$obj2+"gsx1;\r\nglobal float $"+$obj2+"gsy1;\r\nglobal float $"+$obj2+"gsz1;\r\n\r\nglobal int $"+$obj2+"opps;\r\n\r\nglobal string $"+$obj2+"sts;\r\nglobal float $"+$obj2+"eHolds;\r\n\r\nif ($"+$obj2+"opps == 0)\r\n{\r\n$"+$obj2+"sx=$x2;\n$"+$obj2+"sy=$y2;\n$"+$obj2+"sz=$z2;\n\t$"+$obj2+"sts = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHolds=\"+$"+$obj2+"sts);\r\n\t\r\n\t\r\n\t$"+$obj2+"gsx1=$x1;\r\n\t$"+$obj2+"gsy1=$y1;\r\n\t$"+$obj2+"gsz1=$z1;\r\n}\r\n\r\n\r\n$"+$obj2+"opps=1;\r\n\r\n$"+$obj2+"sts = `timerX`;\r\nglobal float $"+$obj2+"eCurrentr;\r\neval (\"$"+$obj2+"eCurrentr=\"+$"+$obj2+"sts);\r\n\r\nfloat $eDiff=$"+$obj2+"eCurrentr-$"+$obj2+"eHolds;\r\n\r\n\r\n\r\n\r\nif ($eDiff <.035)\n{\n\n"+$obj2+".scaleX=(1-$fact)*($x2+0.2*($"+$obj2+"sx-$x2))+$fact*($x1+"+$xv+");\n"+$obj2+".scaleY=(1-$fact)*($y2+0.2*($"+$obj2+"sy-$y2))+$fact*($y1+"+$yv+");\n"+$obj2+".scaleZ=(1-$fact)*($z2+0.2*($"+$obj2+"sz-$z2))+$fact*($z1+"+$zv+");\n\n\n}\n if ($eDiff >=.035 && $eDiff <.82)\r\n{\r\n\n"+$obj2+".scaleX=(1-$fact)*($x2+0.2*($"+$obj2+"sx-$x2))+$fact*($x1+"+$xv+");\n"+$obj2+".scaleY=(1-$fact)*($y2+0.2*($"+$obj2+"sy-$y2))+$fact*($y1+"+$yv+");\n"+$obj2+".scaleZ=(1-$fact)*($z2+0.2*($"+$obj2+"sz-$z2))+$fact*($z1+"+$zv+");\n\t$"+$obj2+"sts = `timerX`;\r\n\teval (\"$"+$obj2+"eHolds=\"+$"+$obj2+"sts);\r\n\t\r\n\tfloat $xDiff=$x1-$"+$obj2+"gsx1;\r\n\tfloat $yDiff=$y1-$"+$obj2+"gsy1;\r\n\tfloat $zDiff=$z1-$"+$obj2+"gsz1;\r\n\t\r\n\t$"+$obj2+"sx="+$xv+"+$x1-$eDiff/0.06*$xDiff;\r\n\t$"+$obj2+"sy="+$yv+"+$y1-$eDiff/0.06*$yDiff;\r\n\t$"+$obj2+"sz="+$zv+"+$z1-$eDiff/0.06*$zDiff;\r\n\t\r\n\t\r\n\t$"+$obj2+"gsx1=$x1;\r\n\t$"+$obj2+"gsy1=$y1;\r\n\t$"+$obj2+"gsz1=$z1;\t\r\n\t\r\n\t\r\n}\r\n\r\n\r\nelse if ($eDiff >.82)\r\n{\r\n\t$"+$obj2+"sts = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHolds=\"+$"+$obj2+"sts);\r\n\t\r\n\t\r\n\t$"+$obj2+"gsx1=$x1;\r\n\t$"+$obj2+"gsy1=$y1;\r\n\t$"+$obj2+"gsz1=$z1;\r\n}\r\nundoInfo -swf 1;\n}") -o $obj2 -n "SsoftCon1" -ae 1 -uc all ;
+		print ("S-Soft Constraint Applied. \n");
+		select -r $sels[1];
+		
+	}
+	
+	else
+	{
+		string $sels[]=`ls -sl`;
+		string $obj1=$sels[0];
+		string $obj2=$sels[1];
+	
+		catchQuiet (`deleteAttr -attribute "sfactor" $obj2`);
+	
+		catchQuiet (`deleteAttr -attribute "ssoft_eval" $obj2`);
+		addAttr -ln ssoft_eval -at long  -min 0 -max 1 -dv 1 $obj2;
+		setAttr -e -keyable true ($obj2+".ssoft_eval");			
+	
+		addAttr -ln sfactor -at double  -min 0 -max 1 -dv $fact $obj2;
+		setAttr -e -keyable true ($obj2+".sfactor");
+		expression  -s ("int $ev="+$obj2+".ssoft_eval;\nif ($ev==1){\nundoInfo -swf 0;\n float $fact="+$obj2+".sfactor;\n\nglobal float $"+$obj2+"sx,$"+$obj2+"sy,$"+$obj2+"sz;\nfloat $x1="+$obj1+".sx;\r\nfloat $y1="+$obj1+".sy;\r\nfloat $z1="+$obj1+".sz;\r\n\r\nfloat $x2="+$obj2+".sx;\r\nfloat $y2="+$obj2+".sy;\r\nfloat $z2="+$obj2+".sz;\r\n\r\n\r\nglobal float $"+$obj2+"gsx1;\r\nglobal float $"+$obj2+"gsy1;\r\nglobal float $"+$obj2+"gsz1;\r\n\r\nglobal int $"+$obj2+"opps;\r\n\r\nglobal string $"+$obj2+"sts;\r\nglobal float $"+$obj2+"eHolds;\r\n\r\nif ($"+$obj2+"opps == 0)\r\n{\r\n$"+$obj2+"sx=$x2;\n$"+$obj2+"sy=$y2;\n$"+$obj2+"sz=$z2;\n\t$"+$obj2+"sts = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHolds=\"+$"+$obj2+"sts);\r\n\t\r\n\t\r\n\t$"+$obj2+"gsx1=$x1;\r\n\t$"+$obj2+"gsy1=$y1;\r\n\t$"+$obj2+"gsz1=$z1;\r\n}\r\n\r\n\r\n$"+$obj2+"opps=1;\r\n\r\n$"+$obj2+"sts = `timerX`;\r\nglobal float $"+$obj2+"eCurrentr;\r\neval (\"$"+$obj2+"eCurrentr=\"+$"+$obj2+"sts);\r\n\r\nfloat $eDiff=$"+$obj2+"eCurrentr-$"+$obj2+"eHolds;\r\n\r\n\r\n\r\n\r\nif ($eDiff <.035)\n{\n\n"+$obj2+".scaleX=(1-$fact)*($x2+0.2*($"+$obj2+"sx-$x2))+$fact*$x1;\n"+$obj2+".scaleY=(1-$fact)*($y2+0.2*($"+$obj2+"sy-$y2))+$fact*$y1;\n"+$obj2+".scaleZ=(1-$fact)*($z2+0.2*($"+$obj2+"sz-$z2))+$fact*$z1;\n\n\n}\nif ($eDiff >=.035 && $eDiff <.82)\r\n{\r\n\n"+$obj2+".scaleX=(1-$fact)*($x2+0.2*($"+$obj2+"sx-$x2))+$fact*$x1;\n"+$obj2+".scaleY=(1-$fact)*($y2+0.2*($"+$obj2+"sy-$y2))+$fact*$y1;\n"+$obj2+".scaleZ=(1-$fact)*($z2+0.2*($"+$obj2+"sz-$z2))+$fact*$z1;\n\t$"+$obj2+"sts = `timerX`;\r\n\teval (\"$"+$obj2+"eHolds=\"+$"+$obj2+"sts);\r\n\t\r\n\tfloat $xDiff=$x1-$"+$obj2+"gsx1;\r\n\tfloat $yDiff=$y1-$"+$obj2+"gsy1;\r\n\tfloat $zDiff=$z1-$"+$obj2+"gsz1;\r\n\t\r\n\t$"+$obj2+"sx=$x1-$eDiff/0.06*$xDiff;\r\n\t$"+$obj2+"sy=$y1-$eDiff/0.06*$yDiff;\r\n\t$"+$obj2+"sz=$z1-$eDiff/0.06*$zDiff;\r\n\t\r\n\t\r\n\t$"+$obj2+"gsx1=$x1;\r\n\t$"+$obj2+"gsy1=$y1;\r\n\t$"+$obj2+"gsz1=$z1;\t\r\n\t\r\n\t\r\n}\r\n\r\n\r\nelse if ($eDiff >.82)\r\n{\r\n\t$"+$obj2+"sts = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHolds=\"+$"+$obj2+"sts);\r\n\t\r\n\t\r\n\t$"+$obj2+"gsx1=$x1;\r\n\t$"+$obj2+"gsy1=$y1;\r\n\t$"+$obj2+"gsz1=$z1;\r\n}\r\nundoInfo -swf 1;\n}")  -o $obj2 -n "SsoftCon1" -ae 1 -uc all  ;
+		print ("S-Soft Constraint Applied. \n");	
+		select -r $sels[1];
+		
+	}
+	}
+	
+	
+	else
+	{
+		
+	if ($c1==1)
+	{
+			
+		
+		string $sels[]=`ls -sl`;
+		string $obj1=$sels[0];
+		string $obj2=$sels[1];
+		
+		float $xv=`getAttr ($obj2+".sx")`-`getAttr ($obj1+".sx")`;
+		float $yv=`getAttr ($obj2+".sy")`-`getAttr ($obj1+".sy")`;
+		float $zv=`getAttr ($obj2+".sz")`-`getAttr ($obj1+".sz")`;
+
+		catchQuiet (`deleteAttr -attribute "sfactor" $obj2`);
+		
+		catchQuiet (`deleteAttr -attribute "ssoft_eval" $obj2`);
+		addAttr -ln ssoft_eval -at long  -min 0 -max 1 -dv 1 $obj2;
+		setAttr -e -keyable true ($obj2+".ssoft_eval");	
+		
+		
+		addAttr -ln sfactor -at double  -min 0 -max 1 -dv $fact $obj2;
+		setAttr -e -keyable true ($obj2+".sfactor");
+		setAttr -e  -lock false ($obj2+".shearYZ");
+		expression  -s ("int $ev=`getAttr "+$obj2+".ssoft_eval`;\nif ($ev==1){\nundoInfo -swf 0;\n float $fact=`getAttr "+$obj2+".sfactor`;\n\nglobal float $"+$obj2+"sx,$"+$obj2+"sy,$"+$obj2+"sz;\n\nfloat $x1="+$obj1+".sx;\r\nfloat $y1="+$obj1+".sy;\r\nfloat $z1="+$obj1+".sz;\r\n\r\nfloat $x2=`getAttr "+$obj2+".sx`;\r\nfloat $y2=`getAttr "+$obj2+".sy`;\r\nfloat $z2=`getAttr "+$obj2+".sz`;\r\n\r\n\r\nglobal float $"+$obj2+"gsx1;\r\nglobal float $"+$obj2+"gsy1;\r\nglobal float $"+$obj2+"gsz1;\r\n\r\nglobal int $"+$obj2+"opps;\r\n\r\nglobal string $"+$obj2+"sts;\r\nglobal float $"+$obj2+"eHolds;\r\n\r\nif ($"+$obj2+"opps == 0)\r\n{\r\n$"+$obj2+"sx=$x2;\n$"+$obj2+"sy=$y2;\n$"+$obj2+"sz=$z2;\n\t$"+$obj2+"sts = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHolds=\"+$"+$obj2+"sts);\r\n\t\r\n\t\r\n\t$"+$obj2+"gsx1=$x1;\r\n\t$"+$obj2+"gsy1=$y1;\r\n\t$"+$obj2+"gsz1=$z1;\r\n}\r\n\r\n\r\n$"+$obj2+"opps=1;\r\n\r\n$"+$obj2+"sts = `timerX`;\r\nglobal float $"+$obj2+"eCurrentr;\r\neval (\"$"+$obj2+"eCurrentr=\"+$"+$obj2+"sts);\r\n\r\nfloat $eDiff=$"+$obj2+"eCurrentr-$"+$obj2+"eHolds;\r\n\r\n\r\n\r\n\r\nif ($eDiff <.035)\n{\n\nsetAttr "+$obj2+".scaleX ((1-$fact)*($x2+0.2*($"+$obj2+"sx-$x2))+$fact*($x1+"+$xv+"));\nsetAttr "+$obj2+".scaleY ((1-$fact)*($y2+0.2*($"+$obj2+"sy-$y2))+$fact*($y1+"+$yv+"));\nsetAttr "+$obj2+".scaleZ ((1-$fact)*($z2+0.2*($"+$obj2+"sz-$z2))+$fact*($z1+"+$zv+"));\n\n"+$obj2+".shearYZ=0;\n\n\n}\n if ($eDiff >=.035 && $eDiff <.82)\r\n{\r\n\nsetAttr "+$obj2+".scaleX ((1-$fact)*($x2+0.2*($"+$obj2+"sx-$x2))+$fact*($x1+"+$xv+"));\nsetAttr "+$obj2+".scaleY ((1-$fact)*($y2+0.2*($"+$obj2+"sy-$y2))+$fact*($y1+"+$yv+"));\nsetAttr "+$obj2+".scaleZ ((1-$fact)*($z2+0.2*($"+$obj2+"sz-$z2))+$fact*($z1+"+$zv+"));\n\n"+$obj2+".shearYZ=0;\n\t$"+$obj2+"sts = `timerX`;\r\n\teval (\"$"+$obj2+"eHolds=\"+$"+$obj2+"sts);\r\n\t\r\n\tfloat $xDiff=$x1-$"+$obj2+"gsx1;\r\n\tfloat $yDiff=$y1-$"+$obj2+"gsy1;\r\n\tfloat $zDiff=$z1-$"+$obj2+"gsz1;\r\n\t\r\n\t$"+$obj2+"sx="+$xv+"+$x1-$eDiff/0.06*$xDiff;\r\n\t$"+$obj2+"sy="+$yv+"+$y1-$eDiff/0.06*$yDiff;\r\n\t$"+$obj2+"sz="+$zv+"+$z1-$eDiff/0.06*$zDiff;\r\n\t\r\n\t\r\n\t$"+$obj2+"gsx1=$x1;\r\n\t$"+$obj2+"gsy1=$y1;\r\n\t$"+$obj2+"gsz1=$z1;\t\r\n\t\r\n\t\r\n}\r\n\r\n\r\nelse if ($eDiff >.82)\r\n{\r\n\t$"+$obj2+"sts = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHolds=\"+$"+$obj2+"sts);\r\n\t\r\n\t\r\n\t$"+$obj2+"gsx1=$x1;\r\n\t$"+$obj2+"gsy1=$y1;\r\n\t$"+$obj2+"gsz1=$z1;\r\n}\r\nundoInfo -swf 1;\n}") -o $obj2 -n "SsoftCon1" -ae 1 -uc all ;
+		print ("S-Soft Constraint Applied. \n");
+		select -r $sels[1];
+		
+	}
+	
+	else
+	{
+		string $sels[]=`ls -sl`;
+		string $obj1=$sels[0];
+		string $obj2=$sels[1];
+	
+		catchQuiet (`deleteAttr -attribute "sfactor" $obj2`);
+
+		catchQuiet (`deleteAttr -attribute "ssoft_eval" $obj2`);
+		addAttr -ln ssoft_eval -at long  -min 0 -max 1 -dv 1 $obj2;
+		setAttr -e -keyable true ($obj2+".ssoft_eval");	
+		
+		
+		
+		addAttr -ln sfactor -at double  -min 0 -max 1 -dv $fact $obj2;
+		setAttr -e -keyable true ($obj2+".sfactor");
+		setAttr -e  -lock false ($obj2+".shearYZ");
+
+		expression  -s ("int $ev=`getAttr "+$obj2+".ssoft_eval`;\nif ($ev==1){\nundoInfo -swf 0;\n float $fact=`getAttr "+$obj2+".sfactor`;\n\nglobal float $"+$obj2+"sx,$"+$obj2+"sy,$"+$obj2+"sz;\nfloat $x1="+$obj1+".sx;\r\nfloat $y1="+$obj1+".sy;\r\nfloat $z1="+$obj1+".sz;\r\n\r\nfloat $x2=`getAttr "+$obj2+".sx`;\r\nfloat $y2=`getAttr "+$obj2+".sy`;\r\nfloat $z2=`getAttr "+$obj2+".sz`;\r\n\r\n\r\nglobal float $"+$obj2+"gsx1;\r\nglobal float $"+$obj2+"gsy1;\r\nglobal float $"+$obj2+"gsz1;\r\n\r\nglobal int $"+$obj2+"opps;\r\n\r\nglobal string $"+$obj2+"sts;\r\nglobal float $"+$obj2+"eHolds;\r\n\r\nif ($"+$obj2+"opps == 0)\r\n{\r\n$"+$obj2+"sx=$x2;\n$"+$obj2+"sy=$y2;\n$"+$obj2+"sz=$z2;\n\t$"+$obj2+"sts = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHolds=\"+$"+$obj2+"sts);\r\n\t\r\n\t\r\n\t$"+$obj2+"gsx1=$x1;\r\n\t$"+$obj2+"gsy1=$y1;\r\n\t$"+$obj2+"gsz1=$z1;\r\n}\r\n\r\n\r\n$"+$obj2+"opps=1;\r\n\r\n$"+$obj2+"sts = `timerX`;\r\nglobal float $"+$obj2+"eCurrentr;\r\neval (\"$"+$obj2+"eCurrentr=\"+$"+$obj2+"sts);\r\n\r\nfloat $eDiff=$"+$obj2+"eCurrentr-$"+$obj2+"eHolds;\r\n\r\n\r\n\r\n\r\nif ($eDiff <.035)\n{\n\nsetAttr "+$obj2+".scaleX ((1-$fact)*($x2+0.2*($"+$obj2+"sx-$x2))+$fact*$x1);\nsetAttr "+$obj2+".scaleY ((1-$fact)*($y2+0.2*($"+$obj2+"sy-$y2))+$fact*$y1);\nsetAttr "+$obj2+".scaleZ ((1-$fact)*($z2+0.2*($"+$obj2+"sz-$z2))+$fact*$z1);\n\n"+$obj2+".shearYZ=0;\n\n\n}\nif ($eDiff >=.035 && $eDiff <.82)\r\n{\r\n\nsetAttr "+$obj2+".scaleX ((1-$fact)*($x2+0.2*($"+$obj2+"sx-$x2))+$fact*$x1);\nsetAttr "+$obj2+".scaleY ((1-$fact)*($y2+0.2*($"+$obj2+"sy-$y2))+$fact*$y1);\nsetAttr "+$obj2+".scaleZ ((1-$fact)*($z2+0.2*($"+$obj2+"sz-$z2))+$fact*$z1);\n\n"+$obj2+".shearYZ=0;\n\t$"+$obj2+"sts = `timerX`;\r\n\teval (\"$"+$obj2+"eHolds=\"+$"+$obj2+"sts);\r\n\t\r\n\tfloat $xDiff=$x1-$"+$obj2+"gsx1;\r\n\tfloat $yDiff=$y1-$"+$obj2+"gsy1;\r\n\tfloat $zDiff=$z1-$"+$obj2+"gsz1;\r\n\t\r\n\t$"+$obj2+"sx=$x1-$eDiff/0.06*$xDiff;\r\n\t$"+$obj2+"sy=$y1-$eDiff/0.06*$yDiff;\r\n\t$"+$obj2+"sz=$z1-$eDiff/0.06*$zDiff;\r\n\t\r\n\t\r\n\t$"+$obj2+"gsx1=$x1;\r\n\t$"+$obj2+"gsy1=$y1;\r\n\t$"+$obj2+"gsz1=$z1;\t\r\n\t\r\n\t\r\n}\r\n\r\n\r\nelse if ($eDiff >.82)\r\n{\r\n\t$"+$obj2+"sts = `timerX`;\r\n\r\n\teval (\"$"+$obj2+"eHolds=\"+$"+$obj2+"sts);\r\n\t\r\n\t\r\n\t$"+$obj2+"gsx1=$x1;\r\n\t$"+$obj2+"gsy1=$y1;\r\n\t$"+$obj2+"gsz1=$z1;\r\n}\r\nundoInfo -swf 1;\n}")  -o $obj2 -n "SsoftCon1" -ae 1 -uc all  ;
+		print ("S-Soft Constraint Applied. \n");	
+		select -r $sels[1];
+		
+	}
+		
+		
+		
+		
+	}
+	
+	
+	
+	
+	
+	
+}
+
+

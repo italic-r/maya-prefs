@@ -1,0 +1,35 @@
+// saveInstancer
+string $instancerRestoreData;
+string $tokenBuffer[];
+string $saveBuffer;
+
+// restore connections
+$instancerNodes = `ls -type "instancer"`;
+
+for ($node in $instancerNodes){
+	
+
+	if (!`attributeExists "restoreData" $node`) {
+		addAttr -longName "restoreData" -dt "string" $node;
+	}
+	$saveBuffer = "";
+	string $currentConnections[] = `listConnections ($node+".inputHierarchy")`;
+	if (size($currentConnections) > 0) {
+		for ($i=0;$i<size($currentConnections);$i++){
+			if ($saveBuffer == "")
+				$saveBuffer = ($currentConnections[$i]);
+			else
+				$saveBuffer = ($saveBuffer+","+$currentConnections[$i]);
+		}
+	}		
+	setAttr -type "string" ($node+".restoreData") $saveBuffer;
+		
+} 
+if (`objExists instancerRestore`){
+scriptNode  -e -beforeScript  "\r\nstring $instancerRestoreData;\r\nstring $tokenBuffer[];\r\nstring $saveBuffer;\r\n\r\n// restore connections\r\n$instancerNodes = `ls -type \"instancer\"`;\r\nfor ($node in $instancerNodes){\r\n\t\r\n\r\n\tif (!`attributeExists \"restoreData\" $node`) {\r\n\t\t$saveBuffer = \"\";\r\n\t\tstring $currentConnections[] = `listConnections ($node+\".inputHierarchy\")`;\r\n\t\tif (size($currentConnections) > 0) {\r\n\t\t\tfor ($i=0;$i<size($currentConnections);$i++){\r\n\t\t\t\tif ($saveBuffer == \"\")\r\n\t\t\t\t\t$saveBuffer = ($currentConnections[$i]);\r\n\t\t\t\telse\r\n\t\t\t\t\t$saveBuffer = ($saveBuffer+\",\"+$currentConnections[$i]);\r\n\t\t\t}\r\n\t\t}\t\t\r\n\t\taddAttr -longName \"restoreData\" -dt \"string\" $node;\r\n\t\tsetAttr -type \"string\" ($node+\".restoreData\") $saveBuffer;\r\n\t\t\r\n\t}\r\n\t\r\n\t// parse data for matching instancer element\r\n\t$instancerRestoreData = `getAttr ($node+\".restoreData\")`;\r\n\ttokenize $instancerRestoreData \",\" $tokenBuffer;\r\n\t\r\n\t// delete any existing connections\r\n\tstring $currentConnections[] = `listConnections ($node+\".inputHierarchy\")`;\r\n\tif (size($currentConnections) > 0) {\r\n\t\tfor ($i=0;$i<size($currentConnections);$i++){\r\n\t\t\tdisconnectAttr ($currentConnections[$i]+\".matrix\") ($node+\".inputHierarchy[\"+$i+\"]\");\r\n\t\t}\r\n\t}\t\t\r\n\t\r\n\t$saveBuffer = \"\";\r\n\t\t\r\n\t// restore the list of files\r\n\tfor ($i=0;$i<size($tokenBuffer);$i++){\r\n\t\tstring $object = $tokenBuffer[$i];\r\n\t\tif ($object != \"\" && `objExists $object`)\r\n\t\t\tconnectAttr ($object+\".matrix\") ($node+\".inputHierarchy[\"+$i+\"]\");\r\n\t\telse \r\n\t\t\tprint ($object+\" not found for instancing. Skipped\\n\");\r\n\t\t\t\r\n\t\tif ($saveBuffer == \"\")\r\n\t\t\t$saveBuffer = ($object);\r\n\t\telse\r\n\t\t\t$saveBuffer = ($saveBuffer+\",\"+$object);\r\n\t}\r\n\t\t\r\n\t// save data into instancer node\r\n\tsetAttr  -type \"string\" ($node+\".restoreData\") $saveBuffer;\t\r\n\t\r\n\t\r\n} \r\n\r\n\r\n\r" instancerRestore;
+}
+else{
+scriptNode -beforeScript  "\r\nstring $instancerRestoreData;\r\nstring $tokenBuffer[];\r\nstring $saveBuffer;\r\n\r\n// restore connections\r\n$instancerNodes = `ls -type \"instancer\"`;\r\nfor ($node in $instancerNodes){\r\n\t\r\n\r\n\tif (!`attributeExists \"restoreData\" $node`) {\r\n\t\t$saveBuffer = \"\";\r\n\t\tstring $currentConnections[] = `listConnections ($node+\".inputHierarchy\")`;\r\n\t\tif (size($currentConnections) > 0) {\r\n\t\t\tfor ($i=0;$i<size($currentConnections);$i++){\r\n\t\t\t\tif ($saveBuffer == \"\")\r\n\t\t\t\t\t$saveBuffer = ($currentConnections[$i]);\r\n\t\t\t\telse\r\n\t\t\t\t\t$saveBuffer = ($saveBuffer+\",\"+$currentConnections[$i]);\r\n\t\t\t}\r\n\t\t}\t\t\r\n\t\taddAttr -longName \"restoreData\" -dt \"string\" $node;\r\n\t\tsetAttr -type \"string\" ($node+\".restoreData\") $saveBuffer;\r\n\t\t\r\n\t}\r\n\t\r\n\t// parse data for matching instancer element\r\n\t$instancerRestoreData = `getAttr ($node+\".restoreData\")`;\r\n\ttokenize $instancerRestoreData \",\" $tokenBuffer;\r\n\t\r\n\t// delete any existing connections\r\n\tstring $currentConnections[] = `listConnections ($node+\".inputHierarchy\")`;\r\n\tif (size($currentConnections) > 0) {\r\n\t\tfor ($i=0;$i<size($currentConnections);$i++){\r\n\t\t\tdisconnectAttr ($currentConnections[$i]+\".matrix\") ($node+\".inputHierarchy[\"+$i+\"]\");\r\n\t\t}\r\n\t}\t\t\r\n\t\r\n\t$saveBuffer = \"\";\r\n\t\t\r\n\t// restore the list of files\r\n\tfor ($i=0;$i<size($tokenBuffer);$i++){\r\n\t\tstring $object = $tokenBuffer[$i];\r\n\t\tif ($object != \"\" && `objExists $object`)\r\n\t\t\tconnectAttr ($object+\".matrix\") ($node+\".inputHierarchy[\"+$i+\"]\");\r\n\t\telse \r\n\t\t\tprint ($object+\" not found for instancing. Skipped\\n\");\r\n\t\t\t\r\n\t\tif ($saveBuffer == \"\")\r\n\t\t\t$saveBuffer = ($object);\r\n\t\telse\r\n\t\t\t$saveBuffer = ($saveBuffer+\",\"+$object);\r\n\t}\r\n\t\t\r\n\t// save data into instancer node\r\n\tsetAttr  -type \"string\" ($node+\".restoreData\") $saveBuffer;\t\r\n\t\r\n\t\r\n} \r\n\r\n\r\n\r" -n instancerRestore;
+
+}
+setAttr instancerRestore.scriptType 1;

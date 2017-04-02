@@ -1,0 +1,132 @@
+//---------------------------------------------------------------------------
+// cr_stretchNetworkUI.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:
+//      stretch network UI
+//
+// REQUIRES:
+//      Nothing
+//
+// AUTHOR:
+//      Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+global proc cr_stretchNetworkUI()
+{
+if (`window -exists ikStretchWin`)
+deleteUI ikStretchWin;
+
+	window
+	-t "creatureRigs: Ik Stretch"
+	-mxb off
+	-mnb off
+	-resizeToFitChildren on
+	-sizeable off
+	ikStretchWin;
+
+formLayout ikStretchMainForm;
+    textFieldGrp -l "Name:" -tx "" -cw2 60 70 stretchNameTFG;
+    textFieldGrp -l "Side:" -tx "" -cw2 30 70 stretchSideOMG;
+    separator -height 5 -style "out" stretchEndSep;
+    optionMenuGrp -l "Method:" -cw2 60 50 stretchTypeOpGrp;
+        menuItem -l "scale";
+        menuItem -l "translate";
+    textFieldButtonGrp -label "Start Joint:" -text "" -buttonLabel " select " -bc "cr_updateTextField stretchStartJointTFBG" -cw3 60 128 50 stretchStartJointTFBG;
+    textFieldButtonGrp -label "End Joint:" -text "" -buttonLabel " select " -bc "cr_updateTextField stretchEndJointTFBG" -cw3 60 128 50 stretchEndJointTFBG;
+    textFieldButtonGrp -label "Control:" -text "" -buttonLabel " select " -bc "cr_updateTextField stretchControlTFBG" -cw3 60 128 50 stretchControlTFBG;
+    checkBoxGrp -l "Mid Lock:" -v1 0 -cw2 60 20 -cc "cr_snMidSwitch" stretchMidLockCBG;
+    textFieldButtonGrp -label "PV Control:" -text "" -buttonLabel " select " -bc "cr_updateTextField stretchPvControlTFBG" -cw3 60 128 50 stretchPvControlTFBG;
+    separator -height 5 -style "out" stretchApplySep1;
+    button -l "Create" -c "cr_stretchNetworkPreCMD" stretchApplyBtn;
+    separator -height 5 -style "out" stretchApplySep2;
+   
+formLayout -e
+    -af stretchNameTFG "top" 0
+    -af stretchNameTFG "left" 0
+
+    -af stretchSideOMG "top" 0
+    -ac stretchSideOMG "left" 0 stretchNameTFG
+
+    -ac stretchEndSep "top" 0 stretchSideOMG
+    -af stretchEndSep "left" 0
+    -ap stretchEndSep "right" 0 100
+        
+    -ac stretchTypeOpGrp "top" 0 stretchEndSep
+    -af stretchTypeOpGrp "left" 0
+
+    -ac stretchStartJointTFBG "top" 0 stretchTypeOpGrp
+    -af stretchStartJointTFBG "left" 0
+    
+    -ac stretchEndJointTFBG "top" 0 stretchStartJointTFBG
+    -af stretchEndJointTFBG "left" 0
+
+    -ac stretchControlTFBG "top" 0 stretchEndJointTFBG
+    -af stretchControlTFBG "left" 0
+    
+    -ac stretchMidLockCBG "top" 0 stretchControlTFBG
+    -af stretchMidLockCBG "left" 0
+
+    -ac stretchPvControlTFBG "top" 0 stretchMidLockCBG
+    -af stretchPvControlTFBG "left" 0
+    
+    -ac stretchApplySep1 "top" 0 stretchPvControlTFBG
+    -af stretchApplySep1 "left" 0
+    -ap stretchApplySep1 "right" 0 100
+
+    -ac stretchApplyBtn "top" 0 stretchApplySep1
+    -af stretchApplyBtn "left" 0
+    -ap stretchApplyBtn "right" 0 100
+
+    -ac stretchApplySep2 "top" 0 stretchApplyBtn
+    -af stretchApplySep2 "left" 0
+    -ap stretchApplySep2 "right" 0 100     
+ikStretchMainForm;
+
+checkBoxGrp -e -v1 1 stretchMidLockCBG;
+showWindow ikStretchWin;
+}
+
+global proc cr_snMidSwitch()
+{
+int $switch = `checkBoxGrp -q -v1 stretchMidLockCBG`;
+if($switch)
+	textFieldButtonGrp -e -en 1 stretchPvControlTFBG;
+else
+	textFieldButtonGrp -e -en 0 stretchPvControlTFBG;
+}
+
+global proc cr_stretchNetworkPreCMD()
+{
+string $name = `textFieldGrp -q -tx stretchNameTFG`;
+string $side = `textFieldGrp -q -tx stretchSideOMG`;
+string $type = `optionMenuGrp -q -v stretchTypeOpGrp`;
+string $startJoint = `textFieldButtonGrp -q -tx stretchStartJointTFBG`;
+string $endJoint = `textFieldButtonGrp -q -tx stretchEndJointTFBG`;
+string $controller = `textFieldButtonGrp -q -tx stretchControlTFBG`;
+int $midLock = `checkBoxGrp -q -v1 stretchMidLockCBG`;
+string $midController = `textFieldButtonGrp -q -tx stretchPvControlTFBG`;
+cr_stretchNetwork($name,$side,$startJoint,$endJoint,$controller,$type,$midLock,$midController);
+}
+
+
+
+    

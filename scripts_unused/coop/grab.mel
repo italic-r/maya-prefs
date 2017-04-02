@@ -1,0 +1,292 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: grab v1.0
+''    Author: Big Idea Productions
+''    Last Updated: August 16, 2001
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=animation#1194
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+//----BEGINDOC----------------------------------------------------------------
+// Copyright (C) 2001, Big Idea Productions
+//
+//----------------------------------------------------------------------------
+// Name: grab.mel - MEL Script
+//----------------------------------------------------------------------------
+//
+// Synopsis:	grab()
+//		eraseGrab()
+//
+// Description:	This script allows an animator easily pickup/putdown props
+//		or objects by having them grabbed.
+//		This works kind of like constraints, where you first select
+//		what the parent/master object is, and then the slave or
+//		grabbed object is and hit grab.
+//		Once something is grabbed, it can no longer be moved or rotated
+//		(since it is constrained) but there is an offset curve that
+//		gets created if needed (it looks like a hand with fingers).  
+//		Alternatively, you could also make another curve or control 
+//		object, and have it grabbed by that new control object, and 
+//		then animate that control.
+//		To grab something to the world, use a set piece that never
+//		moves and grab to that.
+//
+// Arguments:	Grab - None : Select the master, then slave, and call grab().
+//		eraseGrab - None : Select the grab control, (red arrow) on
+//			a frame where the object was grabbed and 
+//			call eraseGrab().
+//
+// Returns:	Nothing.
+//
+// Examples:	grab()
+//			(select master, then slave and call grab.)
+//		eraseGrab()
+//			(select control red arrow for grab, on a frame where
+//			you already grabbed something, then call eraseGrab.)
+//
+// Requires:	The grabbed object must have it's Position and Rotation
+//		channels free, ie: not be animated or constrained already.
+//		You can have a grabbed object, be grabbed at different times
+//		by different control objects though.
+//		If you need to "grab" an object that has already been 
+//		animated, then use the "grabAnim" script.
+//
+// Authors:	Mark Behm
+//
+//
+//----------------------------------------------------------------------------
+//----ENDDOC----
+
+
+
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  
+proc xSnap (string $m,string $s)
+	{
+	// constrain
+	orientConstraint -w 1 -n OrienterX $m $s;
+	pointConstraint -w 1 -n PointerX $m $s;
+	//refresh;
+	// delete constraints
+	delete OrienterX;
+	delete PointerX;
+	//refresh;
+	}                                                                                  
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  
+proc int getNextGrabberNumber(string $master)
+	{
+	// find all named this
+	string $s[] = `ls ("grabber*"+$master)`;
+	// parse the index number
+	if (size($s)>0)
+		{
+		string $m = `match "[0123456789]" $s[size($s)-1]`; 
+		int $mi = (int)$m;
+		$mi++;
+		print (" match in string   "+$m+" changing to "+$mi+"\n");
+		return $mi;
+		}
+	else
+		{
+		print "first one, numbering @ 0\n";
+		return 0;
+		}
+	
+	}
+
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  
+global proc grab()
+	{              
+	string $master,$slave,$grabber,$grabberAnchor,$grabbed,$grabbedAnchor;
+	waitCursor -state on;
+	// user selects MASTER and then shift-selects SLAVE
+	string $s[]=`ls -sl`;    
+				// make sure user has two objects selected
+				if (size($s)<2 || size($s)>2)
+				{
+				confirmDialog -title "grab error" -message "You have to pick two objects\n a master(grabber) and then a slave(grabbed)" -button "OK" -dismissString "OK";
+				waitCursor -state off;
+				return;
+				}
+	 	$master = $s[0];
+	 	$slave = $s[1];   
+	 	// make sure there are no animation keys on the 8 xform channels
+				$q = `keyframe -q -kc ($s[1]+".tx")`;
+				$q+= `keyframe -q -kc ($s[1]+".ty")`;
+				$q+= `keyframe -q -kc ($s[1]+".tz")`;
+				$q+= `keyframe -q -kc ($s[1]+".rx")`;
+				$q+= `keyframe -q -kc ($s[1]+".ry")`;
+				$q+= `keyframe -q -kc ($s[1]+".rz")`;
+				if ($q>0) 
+					{
+					confirmDialog -title "grab error" -message "You have animation keys on the target\nGRAB works with constraints, so you can't have those channels busy\nYou can copy those keys onto a new object and have the new object GRAB\nyour target"
+					-button "OK" -dismissString "OK";
+					waitCursor -state off;
+					return;
+					}
+
+	// create an grabberANCHOR transform node 
+	$grabberAnchor = ` createNode "transform" -n($master+"Anchor")`;
+	//	constrain the grabberANCHOR to the MASTER
+	 	orientConstraint -w 1 $master $grabberAnchor;  
+	 	pointConstraint -w 1 $master $grabberAnchor;                                        
+	// create a GRABBER curve 
+	int $sd = getNextGrabberNumber($master); // get next index for grabber
+	$grabber = `curve -d 1 -p -0.646697 -0.635579 0 -p -0.84759 -0.629492 0 -p -0.890204 -0.39816 0 -p -0.923686 -0.300758 0 -p -0.911511 -0.252056 0 -p -0.838459 -0.130303 0 -p -0.789758 0.0827651 0 -p -0.692338 0.227858 0 -p -0.707574 0.359754 0 -p -0.7441 0.423674 0 -p -0.69272 0.466775 0 -p -0.707574 0.606304 0 -p -0.671048 0.645874 0 -p -0.538935 0.610602 0 -p -0.579733 0.551515 0 -p -0.69272 0.466775 0 -p -0.579733 0.551515 0 -p -0.538935 0.610602 0 -p -0.491462 0.679356 0 -p -0.430585 0.709794 0 -p -0.311876 0.621523 0 -p -0.0775009 0.548471 0 -p -0.0683694 0.432806 0 -p -0.0409749 0.350622 0 -p -0.110983 0.320184 0 -p -0.19621 0.42063 0 -p -0.190123 0.493682 0 -p -0.308832 0.524121 0 -p -0.403191 0.554559 0 -p -0.422602 0.524871 0 -p -0.454936 0.475419 0 -p -0.452416 0.417984 0 -p -0.597996 0.42063 0 -p -0.643654 0.368885 0 -p -0.646697 0.295833 0 -p -0.692338 0.227858 0 -p -0.646697 0.295833 0 -p -0.643654 0.368885 0 -p -0.597996 0.42063 0 -p -0.430585 0.417587 0 -p -0.355793 0.440166 0 -p -0.422602 0.524871 0 -p -0.355793 0.440166 0 -p -0.269262 0.466288 0 -p -0.229693 0.454113 0 -p -0.214473 0.374973 0 -p -0.126202 0.311952 0 -p 0.0959975 0.257163 0 -p 0.0838222 0.171936 0 -p 0.05034 0.129322 0 -p -0.107939 0.138453 0 -p -0.141421 0.205418 0 -p -0.241868 0.25322 0 -p -0.311876 0.314096 0 -p -0.34515 0.28716 0 -p -0.369709 0.186255 0 -p -0.442761 0.201475 0 -p -0.442429 0.268813 0 -p -0.375796 0.262351 0 -p -0.34515 0.28716 0 -p -0.375796 0.262351 0 -p -0.442429 0.268813 0 -p -0.461757 0.267829 0 -p -0.45806 0.303977 0 -p -0.461757 0.267829 0 -p -0.474347 0.149729 0 -p -0.445805 -0.0115937 0 -p -0.549295 0.104072 0 -p -0.445805 -0.0115937 0 -p -0.235448 -0.146855 0 -p -0.126592 -0.139378 0 -p -0.0626695 -0.103496 0 -p 0.114283 -0.14042 0 -p 0.140632 -0.222735 0 -p 0.0871179 -0.275095 0 -p -0.107712 -0.261835 0 -p -0.213012 -0.296303 0 -p -0.276692 -0.330512 0 -p -0.419877 -0.258502 0 -p -0.524056 -0.28111 0 -p -0.671048 -0.234682 0 -p -0.753232 -0.0542073 0 -p -0.671048 -0.234682 0 -p -0.774538 -0.328152 0 -p -0.817152 -0.404248 0 -p -0.774538 -0.328152 0 -p -0.646697 -0.635579 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 -k 28 -k 29 -k 30 -k 31 -k 32 -k 33 -k 34 -k 35 -k 36 -k 37 -k 38 -k 39 -k 40 -k 41 -k 42 -k 43 -k 44 -k 45 -k 46 -k 47 -k 48 -k 49 -k 50 -k 51 -k 52 -k 53 -k 54 -k 55 -k 56 -k 57 -k 58 -k 59 -k 60 -k 61 -k 62 -k 63 -k 64 -k 65 -k 66 -k 67 -k 68 -k 69 -k 70 -k 71 -k 72 -k 73 -k 74 -k 75 -k 76 -k 77 -k 78 -k 79 -k 80 -k 81 -k 82 -k 83 -k 84 -k 85 -k 86 -n ("grabber"+$sd+$master)`;
+	//	snap GRABBER to GRABBED
+	xSnap ($slave,$grabber);
+	//	parent the GRABBER to the grabberANCHOR
+	parent $grabber $grabberAnchor;
+	// create a GRABBED curve (if none already exist on SLAVE)
+	if (`objExists($slave+"Grabbed")`)
+		$grabbed = $slave+"Grabbed"; // it already exists, here it is
+	else 
+		{                                                              
+		// ok, none there. We gotta create one
+		$grabbed = `curve -d 1 -p 3.280915 -0.253686 0 -p 3.280915 0.253686 0 -p 0.695688 0.253686 0 -p 0.695688 0.553726 0 -p 0.0160109 0 0 -p 0.695688 -0.553726 0 -p 0.695688 -0.253686 0 -p 3.280915 -0.253686 0 -p 3.280915 0 0 -p 3.280915 0 -0.253686 -p 0.695688 0 -0.253686 -p 0.695688 0 -0.553726 -p 0.0160109 0 0 -p 0.695688 0 0.553726 -p 0.695688 0 0.253686 -p 3.280915 0 0.253686 -p 3.280915 0 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -n ($slave+"Grabbed")`;
+		setAttr ($grabbed+".overrideEnabled") 1;
+		setAttr ($grabbed+".overrideColor") 13;
+		// snap GRABBED to SLAVE
+		xSnap ($slave,$grabbed);
+         //	create grabbedANCHOR transform node
+		$grabbedAnchor = ` createNode "transform" -n($master+"Anchor")`;         
+		//	snap grabbedANCHOR to SLAVE 
+		xSnap ($slave,$grabbedAnchor);
+		//	constrain SLAVE to grabbedANCHOR
+		orientConstraint -w 1 $grabbedAnchor $slave;  
+		pointConstraint -w 1 $grabbedAnchor $slave;   
+		//	parent grabbedANCHOR to GRABBED
+		parent $grabbedAnchor $grabbed;                 
+		}  
+	// constrain GRABBED to GRABBER
+	string $oc[] = `orientConstraint -w 1 -n ("o_"+$slave) $grabber $grabbed`;
+	string $pc[] =  `pointConstraint -w 1 -n ("p_"+$slave) $grabber $grabbed`;
+	     
+	// get last target of these constraints
+	string $target[] = `listAttr -st ("*"+$grabber+"*") $oc[0]`;  
+		// hide constraint attrs by making them unkeyable
+		setAttr -keyable off ($pc[0]+".nodeState"); 
+		setAttr -keyable off ($oc[0]+".nodeState");
+		setAttr -keyable off ($pc[0]+"."+$target[0]);
+		setAttr -keyable off ($oc[0]+"."+$target[0]); 
+	// add a custom target attribute to GRABBED      
+	string $attr = `addAttr -ln $target[0] -at "float" -k true $grabbed`;
+	// connect custom target attribute on GRABBED to it's corresponding constraint weight
+	connectAttr -f ($grabbed+"."+$target[0]) ($pc[0]+"."+$target[0]);    
+	connectAttr -f ($grabbed+"."+$target[0]) ($oc[0]+"."+$target[0]);
+	// keyframe all target attributes at current time to 0  (on stepped tangent)
+	string $lAttrs[]=`listAttr -st ("*rabber*") $grabbed`; 
+		for ($i=0;$i<(size($lAttrs));$i++)                       
+	    	{  setKeyframe -at ($lAttrs[$i]) -v 0 -ott "step" $grabbed; }  
+	// keyframe the current target attribute at 0 to 0 (on stepped tangent)
+	setKeyframe  -at $target[0] -time 0 -v 0 -ott "step" $grabbed;	   
+	// keyframe the current target attribute at current time to 1 (on stepped tangent)
+	setKeyframe  -at $target[0] -v 1 -ott "step" $grabbed;	                                                             
+	// group all xtra nodes under a global GrabNodes group  
+	if (`objExists "grabNodes"`==true)
+		{
+		// yep, lump free nodes under it
+		parent $grabberAnchor "grabNodes";
+		}
+	else
+		{
+		// nope, create a new group with free nodes under it
+		createNode "transform" -n "grabNodes";
+		parent $grabberAnchor "grabNodes";
+		} 
+	// rename grabberAnchor for easier organizing
+	rename $grabberAnchor ($target[0]+"Anchor");
+	// select grabbed 
+	select -r $grabbed;
+	// cursor
+	waitCursor -state off;
+	// refresh screen
+	refresh;                 
+	// update time to the currentTime (need this to refresh constraint and attr keys) 
+	$t = `currentTime -q`;
+	currentTime $t -update true;
+	}
+	
+	
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  
+global proc eraseGrab()
+	{
+	// get selection, make sure it's a GRABBED node
+	string $s[]=`ls -sl`;
+	string $grabbed=$s[0];
+	// get attrs on this GRABBED that are keyed on this frame
+		// list attrs with "grabbed" in 'em
+		string $grabbedAttrs[] = `listAttr -st ("*grabber*") $grabbed`;
+		// refine that list to the ones that are keyed at 1 on this frame
+		string $attrsAtOne[];
+		int $count=0;
+		float $foundKey;
+		$t = `currentTime -q`;
+		for ($i=0;$i<size($grabbedAttrs);$i++)
+			{
+			if ($t==0)
+				{
+				$foundKey=`findKeyframe -t ($t+1) -w "previous" -at ($grabbedAttrs[$i])`;
+				print ("time------------"+$foundKey);
+				}
+			else
+				$foundKey=`findKeyframe -t ($t-1)  -at ($grabbedAttrs[$i])`;
+			// is the attr keyed at this frame?
+			if ($foundKey>=0)
+				{
+				// is it keyed at value 1?
+				float $k[] = `keyframe -t $t -q -vc  -a -at ($grabbed+"."+$grabbedAttrs[$i]) `;
+				if ($k[0]==1)
+					{
+					$attrsAtOne[$count]=$grabbedAttrs[$i];
+					$count++;
+					}
+				}
+			}
+		// did we find any
+		if (size($attrsAtOne)==0) return;
+		// get GRABBER for referencing constraint and for deletion
+		string $grabbers[];
+		for($i=0;$i<size($attrsAtOne);$i++)
+			{
+			 $grabbers[$i] = `substitute "W.*" ($attrsAtOne[$i]) "" `;
+			}
+		// get constraint names dealing with our keyed attrs
+			// knock off "Grabbed" from name to get string
+			$cnt=`substitute "Grabbed" $grabbed "" `;
+		string $constraints[]={("p_"+$cnt),("o_"+$cnt)};
+	// delete the constraint target from constraint's targetlist
+	for($i=0;$i<size($attrsAtOne);$i++)
+		{
+		pointConstraint -e -rm    $grabbers[$i] $grabbed ;
+		orientConstraint -e -rm   $grabbers[$i] $grabbed ;
+		}
+	// delete attr on GRABBED
+	for($i=0;$i<size($attrsAtOne);$i++)
+		{
+		deleteAttr -at $attrsAtOne[$i] $grabbed;
+		}
+	// delete the other keyframes on non active attrs
+	for($i=0;$i<size($grabbedAttrs);$i++)
+		{
+		cutKey -clear -time $t   -at ($grabbedAttrs[$i])  $grabbed;
+		}
+	// delete GRABBER ANCHORS and with that their children (GRABBER curves)
+	for($i=0;$i<size($attrsAtOne);$i++)
+		{
+		//$anchor = (`substitute "grabber[0-9]"  $grabbers[$i] ""`+"Anchor");
+		$anchor =($attrsAtOne[$i]+"Anchor");
+		delete $anchor;	
+		}
+	// if we only have one grab, then delete GRABBED too! 
+	if (size($grabbedAttrs)==size($attrsAtOne))
+		{
+		delete $grabbed;
+		}
+	}
+	

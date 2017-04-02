@@ -1,0 +1,633 @@
+zooArrays_str;
+zooStrUtils;
+zooUtils;
+
+global string $g_p4AutoCheckoutString = "Maya Auto Checkout";
+
+
+global proc p4() {
+	return;
+	}
+
+
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+// SUBMIT UI - the submit UI is a moderately complicated UI, with template saving/loading functionality, and various checks and balances
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+	//normally UI procs are banned from utils scripts, but this is an exception because
+	//having a UI for description input is so essential to any tools using perforce
+	//this proc simply opens a window for description authoring, and has a submit and a
+	//cancel button
+	global proc p4submitUI( string $files[] ) {
+		string $windowName = "p4SubmitUI";
+		string $windowTitle = "submit comments";
+		string $fileArrayStr = "{ \""+ `zooArrayToStr_str $files "\",\""` +"\" }";
+		int $isEdit = `isEdit $files[0] {} {}`;
+
+		for( $n=0; $n<`size $files`; $n++ ) $files[$n] = `zooResolvePath $files[$n]`;
+		if( `window -exists $windowName` ) deleteUI $windowName;
+		window -t $windowTitle -mb 1 -rtf 0 -maximizeButton 0 -sizeable 1 -width 600 -height 450 $windowName;
+			string $form = `formLayout`;
+				string $pane = `paneLayout -cn "horizontal2" -ps 1 100 40 p4SubmitPane`;
+					string $text = `scrollField -tx "" -ww 1`;
+					string $listForm = `formLayout`;
+						string $fileLbl = `text -l "files being submitted - right click to list all files open for edit options (this is slow)"`;
+						string $fileUI = `textScrollList -ams 1`;
+					setParent ..;
+				setParent ..;
+				string $save = `button -en $isEdit -l(size($files)?"submit file":"submit files") -c( "p4submitUIAction "+ $fileUI +" "+ $text +";" )`;
+				string $canc = `button -l "cancel" -c( "deleteUI "+ $windowName )`;
+			menu -p $windowName -l "Comment Templates" -pmc( "p4CommentTemplateMenu p4TemplateMenu "+ $text ) p4TemplateMenu;
+
+		for( $file in $files ) {
+			textScrollList -e -a(tolower($file)) $fileUI;
+			textScrollList -e -si(tolower($file)) $fileUI;
+			}
+		popupMenu -b 3 -p $fileUI;
+			menuItem -l "list all files opened for edit" -c( "p4submitUIListAll "+ $fileUI );
+
+		formLayout -e
+			-af $fileLbl "top" 3
+			-af $fileLbl "left" 0
+
+			-ac $fileUI "top" 3 $fileLbl
+			-af $fileUI "left" 0
+			-af $fileUI "right" 0
+			-af $fileUI "bottom" 0
+			$listForm;
+
+		formLayout -e
+			-af $pane "top" 2
+			-af $pane "left" 2
+			-af $pane "right" 2
+			-ac $pane "bottom" 2 $save
+
+			-af $save "left" 2
+			-ap $save "right" 1 50
+			-af $save "bottom" 2
+
+			-ap $canc "left" 1 50
+			-af $canc "right" 2
+			-af $canc "bottom" 2
+			$form;
+
+		showWindow $windowName;
+		}
+
+
+	global proc p4submitUIListAll( string $fileUI ) {
+		string $opened[] = `p4_openedClient`;
+		string $files[] = `textScrollList -q -si $fileUI`;
+
+		textScrollList -e -ra $fileUI;
+		for( $file in $opened ) textScrollList -e -a(tolower($file)) $fileUI;
+		for( $file in $files ) textScrollList -e -si(tolower($file)) $fileUI;
+		}
+
+
+	global proc p4CommentTemplateMenu( string $parent, string $commentUI ) {
+		setParent -m $parent;
+		menu -e -dai $parent;
+
+		string $dirL = `zooGetPresetDirectory "local" p4`;
+		string $dirG = `zooGetPresetDirectory "global" p4`;
+		string $templatesL[] = `zooListPresets "local" p4 ""`;
+		string $templatesG[] = `zooListPresets "global" p4 ""`;
+
+		for( $n=0; $n<`size $templatesL`; $n++ ) menuItem -l( `match "^[^\.]+" $templatesL[$n]` ) -c( "scrollField -e -tx(zooArrayToStr_str(`zooReadFile \""+ $dirL + $templatesL[$n] +"\" \"\"`,\"\")) \""+ $commentUI +"\";" );
+		for( $n=0; $n<`size $templatesG`; $n++ ) menuItem -l( `match "^[^\.]+" $templatesG[$n]` ) -c( "scrollField -e -tx(zooArrayToStr_str(`zooReadFile \""+ $dirG + $templatesG[$n] +"\" \"\"`,\"\")) \""+ $commentUI +"\";" );
+		menuItem -d 1;
+		menuItem -l "Save Current as Template" -c( "{string $name = `promptDialog -t \"template name\" -m \"template name:\" -b OK -b cancel -db OK`; if( $name == \"OK\" ) zooSavePreset \"local\" p4 \"\" (`promptDialog -q -tx`) (`scrollField -q -tx "+ $commentUI +"`);}" );
+		menuItem -d 1;
+		menuItem -l "Preset Manager" -c( "zooPresetManager; zooPresetManagerWin \"local\" p4 \"\";" );
+		}
+
+
+	global proc p4submitUIAction( string $filesTSL, string $scrollField ) {
+		string $files[] = `textScrollList -q -si $filesTSL`;
+		string $comment = zooReplaceNewlines(`scrollField -q -tx $scrollField`,"\\n\\t");
+		string $cur = `file -q -sn`;
+		int $isCurFileInList = 0;
+
+		if( $cur != "" ) {
+			$cur = `tolower $cur`;
+			for( $n=0; $n<`size $files`; $n++ ) $files[$n] = `tolower $files[$n]`;
+			$isCurFileInList = `zooGetIdxOfElement_str $files $cur`;
+			$isCurFileInList = $isCurFileInList<0? 0: 1;  //if its a negative number, its not in the list
+			}
+
+		//if the current file is in the list of files being submitted, check to see
+		//if its been saved before submitting if it hasn't been saved, throw up a
+		//warning and ask the user if they want the file to be saved or not.  this
+		//is just a sanity check to make sure people don't submit unsaved scene files
+		if( $isCurFileInList ) if( `file -q -modified` ) {
+			string $ans = `confirmDialog -t "scene not saved" -m "seems your scene has been modified since last save\n\ndo you want me to save it before submitting?" -b "yes please" -b "no thanks" -b "cancel"`;
+			if( $ans == "cancel" ) return;
+			if( $ans == "yes please" ) {
+				print "####  saving file before submitting!\n";
+				file -f -save;
+				}
+			}
+		p4_submit $files $comment;
+		deleteUI p4SubmitUI;
+		}
+
+
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+// COMMON FUNCTIONALITY - these are commonly used functions that aren't single line functions with the p4 wrappers
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+	//returns the perforce revision string for the given file - if the file arg
+	//given is empty, then it assumes the currently opened file
+	global proc string p4_getRevStr( string $file ) {
+		if( $file == "" ) $file = `file -q -sn`;
+
+		//query perforce data about the current file
+		string $dataNames[] = {};
+		string $data[] = `p4_fstat $file $dataNames {} 1`;
+		string $revStr = "x/x";
+		int $have = `zooGetIdxOfElement_str $dataNames haveRev`;
+		int $head = `zooGetIdxOfElement_str $dataNames headRev`;
+
+		if( $head >= 0 ) $revStr = "/"+ $data[$head];
+		if( $have >= 0 ) $revStr = $data[$have] + $revStr;
+		else $revStr = "x"+ $revStr;
+
+		return $revStr;
+		}
+
+
+	global proc string[] p4_openedClient() {
+		string $files[] = `p4_opened`;
+		string $filepaths[] = {};
+
+		for( $n=0; $n<`size $files`; $n++ ) $filepaths[$n] = `clientPath $files[$n]`;
+
+		return $filepaths;
+		}
+
+
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+// DIRECT PERFORCE WRAPPERS - these are pretty much direct wrappers to the basic perforce command line tools
+// where possible the commands are named as if they were p4 commandline commands, but with the first space
+// being replaced by an underscore:  ie p4 add //repo/somefile/yay.txt becomes: p4_add //repo/somefile/yay.txt
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+	//adds a given file to perforce - returns the success of the command
+	global proc int p4_add( string $files[], int $existing ) {
+		int $num = `size $files`;
+		if( !$num ) {
+			print "no files specified!  aborting...\n";
+			return 0;
+			}
+
+		string $fileStr = "";
+		//if this is -1 then put it in the default maya auto checkout changelist
+		if( $existing == -1 ) $existing = p4_getMayaChangelist();
+
+		for( $n=0; $n<$num; $n++ ) {
+			$files[$n] = `zooResolvePath $files[$n]`;
+			$files[$n] = `zooReplaceChars $files[$n] "/" "\\"`;
+			$fileStr += "\""+ $files[$n] +"\" ";
+			}
+
+		string $p4Cmd = "p4 add -c "+ $existing +" "+ $fileStr;
+		print( $p4Cmd +"\n" );
+		string $ret = `system $p4Cmd`;
+		print $ret;
+
+		$p4Cmd = strip($p4Cmd);
+		if( `match "opened for add$" $ret` != "" ) return 1;
+		if( `match "is not under" $ret` != "" ) return -1;
+
+		return 0;
+		}
+
+
+	//returns whether the file was successfully opened for edit or not
+	global proc int p4_edit( string $files[], int $existing ) {
+		int $num = `size $files`;
+		if( !$num ) {
+			print "no files specified!  aborting...\n";
+			return 0;
+			}
+
+		string $fileStr = "";
+		//if this is -1 then put it in the default maya auto checkout changelist
+		if( $existing == -1 ) $existing = p4_getMayaChangelist();
+
+		for( $n=0; $n<$num; $n++ ) {
+			$files[$n] = `zooResolvePath $files[$n]`;
+			$files[$n] = `zooReplaceChars $files[$n] "/" "\\"`;
+			$fileStr += "\""+ $files[$n] +"\" ";
+			}
+
+		string $p4Cmd = "p4 edit -c "+ $existing +" "+ $fileStr;
+		print( $p4Cmd +"\n" );
+		string $ret = `system $p4Cmd`;
+		print $ret;
+
+		$ret = strip($ret);
+		if( `match "currently opened for edit" $ret` != "" ) return 1;
+		if( `match "opened for edit" $ret` != "" ) return 1;
+
+		return 0;
+		}
+
+
+	//syncs to a given revision number for all files - if the number is zero or negative,
+	//then its relative to the head revision.  so p4_syncRev {} -2; does a sync to the
+	//second last revision for all files, and 0 is the head revision
+	global proc p4_sync( string $files[], int $rev ) {
+		int $num = `size $files`;
+		if( !$num ) {
+			print "no files specified!  aborting...\n";
+			return;
+			}
+
+		string $fileStr = "";
+		for( $n=0; $n<$num; $n++ ) {
+			$files[$n] = `zooResolvePath $files[$n]`;
+			$files[$n] = `zooReplaceChars $files[$n] "/" "\\"`;
+			if( $rev==0 ) $fileStr += "\""+ $files[$n] +"\" ";
+			else if( $rev<0 ) {
+				string $dataNames[] = {};
+				string $data[] = `p4_fstat $files[$n] $dataNames {} 1`;
+				int $headIdx = `zooGetIdxOfElement_str $dataNames headRev`;
+
+				if( $headIdx != -1 ) $rev = ((int)$dataNames[$headIdx]) + $rev;
+				if( $rev<=0 ) $rev = 1;  //can't have a negative or zero revision, so crop to 1
+				$fileStr += "\""+ $files[$n] +"#"+ $rev +"\" ";
+				}
+			else $fileStr += "\""+ $files[$n] +"#"+ $rev +"\" ";
+			}
+
+		string $p4Cmd = "p4 sync "+ $fileStr;
+		print( $p4Cmd +"\n" );
+		print `system $p4Cmd`;
+		}
+
+
+	//deals with submitting a change, filling out the changelist file with appropriate
+	//data, and publishing the changelist to perforce - returns the success state
+	global proc int p4_submit( string $files[], string $comment ) {
+		int $num = `size $files`;
+		if( !$num ) {
+			print "no files specified!  aborting...\n";
+			return 0;
+			}
+
+		for( $n=0; $n<$num; $n++ ) $files[$n] = `resolvePath $files[$n]`;
+
+		int $oneIsAlreadyOpen = 0;
+		for( $n=0; $n<`size $files`; $n++ ) {
+			string $dataNames[] = {};
+			string $data[] = `p4_fstat $files[$n] $dataNames {} 1`;
+			int $openIdx = `zooGetIdxOfElement_str $dataNames otherOpen`;
+
+			if( $openIdx > 0 ) if( $data[$openIdx] == "1" ) {
+				warning( "p4::p4_submit() "+ $files[$n] +" seems to be open by someone already - please do the submit via the perforce interface" );
+				$oneIsAlreadyOpen++;
+				}
+			}
+
+		if( $oneIsAlreadyOpen ) return 0;
+
+		int $change = `p4_newChange $comment $files`;
+		p4_moveToChange $files $change;
+
+		string $p4cmd = "p4 submit -c "+ $change;
+		string $res = `system $p4cmd`;
+
+		print( $p4cmd +"\n" );
+		print( $res +"\n" );
+
+		$res = strip($res);
+		if( `match "Change [0-9]+ submitted." $res` != "" ) return 1;
+
+		return 0;
+		}
+
+
+	global proc int p4_revert( string $files[] ) {
+		int $num = `size $files`;
+		if( !$num ) {
+			print "no files specified!  aborting...\n";
+			return 0;
+			}
+
+		string $fileStr = "";
+		for( $n=0; $n<$num; $n++ ) {
+			$files[$n] = `zooResolvePath $files[$n]`;
+			$files[$n] = `zooReplaceChars $files[$n] "/" "\\"`;
+			$fileStr += "\""+ $files[$n] +"\" ";
+			}
+
+		string $p4Cmd = "p4 revert "+ $fileStr;
+		print( $p4Cmd +"\n" );
+		string $ret = `system $p4Cmd`;
+		print $ret;
+
+		$ret = strip($ret);
+		if( `match "was edit, reverted" $ret` != "" ) return 1;
+
+		return 0;
+		}
+
+
+	//returns a list of all opened files in the default and "maya auto checkout" changelists
+	global proc string[] p4_opened() {
+		string $p4Cmd = `system( "p4 opened -c default" )`;
+		string $outputToks[] = `zooTokenize (strip($p4Cmd)) "\n"`;
+		string $opened[] = {};
+
+		for( $n=0; $n<`size $outputToks`; $n++ ) $opened[$n] = `match "^[^#]+" (strip($outputToks[$n]))`;
+
+		int $mayaChange = `p4_getMayaChangelist`;
+		clear $outputToks;
+		$p4Cmd = `system( "p4 opened -c "+ $mayaChange )`;
+		$outputToks = `zooTokenize (strip($p4Cmd)) "\n"`;
+
+		for( $n=0; $n<`size $outputToks`; $n++ ) $opened[`size $opened`] = `match "^[^#]+" (strip($outputToks[$n]))`;
+
+		return $opened;
+		}
+
+
+	//returns the p4 stats for the file in question.  the two arrays get filled with
+	//the field names, and the corresponding data for those fields, and the data gets
+	//returned - for convenience
+	global proc string[] p4_fstat( string $file, string $dataNames[], string $data[], int $resolvePath ) {
+		clear $dataNames;
+		clear $data;
+
+		string $nativeFile = $file;
+		if( $resolvePath ) {
+			$file = `zooResolvePath $file`;
+			$nativeFile = `zooReplaceChars $file "/" "\\"`;
+			}
+		string $p4Cmd = `system( "p4 fstat \""+ $nativeFile +"\"" )`;
+		string $outputToks[] = `zooTokenize (strip($p4Cmd)) "\n"`;
+
+		for( $n=0; $n<`size $outputToks`; $n++ ) {
+			$outputToks[$n] = `strip $outputToks[$n]`;
+			string $pfxToStrip = `match "^[\. ]+" $outputToks[$n]`;
+			$outputToks[$n] = `substitute ( "^"+ $pfxToStrip ) $outputToks[$n] ""`;
+			string $temp[] = `zooTokenize $outputToks[$n] " "`;  //strip is needed because windows uses the \r\n line returns, not just \n
+			$dataNames[$n] = $temp[0];
+			$data[$n] = zooArrayToStr_str(`zooIndexCrop_str $temp "1:"`," ");
+			}
+
+		return $data;
+		}
+
+
+	global proc int[] p4_getMayaChangelists( int $changelists[], string $descriptions[] ) {
+		string $cmd = "p4 changes -s pending -u "+ p4User() +" -c "+ p4Client();
+		string $dataStr = system($cmd);
+		string $data[] = `zooTokenize (strip($dataStr)) "\n"`;
+
+		clear $changelists;
+		clear $descriptions;
+
+		for( $line in $data ) {
+			$line = `substituteAllString $line "'" ""`;
+			$line = strip($line);
+			string $toks[] = {};
+			tokenize $line " " $toks;
+			if( `size $toks` < 2 ) continue;
+			$changelists[`size $changelists`] = $toks[1];
+			$toks = `zooIndexCrop_str $toks "7:"`;
+			$descriptions[`size $descriptions`] = `zooArrayToStr_str $toks " "`;
+			}
+
+		return $changelists;
+		}
+
+
+	global proc int p4_getMayaChangelist() {
+		global string $g_p4AutoCheckoutString;
+		string $descriptions[] = {};
+		int $changes[] = {};
+		int $change = -1;
+
+		p4_getMayaChangelists $changes $descriptions;
+		int $num = `size $changes`;
+		for( $n=0; $n<$num; $n++ ) {
+			if( $descriptions[$n] == $g_p4AutoCheckoutString ) $change = $changes[$n];
+			}
+
+		if( $change == -1 ) $change = `p4_newChange $g_p4AutoCheckoutString {}`;
+
+		return $change;
+		}
+
+
+	global proc int p4_newChange( string $comment, string $files[] ) {
+		int $change = -1;
+
+		string $changelist = "Change:\tnew\n\nClient:\t"+ p4Client() +"\n\nUser:\t"+ p4User() +"\n\nStatus:\tnew\n\nDescription:\n\t"+ $comment +"\n";
+		string $tempPath = resolvePath(`getenv TEMP`+"/");
+		string $tempFile = $tempPath +"p4_changelist_from_maya.txt";
+		string $tempDirNative = `zooReplaceChars $tempFile "/" "\\"`;
+		int $fileID = `fopen $tempFile "w"`;
+
+		fprint $fileID $changelist;
+		fclose $fileID;
+
+		string $cmd = "p4 change -i < \""+ $tempDirNative +"\"";
+		string $res = system($cmd);
+		$change = `match "[0-9]+" $res`;
+		sysFile -delete $tempFile;
+
+		if( $change != -1 ) if( `size $files` ) for( $file in $files ) {
+			//$changelist += ( "Files:\n\t" + `zooArrayToStr_str $files "\n\t"` );
+			string $p4cmd = "p4 reopen -c "+ $change +" \""+ $file +"\"";
+			string $res = system( $p4cmd );
+			}
+
+		return $change;
+		}
+
+
+	global proc int p4_moveToChange( string $files[], int $change ) {
+		if( $change == -1 ) $change = `p4_getMayaChangelist`;
+
+		if( `size $files` ) {
+			string $fileStr = "\""+ `zooArrayToStr_str $files "\" \""` +"\"";
+			$fileStr = `substituteAllString $fileStr "/" "\\"`;
+
+			string $p4cmd = "p4 reopen -c "+ $change +" "+ $fileStr;
+			string $res = system( $p4cmd );
+
+			print( $p4cmd +"\n" );
+			print( $res +"\n" );
+			}
+
+		return $change;
+		}
+
+
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+// SUPPORT PROCS - these are convenience procs to simplify the wrapper commands
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+	//returns an int as to whether the current file is synced to the latest perforce
+	//revision.  returns -1 if file is not in perforce.  the dataNames and data args
+	//are optional.  if present, they get filled with the fstat results, so they can
+	//be reused without re-querying
+	global proc int isLatest( string $file, string $dataNames[], string $data[] ) {
+		//so if the user has passed non-empty arrays, then we assume the arrays contain valid
+		//perforce fstat data, so we work with it instead
+		if( !`size $data` ) $data = `p4_fstat $file $dataNames {} 1`;
+		int $headAction = `zooGetIdxOfElement_str $dataNames "headAction"`;
+		int $headRev = `zooGetIdxOfElement_str $dataNames "headRev"`;
+		int $haveRev = `zooGetIdxOfElement_str $dataNames "haveRev"`;
+		int $actIdx = `zooGetIdxOfElement_str $dataNames "action"`;
+
+		//if the headAction is delete, then the file can't be out of sync...
+		if( $headAction != -1 ) if( $data[$headAction] == "delete" ) return 1;
+
+		//so if the head rev is -1 that means it doesn't have a head revision which
+		//means either the file isn't in perforce - OR its been added to perforce but
+		//the add hasn't been submitted yet - so check for that.  if the file is
+		//waiting for add submission, then return 0 instead of -1
+		if( $headRev == -1 ) {
+			if( $actIdx == -1 ) return -1;
+			else if( $data[$actIdx] == "add" ) return 0;
+			}
+		if( $haveRev == -1 ) return 0;
+		if( $data[$headRev] == $data[$haveRev] ) return 1;
+		return 0;
+		}
+
+
+	//returns whether a given file is already open for edit or not
+	global proc int isEdit( string $file, string $dataNames[], string $data[] ) {
+		$data = `p4_fstat $file $dataNames {} 1`;
+		int $isEdit = 0;
+		int $actIdx = `zooGetIdxOfElement_str $dataNames "action"`;
+		int $depotIdx = `zooGetIdxOfElement_str $dataNames "depotFile"`;
+
+		if( $actIdx != -1 ) {
+			if( $data[$actIdx] == "edit" ) $isEdit = 1;
+			else if( $data[$actIdx] == "add" ) $isEdit = 1;
+			}
+		if( $depotIdx == -1 ) $isEdit = -1;  //indicates that the file isn't in perforce
+
+		return $isEdit;
+		}
+
+
+	//given a filepath, this proc returns a path relative to the perforce
+	//repository - some p4 commands use repository relative paths...
+	global proc string p4Path( string $filepath ) {
+		string $names[] = {};
+		string $data[] = `p4_fstat $filepath $names {} 1`;
+		int $base = `zooGetIdxOfElement_str $names "depotFile"`;
+
+		if( $base == -1 ) return $filepath;
+
+		return $data[$base];
+		}
+
+
+	//given a filepath, this proc returns a path relative to the perforce
+	//repository - some p4 commands use repository relative paths...
+	global proc string clientPath( string $filepath ) {
+		string $names[] = {};
+		string $data[] = `p4_fstat $filepath $names {} 0`;
+		int $base = `zooGetIdxOfElement_str $names "clientFile"`;
+
+		if( $base == -1 ) return $filepath;
+
+		$data[$base] = `substituteAllString $data[$base] "\\" "/"`;
+		return $data[$base];
+		}
+
+
+	//$user can be blank - uses current user if so
+	//should probably query the username the proper way - by doing a "p4 user -o" and parsing the output
+	global proc string p4User() {
+		string $info = tolower( `system "p4 info"` );
+		string $data[] = `zooTokenize $info "\n"`;
+		string $line = "";
+		int $num = `size $data`;
+
+		for( $n=0; $n<$num; $n++ ) if( `match "^user name: " $data[$n]` != "" ) {
+			$line = `strip $data[$n]`;
+			break;
+			}
+
+		$line = `match "[^ :]+$" $line`;
+
+		return $line;
+		}
+
+
+	global proc string p4Client() {
+		string $info = tolower( `system "p4 info"` );
+		string $data[] = `zooTokenize $info "\n"`;
+		string $line = "";
+		int $num = `size $data`;
+
+		for( $n=0; $n<$num; $n++ ) if( `match "^client name: " $data[$n]` != "" ) {
+			$line = `strip $data[$n]`;
+			break;
+			}
+
+		$line = `match "[^ :]+$" $line`;
+
+		return $line;
+		}
+
+
+	global proc p4_gatherUsedFilesIntoChangelist() {
+
+		}
+
+
+	//lists all files that a scene uses that are currently open for edit - makes doing an atomic commit
+	//in maya a lot easier
+	global proc string[] getFilesThatAreOpenForEdit() {
+		string $allFiles[] = `getFilesSceneUses`;
+		string $filesOpen[] = {};
+
+		for( $file in $allFiles ) {
+			int $isEdit = `isEdit $file {} {}`;
+			if( $isEdit == 1 ) $filesOpen[`size $filesOpen`] = $file;
+			else if( $isEdit == -1 ) {
+				//if the file is used, but hasn't been added to perforce - set that up now
+				int $addSuccess = `p4_add {$file} -1`;
+				if( $addSuccess == 1 ) $filesOpen[`size $filesOpen`] = $file;
+				}
+			}
+
+		return $filesOpen;
+		}
+
+
+	global proc string[] listOutOfSyncDependencies() {
+		string $refFiles[] = `file -q -l`;
+		string $relevantExts[] = {"ma","mb","dmx"};
+		string $relevantFiles[] = {};
+
+		for( $file in $refFiles ) {
+			for( $ext in $relevantExts ) {
+				if( `match ( "\\."+ $ext +"$" ) $file` != "" ) {
+					$relevantFiles[`size $relevantFiles`] = $file;
+					break;
+					}
+				}
+			}
+
+		string $badSyncFiles[] = {};
+		for( $file in $relevantFiles ) if( `isLatest $file {} {}` == 0 ) $badSyncFiles[`size $badSyncFiles`] = $file;
+
+		return $badSyncFiles;
+		}
+

@@ -1,0 +1,203 @@
+/*
+/////////////////////////////////////////////////////////////////////////////
+
+ackMoveKeys 1.1			
+10/13/07
+Aaron Koressel				
+
+Moves keys in any direction with the keyboard.  Also converge keys towards
+adjacent keys.
+
+"left" and "right" move selected keys one frame.
+
+"up" and "down" changes key values a fixed percentage
+of the selection's adjacent keys.  Since the neighboring
+keys aren't being affected, you can move keys beyond the
+the neighboring extreme.
+
+"convergeLeft" and "convergeRight" converges key values towards the
+neighboring keys.  Since it is moving a percentage of the difference
+of two keys, it approaches a neighboring key without overshooting it.
+
+SYNTAX:	
+ackMoveKeys "left";
+ackMoveKeys "right";
+ackMoveKeys "up";
+ackMoveKeys "down";
+ackMoveKeys "convergeLeft";
+ackMoveKeys "convergeRight";
+
+PARAMETERS (via ackSetup):
+ Fixed Move Factor:
+Used by "up" and "down".
+Percentage of adjacent keys to move up or down.
+If next adjacent key has a value of 20, the previous key is 0,
+and the factor is .2, up/down will move keys by a vlue of 4.
+.05 is a good default
+
+ Scale Factor:
+Used by "convergeLeft" and "convergeRight".
+Percentage of next/prev key to converge towards.
+If the current key has a value of 10, the next key is 20,
+and the factor is .5, convergeRight will set the current key
+to 15 (halfway between 10 and 20).
+
+EXAMPLE:
+Assign this commnad to Alt-Up:  ackMoveKeys "up";
+Assign this command to Ctrl-Alt-Right:	ackMoveKeys "convergeRight";
+etc...
+
+CHANGELOG:
+1.1 - 10/13/07
+Uses settings from ackSetup instead of own setup.
+1.0 - 6/18/07
+First version
+
+////////////////////////////////////////////////////////////////////////////
+*/
+
+
+global proc ackMoveKeys (string $cmd){
+	//only run if at least one key is selected
+	$keyCount = `keyframe -an keys -q -keyframeCount`;
+	if ($keyCount != 0) {
+		if ($cmd == "left"){
+			keyframe -animation keys -option over -relative -timeChange -1;
+		} else if ($cmd == "right"){
+			keyframe -animation keys -option over -relative -timeChange 1;
+		} else {			
+			global float $ackSetup_fixedFactor;
+			global float $ackSetup_scaleFactor;
+			global string $ackSetup_autoTangent;
+
+			//set default value if doesn't exist
+			if ($ackSetup_fixedFactor <= .000001){
+				$ackSetup_fixedFactor = .05;
+			}
+			if ($ackSetup_scaleFactor <= .000001){
+				$ackSetup_scaleFactor = .9;
+			}
+			if ($ackSetup_autoTangent == ""){
+				$ackSetup_autoTangent = "true";
+			}
+
+
+			///// Up and Down ////
+			if ($cmd == "up" || $cmd == "down"){
+
+				//loop over selected curves and process independently
+				string $selectedCurves[] = `keyframe -selected -q -name`;
+				for ($c = 0; $c < size($selectedCurves); $c++){
+					//channel to use for this pass
+					$channel = $selectedCurves[$c];
+
+					//GET MOVE SCALE BASED OFF NEIGHBORING KEYS
+					//get first and last keys in selection by index
+					int $firstKey;
+					int $lastKey;
+					$totalKeys = `keyframe -q -keyframeCount $channel`;
+					$selectedIndices = `keyframe -selected -q -indexValue $channel`;
+
+					//get adjacent keys to selection
+					int $prevKey = $selectedIndices[0] - 1;
+					int $nextKey = $selectedIndices[size($selectedIndices)-1] + 1;
+
+					//if first or last key, use itself
+					if ($prevKey == -1){
+						$prevKey = 0;
+					}
+					if ($nextKey == $totalKeys){
+						$nextKey = $totalKeys - 1;
+					}
+
+					//get values of adjacent keys
+					float $prevKeyValue[] = `keyframe -index $prevKey -q -valueChange $channel`;
+					float $nextKeyValue[] = `keyframe -index $nextKey -q -valueChange $channel`;
+
+					//get delta for move calc
+					float $delta = $nextKeyValue[0] - $prevKeyValue[0];
+
+					//case when delta is 0: just use factor
+					if ($delta == 0){
+						$delta = $ackSetup_fixedFactor*10;
+					}
+
+					//get move direction (reverse if key is on downslope);
+					int $moveDir = sign($delta);
+
+					//DO THE MOVE
+					$selected = `keyframe -selected -q -indexValue $channel`;
+					switch ($cmd) {
+						case "up":				
+							for ($i = 0; $i < size($selected); $i++){
+								keyframe -relative -index $selected[$i] -valueChange ($delta * $ackSetup_fixedFactor * $moveDir) $channel;
+							}
+							break;
+
+						case "down":
+							for ($i = 0; $i < size($selected); $i++){
+								keyframe -relative -index $selected[$i] -valueChange ($delta * $ackSetup_fixedFactor * $moveDir * -1) $channel;	
+							}
+							break;
+					}
+
+
+
+				}//end for - loop over curves
+
+
+
+			///// ConvergeLeft and ConvergeRight ////
+			} else if ($cmd == "convergeLeft" || $cmd == "convergeRight"){
+			
+				//loop over selected curves and process independently
+				string $selectedCurves[] = `keyframe -selected -q -name`;
+				for ($c = 0; $c < size($selectedCurves); $c++){
+					//channel to use for this pass
+					$channel = $selectedCurves[$c];
+
+					//get array of key times in selection (to find closest match key)
+					$timeArray = `keyframe -selected -q -timeChange $channel`;
+
+					//get pivot point
+
+					switch ($cmd){
+						case "convergeLeft":
+							$pivotTime = `findKeyframe -which "previous" -time $timeArray[0] $channel`;
+							$pivotValue = `keyframe -time $pivotTime -q -valueChange $channel`;
+							break;
+						case "convergeRight":
+							int $lastKey = size($timeArray) - 1;
+							$pivotTime = `findKeyframe -which "next" -time $timeArray[$lastKey] $channel`;
+							$pivotValue = `keyframe -time $pivotTime -q -valueChange $channel`;
+							break;
+					}
+
+
+					//scale selected keys
+					$selected = `keyframe -selected -q -indexValue $channel`;
+					for ($i = 0; $i < size($selected); $i++){
+						scaleKey -index $selected[$i] -valuePivot $pivotValue[0] -valueScale ($ackSetup_scaleFactor) $channel;
+					}
+
+				}	//loop curves			
+
+
+			}//end switch between up/down and converges
+			
+
+			//auto tangent result if flag is set
+			/*
+			if ($ackSetup_autoTangent == "true"){
+				string $tang[] =`keyTangent -q -ott`;
+				if ($tang[0] != "step"){
+	    			autoTangent();
+	   			}
+			}
+			*/
+			
+			
+
+		}//end $cmd argument
+	}//end chk for > 0 keys selected
+}

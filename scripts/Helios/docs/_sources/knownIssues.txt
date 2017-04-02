@@ -1,0 +1,4 @@
+Known Issues
+============
+
+* In Maya versions 2016 and lower, the Enter key which is used in Helios to execute a command is also the hotkey to complete a tool. Therefore when you want to fetch a tool with Helios and you press Enter, the tool will automatically complete and disappear. The only workaround I found for this right now is to change the hotkey for completing a tool to something else than Enter (ie: Ctrl + Enter or something like that). This problem doesn't seem to happen starting with Maya 2017 though.

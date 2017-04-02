@@ -1,0 +1,93 @@
+
+
+
+// frac.mel - removes those pesky fractional keyframes
+// from selected objects animated channels
+// If a key is found that has a fractional component, the closest 
+// whole key is checked for an existing keyframe. If a key already 
+// exists, the fractional keyframe is deleted. If no key exists, 
+// a new key is inserted at the whole frame, and the fractional 
+// keyframe is deleted.
+// All the normal disclaimers apply, etc... This script will change your
+// tangency settings; but is seems to work ok.
+// 1998, Matt Daly (mattd@tezcat.com); Essential Pictures; CHICAGO!
+
+global proc frac()
+{
+
+string $attr;
+string $curves[];
+float  $tempval;
+
+
+string $allShapes[] = `ls -sl`;
+int    $j;
+int    $k;
+int    $i;
+if (size($allShapes) == 0)
+	error "No objects selected, Fool!";
+print "Deleting fractional keyframes for:(# fractional keys)";
+for ($j = 0; $j < size($allShapes); $j++) 
+        {
+	print "\n";
+	print $allShapes[$j];
+	print ": ";
+				/* fill curves[] with all connected animcurves */
+	string $curves[] = `listConnections -d false -t animCurve -scn true $allShapes[$j]`;
+	if (size($curves) == 0)
+		print "no keys set...\n";
+	    else
+		for ($k = 0; $k < size($curves); $k++) 
+			{
+			print $curves[$k];
+			int $counter = 0;
+			select -r $curves[$k];					/* select each curve */
+			float $val[] = `keyframe -time ":" -q -tc`;		/* fill val[] with keyframe #s */
+			for($i = 0; $i < size($val); $i++)			/* iterate through val[] */
+				{
+				selectKey -clear;
+				int $whole = trunc($val[$i]);
+				float $fraction = $val[$i] - $whole;
+				if ($fraction != 0.0)		/* if fractional */
+					{
+					$counter++;
+					if ($fraction >= .5)
+						if (!`selectKey -r -k -t ($whole+1)`)    /* if no key exists at next whole frame */
+							{
+							selectKey -clear;			
+							setKeyframe -i -time ($whole+1); /* insert key at current value */
+							cutKey -t $val[$i] -clear;	
+							}
+						   else
+							{
+							selectKey -clear;	
+							cutKey -t $val[$i] -clear;
+							}
+					if ($fraction < .5)
+						if (!`selectKey -r -k -t ($whole)`)    /* if no key exists at prev whole frame */
+							{
+							selectKey -clear;			
+							setKeyframe -i -time ($whole); /* insert key at current value */
+							cutKey -t $val[$i] -clear;	
+							}
+						   else
+							{
+							selectKey -clear;	
+							cutKey -t $val[$i] -clear;
+							}
+					} /* end of if ($fraction != 0.0)*/	
+						
+				
+				}   /* end of for $i */
+			string $cmd = "(" + $counter + ")  ";
+			print $cmd;
+			}   /* end of $k  */
+	
+  	}
+string 	$list;    				/* nicely reselect objects */
+for ($j = 0; $j < size($allShapes); $j++) 
+      $list += $allShapes[$j] + " ";
+select -r $list;
+print "\nThank you for cleaning my messy scene...\n";	/*what do you say?*/
+warning "No problem, stranger";
+}

@@ -1,0 +1,1064 @@
+//Maya Preference 2016 (Release 1)
+//
+//
+
+//
+// The runtime commands referenced by the hotkeys
+//
+runTimeCommand
+	-annotation "Frames playback range in graph editor"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("string $panType = `getPanel -withFocus`;\n{\nif ($panType == \"dopeSheetPanel1\") {\n    animView -startTime (`playbackOptions -query -minTime` - 8) -endTime (`playbackOptions -query -maxTime` + 8) dopeSheetPanel1DopeSheetEd;\n    }\nelse animView -startTime (`playbackOptions -query -minTime` - 8) -endTime (`playbackOptions -query -maxTime` + 8) graphEditor1GraphEd;\n}\n")
+	TimeFramePlaybackRange;
+
+runTimeCommand
+	-annotation "Moves keys backward in time"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("ackMoveKeys \"left\";")
+	AckMoveKeysBackward;
+
+runTimeCommand
+	-annotation "Scale (Press)"
+	-category "User Marking Menus"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("if (`popupMenu -exists tempMM`) { deleteUI tempMM; }\nScaleTool;\npopupMenu -button 1 -ctl false -alt false -allowOptionBoxes true -parent `findPanelPopupParent` -mm 1 tempMM;\nsource \"menu_Scale\";")
+	Scale_Press;
+
+runTimeCommand
+	-annotation "Resets rotations to 0"
+	-category "Custom Scripts.Xform"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import maya.cmds as cmds\ncmds.xform( ro=(0.0, 0.0, 0.0) )")
+	ClearRotation;
+
+runTimeCommand
+	-annotation "Opens hotkey editor"
+	-category "Custom Scripts"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("hotkeyEditorWindow;")
+	PrefsHotkeys;
+
+runTimeCommand
+	-annotation "Unites key tangents"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\nkeyTangent -lock on;\nkeyTangent -weightLock on;\n\nglobal string $gSelect;   // Sacred Select Tool\nsetToolTo $gSelect;\n\nundoInfo -stateWithoutFlush on;")
+	TangentUnifyAndLock;
+
+runTimeCommand
+	-annotation "Resets channel box attributes to defaults (T,R,S,Custom)"
+	-category "Custom Scripts.Xform"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("llResetChannels;")
+	ClearAttr;
+
+runTimeCommand
+	-annotation "Select all control channels of the same type and axis"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import maya.cmds as MC \n  \nGE_LIST = \"graphEditorList\" \nGE_SELCON = \"graphEditor1FromOutliner\" \n  \ndef getSelected(): \n    \"\"\" \n    Returns the selected nodes from the graph editors list. \n    \"\"\" \n    return MC.selectionConnection(GE_SELCON, q=1, obj=1) or [] \n  \n  \n  \ndef getLoaded(): \n    \"\"\" \n    Returns a list of the nodes that are loaded into the graph editor \n    \"\"\" \n    return MC.selectionConnection(GE_LIST, q=1, obj=1) or [] \n  \n  \ndef highlightAttrs(attrs=[]): \n    \"\"\" \n    Syncs all the selected attributes of the loaded nodes in the graph editor \n  \n    If the attr flag is passed, only that attribute would get synced, \n    otherwise the selected attributes will be used \n    \"\"\" \n  \n    loaded = getLoaded() \n    ## If there is nothing loaded in GE, dont do anything \n    if not len(loaded): \n        MC.warning(\"There is nothing loaded in graph editor\") \n        return \n  \n    ## Figure out the selected attrs if there isn't one passed in \n    if not len(attrs): \n        allselected = getSelected() \n        if allselected == []: \n            msg = (\"There is no attribute selected in graph editor, nor \"+ \n                \" one passed as an argument. Can't sync selection\") \n            MC.warning(msg) \n            return \n  \n        attrs = [] \n        for alls in allselected: \n            toks = alls.split(\".\") \n            if len(toks) < 2: continue # Skip highlighted nodes \n  \n            attrs.append(toks[1]) \n  \n        attrs = list(set(attrs)) \n  \n    ## If there are no attrs, then nothing to highlight \n    if not len(attrs): \n        MC.warning(\"There are no attrs to highlight\") \n        return \n  \n    ## Loop through loaded nodes, and highglight its attrs \n    tohighlight = [] \n    for load in loaded: \n        for attr in attrs: \n            tohighlight.append(load + \".\" + attr) \n  \n  \n    ## Load the new selection \n    for x in tohighlight: \n        MC.selectionConnection(GE_SELCON, select=x, e=1) \n  \n    print \"Synced Highlighted Attributes\" \n  \nhighlightAttrs()")
+	ChannelGroup;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("string $panType = `getPanel -withFocus`;\n{\nif ($panType == \"dopeSheetPanel1\") {\n    dopeSheetEditor -edit -lookAt currentTime dopeSheetPanel1DopeSheetEd;\n    }\nelse animCurveEditor -edit -lookAt currentTime graphEditor1GraphEd;\n}")
+	TimeCenter;
+
+runTimeCommand
+	-annotation "Opens prefs to animation settings"
+	-category "Custom Scripts"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("preferencesWnd \"animation\";")
+	Prefs;
+
+runTimeCommand
+	-annotation "HIdes strokes in active viewport"
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("string $activePanel = `getPanel -wf`; \nif (`modelEditor -q -strokes $activePanel` == 1) {\nmodelEditor -e -strokes 0 $activePanel;\n} else {\nmodelEditor -e -strokes 1 $activePanel;\n}")
+	HideStroke;
+
+runTimeCommand
+	-annotation "Selected keys or objects to next keys"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("from aTools.animTools.animBar.subUIs import tweenMachine\nTM = tweenMachine.TweenMachine\nTM().setTween(100)")
+	aToolsTweenMachineNext;
+
+runTimeCommand
+	-annotation "Deletes keys at current time only"
+	-category "Custom Scripts.Xform"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("timeSliderClearKey;")
+	ClearKeys;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("deactivatePanZoom;")
+	PanZoomRelease;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("string $activePanel = `getPanel -wf`;\nif (`modelEditor -q -locators $activePanel` == 1) {\n modelEditor -e -locators 0 $activePanel;\n} else {\n modelEditor -e -locators 1 $activePanel;\n}")
+	HideLocators;
+
+runTimeCommand
+	-annotation "steps forward"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\ncurrentTime ( `currentTime -q` + 1 );\nundoInfo -stateWithoutFlush on;")
+	NextFrameUser;
+
+runTimeCommand
+	-annotation "Breaks key tangents"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\nMoveTool;\nkeyTangent -lock off;\nkeyTangent -weightLock off;\nundoInfo -stateWithoutFlush on;")
+	TangentBreakAndUnlock;
+
+runTimeCommand
+	-annotation "Custom anim menu set"
+	-category "Custom Scripts.Menu Sets"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("if (`menuSet -q -exists menuSet`) { workingMode menuSet; } else { warning \"Anim Menu Set not found.\"; }")
+	ShowAnimUI;
+
+runTimeCommand
+	-annotation "Plays forward"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\nplayButtonForward;\nundoInfo -stateWithoutFlush on;")
+	FramePlayForward;
+
+runTimeCommand
+	-annotation "ackToggleCams"
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("ackToggleCams;")
+	ToggleCams;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import maya.cmds as cmds\n\ncmds.filterCurve( f=\"euler\" )")
+	EulerFilter;
+
+runTimeCommand
+	-annotation "oaSmoothKeys"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("oaSmoothKeys;")
+	SmoothKeys;
+
+runTimeCommand
+	-annotation "Go back one frame"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\nplayButtonStepBackward;\nundoInfo -stateWithoutFlush on;")
+	FramePrevious;
+
+runTimeCommand
+	-annotation "Resets Translation to 0"
+	-category "Custom Scripts.Xform"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import maya.cmds as cmds\ncmds.xform( t=(0.0, 0.0, 0.0) )")
+	ClearTranslation;
+
+runTimeCommand
+	-annotation "Resets scale to 1"
+	-category "Custom Scripts.Xform"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import maya.cmds as cmds\ncmds.xform( s=(1.0, 1.0, 1.0) )")
+	ClearScale;
+
+runTimeCommand
+	-annotation "Toggles polygon visibility in active viewport"
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("string $activePanel = `getPanel -wf`; \nif (`modelEditor -q -polymeshes $activePanel` == 1) {\nmodelEditor -e -polymeshes 0 $activePanel;\n} else {\nmodelEditor -e -polymeshes 1 $activePanel;\n}")
+	HidePolys;
+
+runTimeCommand
+	-annotation "Flips selected keys around keys adjacent to selection"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("ackNegateKeys;")
+	AckNegate;
+
+runTimeCommand
+	-annotation "Disables viewport nurbs curves"
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("string $activePanel = `getPanel -wf`;\nif (`modelEditor -q -nurbsCurves $activePanel` == 1) {\n modelEditor -e -nurbsCurves 0 $activePanel;\n} else {\n modelEditor -e -nurbsCurves 1 $activePanel;\n}")
+	HideCurves;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\ncurrentTime -edit `findKeyframe -timeSlider -which next`;\nundoInfo -stateWithoutFlush on;")
+	NextKeyUser;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\ncurrentTime -edit `findKeyframe -timeSlider -which previous`;\nundoInfo -stateWithoutFlush on;")
+	PreviousKeyUser;
+
+runTimeCommand
+	-annotation "Moves keys forward in time"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("ackMoveKeys \"right\";")
+	AckMoveKeysForward;
+
+runTimeCommand
+	-annotation "Sets timeline playback start frame"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("int $cF = `currentTime -q`;\n\nplaybackOptions -min $cF;")
+	TimelineMin;
+
+runTimeCommand
+	-annotation "Go to start of timeline"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\nplayButtonStart;\nundoInfo -stateWithoutFlush on;")
+	FrameFirst;
+
+runTimeCommand
+	-annotation "Sets timeline playback end frame"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("int $cF = `currentTime -q`;\n\nplaybackOptions -max $cF;")
+	TimelineMax;
+
+runTimeCommand
+	-annotation "Toggles joint visibility in active viewport"
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("string $activePanel = `getPanel -wf`; \nif (`modelEditor -q -joints $activePanel` == 1) {\nmodelEditor -e -joints 0 $activePanel;\n} else {\nmodelEditor -e -joints 1 $activePanel;\n}")
+	HideJnts;
+
+runTimeCommand
+	-annotation "Hold to unlock tangent weight, unified"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("string $panType = `getPanel -withFocus`;\n{\nif ($panType == \"graphEditor1\") {\n\tundoInfo -stateWithoutFlush off;\n    keyTangent -weightLock off;\n    undoInfo -stateWithoutFlush on;\n\t}\nelse dR_DoCmd(\"pointSnapPress\");\n}")
+	TangentWeightTogglePress;
+
+runTimeCommand
+	-annotation "Rotate (Release)"
+	-category "User Marking Menus"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("if (`popupMenu -exists tempMM`) { deleteUI tempMM; }")
+	Rotate_Release;
+
+runTimeCommand
+	-annotation "Scale Selected Keys"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("ackPushPull \"push\";")
+	AckPushKeys;
+
+runTimeCommand
+	-annotation "Translate (Press)"
+	-category "User Marking Menus"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("if (`popupMenu -exists tempMM`) { deleteUI tempMM; }\nMoveTool;\npopupMenu -button 1 -ctl false -alt false -sh false -allowOptionBoxes true -parent `findPanelPopupParent` -mm 1 tempMM; \nsource \"menu_Translate\";\n")
+	Translate_Press;
+
+runTimeCommand
+	-annotation "Sets keys on only X transforms"
+	-category "Custom Scripts.Xform"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("setKeyframe -at translateX;\nsetKeyframe -at rotateX;\nsetKeyframe -at scaleX;")
+	SetKeyX;
+
+runTimeCommand
+	-annotation "Expands timeline to end of animation"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\n\nstring $end = `playbackOptions -q -aet`;\nplaybackOptions -max $end;\n\nundoInfo -stateWithoutFlush on;")
+	TimelineMaxExpand;
+
+runTimeCommand
+	-annotation "Sets keys on only Y transforms"
+	-category "Custom Scripts.Xform"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("setKeyframe -at translateY;\nsetKeyframe -at rotateY;\nsetKeyframe -at scaleY;")
+	SetKeyY;
+
+runTimeCommand
+	-annotation "Sets keys on only Z transforms"
+	-category "Custom Scripts.Xform"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("setKeyframe -at translateZ;\nsetKeyframe -at rotateZ;\nsetKeyframe -at scaleZ;")
+	SetKeyZ;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("ackToggleCams_setup")
+	ToggleCams_setup;
+
+runTimeCommand
+	-annotation "Scale (Release)"
+	-category "User Marking Menus"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("if (`popupMenu -exists tempMM`) { deleteUI tempMM; }")
+	Scale_Release;
+
+runTimeCommand
+	-annotation "Fast forward to end of timeline"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\nplayButtonEnd;\nundoInfo -stateWithoutFlush on;")
+	FrameEnd;
+
+runTimeCommand
+	-annotation "Turns off undo queue for time scrubbing"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\nstoreLastAction( \"restoreLastContext \" + `currentCtx` );setToolTo TimeDragger")
+	ScrubNoUndo;
+
+runTimeCommand
+	-annotation "Rotate (Press)"
+	-category "User Marking Menus"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("if (`popupMenu -exists tempMM`) { deleteUI tempMM; }\nRotateTool;\npopupMenu -button 1 -ctl false -alt false -sh false -allowOptionBoxes true -parent `findPanelPopupParent` -mm 1 tempMM; \nsource \"menu_Rotate\";\n")
+	Rotate_Press;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("activatePanZoom;")
+	PanZoomPress;
+
+runTimeCommand
+	-annotation "Step forward one frame"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\nplayButtonStepForward;\nundoInfo -stateWithoutFlush on;")
+	FrameNext;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\ncurrentTime ( `currentTime -q` - 1 );\nundoInfo -stateWithoutFlush on;")
+	PreviousFrameUser;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("maya.cmds.keyTangent(itt=\"auto\", ott=\"auto\")")
+	TangentTypeAuto;
+
+runTimeCommand
+	-annotation "Selected keys or objects to previous keys"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("from aTools.animTools.animBar.subUIs import tweenMachine\nTM = tweenMachine.TweenMachine\nTM().setTween(0)")
+	aToolsTweenMachinePrev;
+
+runTimeCommand
+	-annotation "Playblast active viewport"
+	-category "Custom Scripts.Viewport"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import DefaultCameraChecker\nDefaultCameraChecker.init()")
+	Playblast;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("maya.cmds.keyTangent(itt=\"flat\", ott=\"flat\")")
+	TangentTypeFlat;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("maya.cmds.keyTangent(itt=\"linear\", ott=\"linear\")")
+	TangentTypeLinear;
+
+runTimeCommand
+	-annotation "Returns undo behavior to normal"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("invokeLastAction;\nundoInfo -stateWithoutFlush on;")
+	ScrubNoUndoOff;
+
+runTimeCommand
+	-annotation "Scales selected keys"
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("ackPushPull \"pull\";")
+	AckPullKeys;
+
+runTimeCommand
+	-annotation "Translate (Release)"
+	-category "User Marking Menus"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("if (`popupMenu -exists tempMM`) { deleteUI tempMM; }")
+	Translate_Release;
+
+runTimeCommand
+	-annotation "Expands timeline to start of animation"
+	-category "Custom Scripts.Time"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("undoInfo -stateWithoutFlush off;\n\nstring $start = `playbackOptions -q -ast`;\nplaybackOptions -min $start;\n\nundoInfo -stateWithoutFlush on;")
+	TimelineMinExpand;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts.Graph Editor"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("string $panType = `getPanel -withFocus`;\n{\nif ($panType == \"graphEditor1\") {\n    undoInfo -stateWithoutFlush off;\n\tkeyTangent -weightLock on;\n    undoInfo -stateWithoutFlush on;\n\t}\nelse dR_DoCmd(\"pointSnapRelease\");\n}")
+	TangentWeightToggleRelease;
+
+//
+// The name commands referenced by the hotkeys
+//
+nameCommand
+	-annotation "AckPushKeysNameCommand"
+	-sourceType "mel"
+	-command ("AckPushKeys")
+	AckPushKeysNameCommand;
+
+nameCommand
+	-annotation "AckPullKeysNameCommand"
+	-sourceType "mel"
+	-command ("AckPullKeys")
+	AckPullKeysNameCommand;
+
+nameCommand
+	-annotation "ClearTranslationNameCommand"
+	-sourceType "mel"
+	-command ("ClearTranslation")
+	ClearTranslationNameCommand;
+
+nameCommand
+	-annotation "ClearRotationNameCommand"
+	-sourceType "mel"
+	-command ("ClearRotation")
+	ClearRotationNameCommand;
+
+nameCommand
+	-annotation "ClearScaleNameCommand"
+	-sourceType "mel"
+	-command ("ClearScale")
+	ClearScaleNameCommand;
+
+nameCommand
+	-annotation "ClearKeysNameCommand"
+	-sourceType "mel"
+	-command ("ClearKeys")
+	ClearKeysNameCommand;
+
+nameCommand
+	-annotation "AckNegateNameCommand"
+	-sourceType "mel"
+	-command ("AckNegate")
+	AckNegateNameCommand;
+
+nameCommand
+	-annotation "HideCurvesNameCommand"
+	-sourceType "mel"
+	-command ("HideCurves")
+	HideCurvesNameCommand;
+
+nameCommand
+	-annotation "FrameFirstNameCommand"
+	-sourceType "mel"
+	-command ("FrameFirst")
+	FrameFirstNameCommand;
+
+nameCommand
+	-annotation "FramePreviousNameCommand"
+	-sourceType "mel"
+	-command ("FramePrevious")
+	FramePreviousNameCommand;
+
+nameCommand
+	-annotation "FrameNextNameCommand"
+	-sourceType "mel"
+	-command ("FrameNext")
+	FrameNextNameCommand;
+
+nameCommand
+	-annotation "FrameEndNameCommand"
+	-sourceType "mel"
+	-command ("FrameEnd")
+	FrameEndNameCommand;
+
+nameCommand
+	-annotation "FramePlayForwardNameCommand"
+	-sourceType "mel"
+	-command ("FramePlayForward")
+	FramePlayForwardNameCommand;
+
+nameCommand
+	-annotation "NextFrameUserNameCommand"
+	-sourceType "mel"
+	-command ("NextFrameUser")
+	NextFrameUserNameCommand;
+
+nameCommand
+	-annotation "PreviousFrameUserNameCommand"
+	-sourceType "mel"
+	-command ("PreviousFrameUser")
+	PreviousFrameUserNameCommand;
+
+nameCommand
+	-annotation "NextKeyUserNameCommand"
+	-sourceType "mel"
+	-command ("NextKeyUser")
+	NextKeyUserNameCommand;
+
+nameCommand
+	-annotation "PreviousKeyUserNameCommand"
+	-sourceType "mel"
+	-command ("PreviousKeyUser")
+	PreviousKeyUserNameCommand;
+
+nameCommand
+	-annotation "ScrubNoUndoNameCommand"
+	-sourceType "mel"
+	-command ("ScrubNoUndo")
+	ScrubNoUndoNameCommand;
+
+nameCommand
+	-annotation "ScrubNoUndoOffNameCommand"
+	-sourceType "mel"
+	-command ("ScrubNoUndoOff")
+	ScrubNoUndoOffNameCommand;
+
+nameCommand
+	-annotation "RedoNameCommand"
+	-sourceType "mel"
+	-command ("Redo")
+	RedoNameCommand;
+
+nameCommand
+	-annotation "ToggleCamsNameCommand"
+	-sourceType "mel"
+	-command ("ToggleCams")
+	ToggleCamsNameCommand;
+
+nameCommand
+	-annotation "ToggleCams_setupNameCommand"
+	-sourceType "mel"
+	-command ("ToggleCams_setup")
+	ToggleCams_setupNameCommand;
+
+nameCommand
+	-annotation "HideJntsNameCommand"
+	-sourceType "mel"
+	-command ("HideJnts")
+	HideJntsNameCommand;
+
+nameCommand
+	-annotation "HidePolysNameCommand"
+	-sourceType "mel"
+	-command ("HidePolys")
+	HidePolysNameCommand;
+
+nameCommand
+	-annotation "SetKeyXNameCommand"
+	-sourceType "mel"
+	-command ("SetKeyX")
+	SetKeyXNameCommand;
+
+nameCommand
+	-annotation "SetKeyYNameCommand"
+	-sourceType "mel"
+	-command ("SetKeyY")
+	SetKeyYNameCommand;
+
+nameCommand
+	-annotation "SetKeyZNameCommand"
+	-sourceType "mel"
+	-command ("SetKeyZ")
+	SetKeyZNameCommand;
+
+nameCommand
+	-annotation "TimelineMinNameCommand"
+	-sourceType "mel"
+	-command ("TimelineMin")
+	TimelineMinNameCommand;
+
+nameCommand
+	-annotation "TimelineMaxNameCommand"
+	-sourceType "mel"
+	-command ("TimelineMax")
+	TimelineMaxNameCommand;
+
+nameCommand
+	-annotation "TimelineMaxExpandNameCommand"
+	-sourceType "mel"
+	-command ("TimelineMaxExpand")
+	TimelineMaxExpandNameCommand;
+
+nameCommand
+	-annotation "TimelineMinExpandNameCommand"
+	-sourceType "mel"
+	-command ("TimelineMinExpand")
+	TimelineMinExpandNameCommand;
+
+nameCommand
+	-annotation "SmoothKeysNameCommand"
+	-sourceType "mel"
+	-command ("SmoothKeys")
+	SmoothKeysNameCommand;
+
+nameCommand
+	-annotation "ClearAttrNameCommand"
+	-sourceType "mel"
+	-command ("ClearAttr")
+	ClearAttrNameCommand;
+
+nameCommand
+	-annotation "TimeFramePlaybackRangeNameCommand"
+	-sourceType "mel"
+	-command ("TimeFramePlaybackRange")
+	TimeFramePlaybackRangeNameCommand;
+
+nameCommand
+	-annotation "PlayblastNameCommand"
+	-sourceType "mel"
+	-command ("Playblast")
+	PlayblastNameCommand;
+
+nameCommand
+	-annotation "TimeCenterNameCommand"
+	-sourceType "mel"
+	-command ("TimeCenter")
+	TimeCenterNameCommand;
+
+nameCommand
+	-annotation "AckMoveKeysForwardNameCommand"
+	-sourceType "mel"
+	-command ("AckMoveKeysForward")
+	AckMoveKeysForwardNameCommand;
+
+nameCommand
+	-annotation "AckMoveKeysBackwardNameCommand"
+	-sourceType "mel"
+	-command ("AckMoveKeysBackward")
+	AckMoveKeysBackwardNameCommand;
+
+nameCommand
+	-annotation "BreakTangentUnifyNameCommand"
+	-sourceType "mel"
+	-command ("TangentUnifyAndLock")
+	BreakTangentUnifyNameCommand;
+
+nameCommand
+	-annotation "Rotate_PressNameCommand"
+	-sourceType "mel"
+	-command ("Rotate_Press")
+	Rotate_PressNameCommand;
+
+nameCommand
+	-annotation "Rotate_ReleaseNameCommand"
+	-sourceType "mel"
+	-command ("Rotate_Release")
+	Rotate_ReleaseNameCommand;
+
+nameCommand
+	-annotation "Translate_PressNameCommand"
+	-sourceType "mel"
+	-command ("Translate_Press")
+	Translate_PressNameCommand;
+
+nameCommand
+	-annotation "Translate_ReleaseNameCommand"
+	-sourceType "mel"
+	-command ("Translate_Release")
+	Translate_ReleaseNameCommand;
+
+nameCommand
+	-annotation "Scale_PressNameCommand"
+	-sourceType "mel"
+	-command ("Scale_Press")
+	Scale_PressNameCommand;
+
+nameCommand
+	-annotation "Scale_ReleaseNameCommand"
+	-sourceType "mel"
+	-command ("Scale_Release")
+	Scale_ReleaseNameCommand;
+
+nameCommand
+	-annotation "SetProjectNameCommand"
+	-sourceType "mel"
+	-command ("SetProject")
+	SetProjectNameCommand;
+
+nameCommand
+	-annotation "OpenSceneNameCommand"
+	-sourceType "mel"
+	-command ("OpenScene")
+	OpenSceneNameCommand;
+
+nameCommand
+	-annotation "SaveSceneNameCommand"
+	-sourceType "mel"
+	-command ("SaveScene")
+	SaveSceneNameCommand;
+
+nameCommand
+	-annotation "SaveSceneAsNameCommand"
+	-sourceType "mel"
+	-command ("SaveSceneAs")
+	SaveSceneAsNameCommand;
+
+nameCommand
+	-annotation "SelectToggleModeNameCommand"
+	-sourceType "mel"
+	-command ("SelectToggleMode")
+	SelectToggleModeNameCommand;
+
+nameCommand
+	-annotation "UniversalManipNameCommand"
+	-sourceType "mel"
+	-command ("UniversalManip")
+	UniversalManipNameCommand;
+
+nameCommand
+	-annotation "ChannelGroupNameCommand"
+	-sourceType "mel"
+	-command ("ChannelGroup")
+	ChannelGroupNameCommand;
+
+nameCommand
+	-annotation "ShowAnimUINameCommand"
+	-sourceType "mel"
+	-command ("ShowAnimUI")
+	ShowAnimUINameCommand;
+
+nameCommand
+	-annotation "ShowAnimationUINameCommand"
+	-sourceType "mel"
+	-command ("ShowAnimationUI")
+	ShowAnimationUINameCommand;
+
+nameCommand
+	-annotation "ShowRiggingUINameCommand"
+	-sourceType "mel"
+	-command ("ShowRiggingUI")
+	ShowRiggingUINameCommand;
+
+nameCommand
+	-annotation "TangentBreakAndUnlockNameCommand"
+	-sourceType "mel"
+	-command ("TangentBreakAndUnlock")
+	TangentBreakAndUnlockNameCommand;
+
+nameCommand
+	-annotation "TangentUnifyAndLockNameCommand"
+	-sourceType "mel"
+	-command ("TangentUnifyAndLock")
+	TangentUnifyAndLockNameCommand;
+
+nameCommand
+	-annotation "PrefsNameCommand"
+	-sourceType "mel"
+	-command ("Prefs")
+	PrefsNameCommand;
+
+nameCommand
+	-annotation "PrefsHotkeysNameCommand"
+	-sourceType "mel"
+	-command ("PrefsHotkeys")
+	PrefsHotkeysNameCommand;
+
+nameCommand
+	-annotation "EulerFilterNameCommand"
+	-sourceType "mel"
+	-command ("EulerFilter")
+	EulerFilterNameCommand;
+
+nameCommand
+	-annotation "HideStrokeNameCommand"
+	-sourceType "mel"
+	-command ("HideStroke")
+	HideStrokeNameCommand;
+
+nameCommand
+	-annotation "TangentWeightToggleNameCommand"
+	-sourceType "mel"
+	-command ("TangentWeightTogglePress")
+	TangentWeightToggleNameCommand;
+
+nameCommand
+	-annotation "TangentWeightToggleReleaseNameCommand"
+	-sourceType "mel"
+	-command ("TangentWeightToggleRelease")
+	TangentWeightToggleReleaseNameCommand;
+
+nameCommand
+	-annotation "InsertKeyToolActivateNameCommand"
+	-sourceType "mel"
+	-command ("InsertKeyToolActivate")
+	InsertKeyToolActivateNameCommand;
+
+nameCommand
+	-annotation "InsertKeyToolDeactivateNameCommand"
+	-sourceType "mel"
+	-command ("InsertKeyToolDeactivate")
+	InsertKeyToolDeactivateNameCommand;
+
+nameCommand
+	-annotation "PanZoomReleaseNameCommand"
+	-sourceType "mel"
+	-command ("PanZoomRelease")
+	PanZoomReleaseNameCommand;
+
+nameCommand
+	-annotation "PanZoomPressNameCommand"
+	-sourceType "mel"
+	-command ("PanZoomPress")
+	PanZoomPressNameCommand;
+
+nameCommand
+	-annotation "HideLocatorsNameCommand"
+	-sourceType "mel"
+	-command ("HideLocators")
+	HideLocatorsNameCommand;
+
+nameCommand
+	-annotation "TangentTypeAutoNameCommand"
+	-sourceType "mel"
+	-command ("TangentTypeAuto")
+	TangentTypeAutoNameCommand;
+
+nameCommand
+	-annotation "TangentTypeFlatNameCommand"
+	-sourceType "mel"
+	-command ("TangentTypeFlat")
+	TangentTypeFlatNameCommand;
+
+nameCommand
+	-annotation "TangentTypeLinearNameCommand"
+	-sourceType "mel"
+	-command ("TangentTypeLinear")
+	TangentTypeLinearNameCommand;
+
+nameCommand
+	-annotation "aToolsTweenMachinePrevNameCommand"
+	-sourceType "mel"
+	-command ("aToolsTweenMachinePrev")
+	aToolsTweenMachinePrevNameCommand;
+
+nameCommand
+	-annotation "aToolsTweenMachineNextNameCommand"
+	-sourceType "mel"
+	-command ("aToolsTweenMachineNext")
+	aToolsTweenMachineNextNameCommand;
+
+//
+// The user hotkeys
+//
+//
+// The hotkey set
+//
+hotkeySet -source "Maya_Default" -current JH_Anim;
+//
+// The hotkey contexts and hotkeys
+//
+hotkey -keyShortcut "PgUp" -name ("TimelineMinNameCommand");
+hotkey -keyShortcut "-" -alt -name ("AckNegateNameCommand");
+hotkey -keyShortcut "8" -alt -name ("AckMoveKeysBackwardNameCommand");
+hotkey -keyShortcut "b" -sht -releaseName ("");
+hotkey -keyShortcut "b" -sht -name ("ToggleCams_setupNameCommand");
+hotkey -keyShortcut "c" -alt -name ("TimeCenterNameCommand");
+hotkey -keyShortcut "g" -alt -sht -name ("EulerFilterNameCommand");
+hotkey -keyShortcut "i" -releaseName ("InsertKeyToolDeactivateNameCommand");
+hotkey -keyShortcut "i" -name ("InsertKeyToolActivateNameCommand");
+hotkey -keyShortcut "F8" -name ("SaveSceneNameCommand");
+hotkey -keyShortcut "t" -releaseName ("ScrubNoUndoOffNameCommand");
+hotkey -keyShortcut "t" -name ("ScrubNoUndoNameCommand");
+hotkey -keyShortcut "x" -sht -releaseName ("");
+hotkey -keyShortcut "," -name ("PreviousKeyUserNameCommand");
+hotkey -keyShortcut "x" -sht -name ("SetKeyXNameCommand");
+hotkey -keyShortcut "1" -alt -name ("FrameFirstNameCommand");
+hotkey -keyShortcut "b" -releaseName ("");
+hotkey -keyShortcut "b" -name ("ToggleCamsNameCommand");
+hotkey -keyShortcut "g" -alt -name ("HideCurvesNameCommand");
+hotkey -keyShortcut "q" -sht -releaseName ("");
+hotkey -keyShortcut "q" -sht -name ("ChannelGroupNameCommand");
+hotkey -keyShortcut "r" -alt -name ("ClearScaleNameCommand");
+hotkey -keyShortcut "x" -releaseName ("");
+hotkey -keyShortcut "*" -alt -name ("AckPushKeysNameCommand");
+hotkey -keyShortcut "Right" -ctl -sht -name ("aToolsTweenMachineNextNameCommand");
+hotkey -keyShortcut "x" -name ("NextKeyUserNameCommand");
+hotkey -keyShortcut "z" -ctl -alt -name ("");
+hotkey -keyShortcut "5" -alt -name ("FrameEndNameCommand");
+hotkey -keyShortcut "d" -alt -sht -name ("HideStrokeNameCommand");
+hotkey -keyShortcut "F5" -name ("SetProjectNameCommand");
+hotkey -keyShortcut "r" -ctl -sht -name ("TangentTypeLinearNameCommand");
+hotkey -keyShortcut "End" -alt -name ("");
+hotkey -keyShortcut "PgDown" -name ("TimelineMaxNameCommand");
+hotkey -keyShortcut "." -alt -name ("NextFrameUserNameCommand");
+hotkey -keyShortcut "y" -ctl -name ("");
+hotkey -keyShortcut "9" -alt -name ("AckMoveKeysForwardNameCommand");
+hotkey -keyShortcut "c" -sht -releaseName ("");
+hotkey -keyShortcut "c" -sht -name ("");
+hotkey -keyShortcut "d" -alt -name ("HidePolysNameCommand");
+hotkey -keyShortcut "F9" -name ("SelectToggleModeNameCommand");
+hotkey -keyShortcut "r" -ctl -releaseName ("");
+hotkey -keyShortcut "Home" -name ("");
+hotkey -keyShortcut "r" -ctl -name ("BreakTangentUnifyNameCommand");
+hotkey -keyShortcut "w" -ctl -alt -releaseName ("");
+hotkey -keyShortcut "w" -ctl -alt -name ("");
+hotkey -keyShortcut "z" -alt -name ("PreviousFrameUserNameCommand");
+hotkey -keyShortcut "y" -sht -name ("SetKeyYNameCommand");
+hotkey -keyShortcut "2" -alt -name ("FramePreviousNameCommand");
+hotkey -keyShortcut "`" -releaseName ("PanZoomReleaseNameCommand");
+hotkey -keyShortcut "`" -name ("PanZoomPressNameCommand");
+hotkey -keyShortcut "c" -releaseName ("TangentUnifyAndLockNameCommand");
+hotkey -keyShortcut "c" -name ("TangentBreakAndUnlockNameCommand");
+hotkey -keyShortcut "F2" -name ("ShowRiggingUINameCommand");
+hotkey -keyShortcut "s" -alt -name ("ClearKeysNameCommand");
+hotkey -keyShortcut "y" -releaseName ("InsertKeyToolDeactivateNameCommand");
+hotkey -keyShortcut "y" -name ("InsertKeyToolActivateNameCommand");
+hotkey -keyShortcut "z" -ctl -sht -name ("RedoNameCommand");
+hotkey -keyShortcut "6" -alt -name ("PlayblastNameCommand");
+hotkey -keyShortcut "a" -alt -name ("TimeFramePlaybackRangeNameCommand");
+hotkey -keyShortcut "g" -name ("SmoothKeysNameCommand");
+hotkey -keyShortcut "F6" -name ("OpenSceneNameCommand");
+hotkey -keyShortcut "l" -alt -name ("HideLocatorsNameCommand");
+hotkey -keyShortcut "o" -ctl -name ("OpenSceneNameCommand");
+hotkey -keyShortcut "r" -releaseName ("Scale_ReleaseNameCommand");
+hotkey -keyShortcut "r" -name ("Scale_PressNameCommand");
+hotkey -keyShortcut "w" -alt -name ("ClearTranslationNameCommand");
+hotkey -keyShortcut "/" -alt -name ("AckPullKeysNameCommand");
+hotkey -keyShortcut "e" -alt -name ("ClearRotationNameCommand");
+hotkey -keyShortcut "k" -releaseName ("ScrubNoUndoOffNameCommand");
+hotkey -keyShortcut "k" -name ("ScrubNoUndoNameCommand");
+hotkey -keyShortcut "p" -alt -name ("");
+hotkey -keyShortcut "End" -name ("");
+hotkey -keyShortcut "v" -releaseName ("TangentWeightToggleReleaseNameCommand");
+hotkey -keyShortcut "t" -alt -sht -name ("");
+hotkey -keyShortcut "Left" -ctl -sht -name ("aToolsTweenMachinePrevNameCommand");
+hotkey -keyShortcut "PgUp" -alt -name ("TimelineMinExpandNameCommand");
+hotkey -keyShortcut "v" -name ("TangentWeightToggleNameCommand");
+hotkey -keyShortcut "w" -ctl -sht -name ("TangentTypeAutoNameCommand");
+hotkey -keyShortcut "z" -sht -name ("SetKeyZNameCommand");
+hotkey -keyShortcut "." -name ("NextKeyUserNameCommand");
+hotkey -keyShortcut "3" -alt -name ("FramePlayForwardNameCommand");
+hotkey -keyShortcut "e" -ctl -sht -name ("TangentTypeFlatNameCommand");
+hotkey -keyShortcut "F3" -name ("ShowAnimationUINameCommand");
+hotkey -keyShortcut "w" -ctl -releaseName ("");
+hotkey -keyShortcut "u" -ctl -alt -sht -name ("PrefsHotkeysNameCommand");
+hotkey -keyShortcut "t" -alt -name ("");
+hotkey -keyShortcut "," -alt -name ("PreviousFrameUserNameCommand");
+hotkey -keyShortcut "w" -ctl -name ("");
+hotkey -keyShortcut "Down" -name ("");
+hotkey -keyShortcut "z" -name ("PreviousKeyUserNameCommand");
+hotkey -keyShortcut "e" -ctl -releaseName ("");
+hotkey -keyShortcut "e" -ctl -name ("");
+hotkey -keyShortcut "F7" -name ("SaveSceneAsNameCommand");
+hotkey -keyShortcut "u" -ctl -alt -name ("PrefsNameCommand");
+hotkey -keyShortcut "x" -alt -name ("NextFrameUserNameCommand");
+hotkey -keyShortcut "f" -alt -name ("HideJntsNameCommand");
+hotkey -keyShortcut "q" -alt -releaseName ("");
+hotkey -keyShortcut "q" -alt -name ("ClearAttrNameCommand");
+hotkey -keyShortcut "w" -releaseName ("Translate_ReleaseNameCommand");
+hotkey -keyShortcut "t" -ctl -name ("UniversalManipNameCommand");
+hotkey -keyShortcut "w" -name ("Translate_PressNameCommand");
+hotkey -keyShortcut "PgDown" -alt -name ("TimelineMaxExpandNameCommand");
+hotkey -keyShortcut "4" -alt -name ("FrameNextNameCommand");
+hotkey -keyShortcut "e" -releaseName ("Rotate_ReleaseNameCommand");
+hotkey -keyShortcut "e" -name ("Rotate_PressNameCommand");
+hotkey -keyShortcut "F4" -name ("ShowAnimUINameCommand");
+hotkeyCtx -type "Editor" -addClient "hyperShadePanel";
+hotkeyCtx -type "Editor" -addClient "polyTexturePlacementPanel";
+hotkeyCtx -type "Editor" -addClient "nodeEditorPanel";
+hotkeyCtx -type "Editor" -addClient "outlinerPanel";
+hotkeyCtx -type "Editor" -addClient "cteEditor";
+hotkeyCtx -type "Editor" -addClient "profilerPanel";
+hotkeyCtx -type "Editor" -addClient "hyperGraphPanel";
+hotkeyCtx -type "Editor" -addClient "graphEditor";
+hotkeyCtx -type "Tool" -addClient "texCutContext";
+hotkeyCtx -type "Tool" -addClient "sculptMeshCache";
+hotkeyCtx -type "Tool" -addClient "texSculptCacheContext";
+hotkeyCtx -type "Tool" -addClient "Unfold3DBrush";

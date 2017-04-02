@@ -1,0 +1,391 @@
+//
+// hotKey swapping
+//
+// Created by Hamish McKenzie www.emissionpossible.com
+// Created : 25 March 2002
+//
+// Description:
+// useful for those of us who are jack of all trade artists
+// with keyboards that are just too small.  Allows you to set
+// up maya with multiple hotkey configurations.  So you can
+// have one set of hotkeys for when you're animating, and
+// another for when you're modelling.
+//
+// Usage:
+//  assign this function to a key press:
+//	zzHotkeySwap;
+//
+//  assign this function to the release;
+//	if( `popupMenu -exists tempMM` ) { deleteUI tempMM; }
+//
+// NOTE: if the hotkey you want to assign this script to contains
+// either ctrl, alt or shift, then modify the "popupMenu" line below
+// to reflect which key is used (ie if you're using alt-w then
+// change it to -alt 1).
+//
+// Hamish McKenzie ©2007...
+// Macaroni Kazoo Productions ©2007...
+
+
+global proc zzHotkeySwap () {
+	if( `popupMenu -exists tempMM` ) { deleteUI tempMM; }
+	popupMenu -ctl 0 -alt 0 -sh 1 -mm 1 -b 1 -aob 1 -p viewPanes -pmc "zzHotkeySwapUI" tempMM;
+	}
+
+
+global proc string[] zzHotkeySwapListHotkeySets () {
+	string $prefsDir = `internalVar -userPrefDir`;
+	string $prefsFiles[] = `getFileList -folder $prefsDir -filespec "*.mel"`;
+	string $hotKeySets[] = {};
+	int $num = 0;
+
+	// creates the hotKeySets array, which holds all of the actual hotkey files
+	for ( $file in $prefsFiles ) {
+		$isUserHotKeys = `substring $file 1 4` == "zzhk" ? 1:0;
+		if ( $isUserHotKeys ) {
+			string $suffix[] = {};
+			string $suffixClean[] = {};
+			tokenize $file "_" $suffix;
+			tokenize $suffix[1] "." $suffixClean;
+			if ( $suffix[1] != "" ) {
+				$hotKeySets[$num] = $suffixClean[0];
+				$num++;
+				}
+			}
+		}
+
+	return $hotKeySets;
+	}
+
+
+// this function builds the UI for the popup menu, for hotkey config swapping
+global proc zzHotkeySwapUI () {
+	string $zzHotKeyCurrentConfig = `optionVar -q zzHotKeyCurrentConfig`;
+	string $hotKeySets[] = `zzHotkeySwapListHotkeySets`;
+
+	if ( `popupMenu -exists tempMM` ) { menu -e -deleteAllItems tempMM; }
+	if ( `zzHotkeySwapBackup create` ) {
+		for ( $set in $hotKeySets ) {
+			$isCurrent = $set == $zzHotKeyCurrentConfig ? 1:0;
+			menuItem -l $set -c ( "zzHotkeySwapFunctions swap " + $set + " " + $zzHotKeyCurrentConfig ) -checkBox $isCurrent;
+			}
+
+		menuItem -divider true;
+		menuItem -divider true;
+		menuItem -divider true;
+		menuItem -l "new hotkey set" -command ( "zzHotkeySwapFunctions newWindow none none" );
+		menuItem -l "configure" -command ( "zzHotkeySwapConfig" );
+
+		//this bit just does the checking to make sure it is possible to do the config swap, and sets up the command
+		string $configA = `optionVar -q zzHotkeyConfigSwapA`;
+		string $configB = `optionVar -q zzHotkeyConfigSwapB`;
+		int $beenSet = ( `optionVar -exists zzHotkeyConfigSwapA` && `optionVar -exists zzHotkeyConfigSwapB` )?1:0;
+		int $doesExist = ( `zzHotkeySwapArrayCheck $configA $hotKeySets` && `zzHotkeySwapArrayCheck $configB $hotKeySets` )?1:0;
+		int $canSwap = ( $beenSet && $doesExist )?1:0;
+
+		$configB = ( $zzHotKeyCurrentConfig == $configA )?$configB:$configA;
+		//menuItem -l "swap configs <->" -command ( "zzHotkeySwapFunctions swap " + $configB + " " + $zzHotKeyCurrentConfig ) -enable $canSwap -rp "W";
+		}
+	else {
+		menuItem -l "can't create backup files!" -enable 0;
+		}
+	}
+
+
+// this function takes a config name, and switches to that config file
+global proc zzHotkeySwapFunctions ( string $function, string $newHotKeyFile, string $currentHotKeyFile ) {
+	string $zzHotKeyCurrentConfig = $newHotKeyFile;
+	string $prefsDir = `internalVar -userPrefDir`;
+	string $newHotKeyFileName = ( "zzhk_" + $newHotKeyFile + ".mel" );
+	string $currentHotKeyFileName = ( "zzhk_" + $currentHotKeyFile + ".mel" );
+
+	switch ( $function ) {
+		case "swap":
+		if ( `zzHotkeySwapCheckUserHotkeys "#"` ) {
+			int $copy01Error = 1;
+			int $copy02Error = 1;
+
+			//before anything else, check to see if the user is trying to change to the current config
+			if ( $currentHotKeyFile == $newHotKeyFile ) {
+				print ( "Config is already set to: " + $newHotKeyFile + "\n" );
+				break;
+				}
+
+			//save new hotkey set to prefs, and force the hotkey file to save
+			savePrefs -hotkeys;
+
+			//what we do now, is check to see if the current config actually has a file.  sometimes a user will delete the hotkey definition
+			//file, and thus, this should make the config obsolete.  so if the current config does not have an associated hotkey file, then
+			//we do not want to create it by saving it out when we do the swap.
+			int $doesConfigExist = `zzHotkeySwapCheckUserHotkeys $currentHotKeyFileName`;  //check to see if the current config has an associated file
+			int $copy01Success = ($doesConfigExist) ? (`sysFile -copy ( $prefsDir + $currentHotKeyFileName ) ( $prefsDir + "userHotkeys.mel" )`):1;
+			if ( $copy01Success ) {  //now copy named files to vanilla, in order to source them
+				$copy01Error = 0;
+				if ( `sysFile -copy ( $prefsDir + "userHotkeys.mel" ) ( $prefsDir + $newHotKeyFileName )` ) {
+					$copy02Error = 0;
+					hotkey -sourceUserHotkeys;
+					optionVar -sv zzHotKeyCurrentConfig $zzHotKeyCurrentConfig;
+					savePrefs -general;  //force a save of the optionVars to disk
+					}
+				}
+
+			if ( $copy01Error || $copy02Error ) {
+				if ( `zzHotkeySwapBackup restore` ) { warning ( "There was an error swapping files.  Backup config restored.\n" ); }
+				else { error ( "Cannot restore backup files.  Config files possibly lost.\n" ); }
+				}
+			}
+		else { zzHotkeySwapBackup restore; }
+		break;
+
+
+		case "newWindow":
+		string $newHotkeySet = `promptDialog
+			-title "Create New Hotkey Set"
+			-message "Set Name:"
+			-text $currentHotKeyFile
+			-button "OK"
+			-button "Cancel"
+			-defaultButton "OK"
+			-cancelButton "Cancel"
+			-dismissString "Cancel"`;
+		if ( $newHotkeySet == "OK" ) {
+			string $newHotKeySetName = `promptDialog -q`;
+			zzHotkeySwapFunctions new $newHotKeySetName none;
+			}
+		break;
+
+
+		case "new":
+		string $newHotKeyFileName = ( "zzhk_" + $newHotKeyFile + ".mel" );
+		if ( $newHotKeyFile != "" ) {
+			int $copySuccess = `sysFile -copy ( $prefsDir + $newHotKeyFileName ) ( $prefsDir + "userHotkeys.mel" )`;
+
+			if ( $copySuccess ) {
+				optionVar -sv zzHotKeyCurrentConfig $newHotKeyFile;
+				savePrefs -general;
+				}
+			else { warning ( "New hotkey file create, failed..." ); }
+			}
+		else { warning ( "You must type a name" ); }
+		break;
+		}
+	}
+
+
+global proc int zzHotkeySwapBackup ( string $function ) {
+	string $prefsDir = `internalVar -userPrefDir`;
+	string $prefsFiles[] = `getFileList -folder $prefsDir`;
+	string $hotkeyBackup = "hotKeyBackup.zbk";
+
+	switch ( $function ) {
+		case "create":
+		//check to see if previous backup exists
+		int $backupSuccess = 0;
+		savePrefs -hotkeys;
+		sysFile -delete ( $prefsDir + $hotkeyBackup );
+
+		if ( `sysFile -copy ( $prefsDir + $hotkeyBackup ) ( $prefsDir + "userHotkeys.mel" )` ) { $backupSuccess = 1; }
+		return $backupSuccess;
+		break;
+
+
+		case "restore":
+		int $restoreSuccess = 0;
+		savePrefs -hotkeys;
+		sysFile -delete ( $prefsDir + "userHotkeys.mel" );
+
+		if ( `sysFile -copy ( $prefsDir + "userHotkeys.mel" ) ( $prefsDir + $hotkeyBackup )` ) { $restoreSuccess = 1; }
+		return $restoreSuccess;
+		break;
+		}
+	}
+
+
+global proc zzHotkeySwapConfig () {
+	string $windowName = "zzHotkeyConfigWindow";
+	string $windowTitle = "Config";
+	string $hotKeySets[] = `zzHotkeySwapListHotkeySets`;
+	string $currentConfig = `optionVar -q zzHotKeyCurrentConfig`;
+	string $configA = `optionVar -q zzHotkeyConfigSwapA`;
+	string $configB = `optionVar -q zzHotkeyConfigSwapB`;
+	int $selection = 1;
+	int $n = 1;
+
+	if ( `window -exists $windowName` ) { deleteUI $windowName; }
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0
+		-sizeable 1 -width 400 $windowName;
+
+		menuBarLayout;
+			menu -label "Help";
+				menuItem -l "Help..." -c ( "zzHotkeySwapHelp help" );
+				menuItem -divider 1;
+				menuItem -l "About" -c ( "zzHotkeySwapHelp about" );
+
+			columnLayout -adjustableColumn 1 -rowSpacing 5 zzHotkeyConfigColumn;
+				rowLayout -numberOfColumns 2 -p zzHotkeyConfigColumn -columnWidth2 125 45
+					-columnAttach 1 "both" 	0
+					-columnAttach 2 "both" 	5;
+				optionMenu -changeCommand ( "" ) zzHotkeyConfigOption;
+					for ( $set in $hotKeySets ) {
+						menuItem -label $set -p zzHotkeyConfigOption;
+						if ( $set == $currentConfig ) { $selection = $n; }
+						$n++;
+						}
+				button -label "New" -c ( "zzHotkeySwapFunctions newWindow none none; zzHotkeyConfigDoIt updateMenu" );
+
+				rowLayout -numberOfColumns 3 -p zzHotkeyConfigColumn -columnWidth3 65 20 85
+					-columnAttach 1 "both" 	0
+					-columnAttach 2 "both" 	0
+					-columnAttach 3 "both" 	5;
+				text -label "Set A:";
+				button -label "->" -c ( "zzHotkeySwapFunctions setSwap A none" );
+				textField -ed 0 -text $configA zzHotkeyConfigSwapA;
+
+				rowLayout -numberOfColumns 3 -p zzHotkeyConfigColumn -columnWidth3 65 20 85
+					-columnAttach 1 "both" 	0
+					-columnAttach 2 "both" 	0
+					-columnAttach 3 "both" 	5;
+				text -label "Set B:";
+				button -label "->" -c ( "zzHotkeySwapFunctions setSwap B none" );
+				textField -ed 0 -text $configB zzHotkeyConfigSwapB;
+
+				rowLayout -numberOfColumns 2 -p zzHotkeyConfigColumn -columnWidth2 60 110
+					-columnAttach 1 "both" 	0
+					-columnAttach 2 "both" 	5;
+				text -label "Set Name:";
+				textField -ed 1 -text $currentConfig -changeCommand ( "zzHotkeySwapFunctions rename " + $currentConfig + " none" ) zzHotkeyConfigText;
+
+				rowLayout -numberOfColumns 2 -p zzHotkeyConfigColumn -columnWidth2 85 85
+					-columnAttach 1 "both" 	0
+					-columnAttach 2 "both" 	5;
+				button -label "Change Config" -align center -c ( "zzHotkeyConfigDoIt swap" );
+				button -label "Delete Config" -align center -c ( "zzHotkeySwapFunctions delete none none" );
+
+	showWindow $windowName;
+	optionMenu -edit -select $selection zzHotkeyConfigOption;
+	}
+
+
+global proc zzHotkeySwapWindowFunctions ( string $function, string $variable01 ) {
+	string $windowName = "zzHotkeyConfigWindow";
+	switch ( $function ) {
+		case "rename":
+		if ( `zzHotkeyFileCheck` ) {
+			string $prefsDir = `internalVar -userPrefDir`;
+			string $oldName = `optionMenu -q -v zzHotkeyConfigOption`;
+			string $oldHotkey = ( "zzhk_" + $oldName + ".mel" );
+			string $newName = `textField -q -text zzHotkeyConfigText`;
+			string $newHotkey = ( "zzhk_" + $newName + ".mel" );
+
+			savePrefs -hotkeys;
+			int $delete01 = `sysFile -delete ( $prefsDir + $oldHotkey )`;
+
+			sysFile -copy ( $prefsDir + $newHotkey ) ( $prefsDir + "userHotkeys.mel" );
+			zzHotkeyConfigDoIt updateMenu;
+			}
+		else {
+			warning "not all the files exist...\n";
+			}
+		break;
+
+
+		case "delete":
+		string $prefsDir = `internalVar -userPrefDir`;
+		string $config = `optionMenu -q -v zzHotkeyConfigOption`;
+		string $hotKeyFileName = ( "zzhk_" + $config + ".mel" );
+		string $zzHotKeyCurrentConfig = `optionVar -q zzHotKeyCurrentConfig`;
+		string $hotKeySets[] = `zzHotkeyCreateHotKeySet`;
+
+		sysFile -delete ( $prefsDir + $hotKeyFileName );
+		if ( $zzHotKeyCurrentConfig == $config ) {
+			if ( `size $hotKeySets` != 0 ) {
+				zzHotkeySwapFunctions swap $hotKeySets[0] $zzHotKeyCurrentConfig;
+				optionVar -sv zzHotKeyCurrentConfig $hotKeySets[0];
+				}
+			else { optionVar -sv zzHotKeyCurrentConfig ""; }
+			}
+		zzHotkeyConfigDoIt updateMenu;
+		break;
+
+
+		case "swap":
+		string $currentConfig = `optionVar -q zzHotKeyCurrentConfig`;
+		string $selected = `optionMenu -q -select zzHotkeyConfigOption`;
+		string $currentDefault;
+
+		//zzHotkeySwapFunctions swap $selected $currentConfig;
+		deleteUI $windowName;
+		break;
+
+
+		case "update":
+		string $config = `optionMenu -q -v zzHotkeyConfigOption`;
+		textField -e -text $config zzHotkeyConfigText;
+		break;
+
+
+		case "updateWindow":
+		deleteUI $windowName;
+		zzHotkeySwapConfig;
+		break;
+		}
+	}
+
+
+global proc int zzHotkeySwapCheckUserHotkeys ( string $file ) {  //checks to see if the userHotKeys file exists
+	string $prefsDir = `internalVar -userPrefDir`;
+	string $hotKeyList[] = `getFileList -folder $prefsDir -filespec "*.mel"`;
+	string $testFile = ( $file=="#" ) ? "userHotkeys.mel":$file;
+	int $returnVal = 0;
+
+	for ( $entry in $hotKeyList ) {
+		if ( $entry == $testFile ) { $returnVal = 1; }
+		}
+
+	return $returnVal;
+	}
+
+
+//this simple little function returns whether a string in contained in an array or not
+global proc int zzHotkeySwapArrayCheck ( string $word, string $array[] ) {
+	int $return = 0;
+	for ( $entry in $array ) {
+		if ( $word == $entry ) { $return = 1; }
+		}
+
+	return $return;
+	}
+
+
+global proc zzHotkeySwapHelp ( string $function ) {
+	string $windowName = "zzHotkeySwapAbout";
+	string $windowTitle = "About Hotkey Swap";
+	string $aboutScript = "Overview:\n";
+	string $aboutAuthor = "Version: 1.0\nCreation Date: 25 March 2002\n\nHotkey Swap was written by Macaroni Kazoo Productions  www.macaronikazoo.com\n\nWe hope you find it to be such a useful tool, that you tell all your friends about it.";
+	int $selTab = ( $function == "about" )?2:1;
+
+	if ( `window -exists $windowName` ) { deleteUI $windowName; }
+
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0 -sizeable 0 -widthHeight 330 180 $windowName;
+
+		 string $form = `formLayout`;
+		 string $tabs = `tabLayout -innerMarginWidth 5 -innerMarginHeight 5`;
+		 formLayout -edit
+			-attachForm $tabs "top"    0
+			-attachForm $tabs "left"   0
+			-attachForm $tabs "bottom" 0
+			-attachForm $tabs "right"  0
+			$form;
+
+			string $child1 = `paneLayout -configuration "single"`;
+				scrollField -ed 0 -wordWrap 1 -font plainLabelFont -w 300 -h 200 -numberOfLines 15 -text $aboutScript;
+				setParent ..;
+
+			string $child2 = `paneLayout -configuration "single"`;
+				scrollField -ed 0 -wordWrap 1 -font plainLabelFont -w 300 -h 200 -numberOfLines 15 -text $aboutAuthor;
+				setParent ..;
+
+			tabLayout -e -selectTabIndex $selTab -tabLabel $child1 "Hotkey Swap Help" -tabLabel $child2 "About Hotkey Swap" $tabs;
+
+	showWindow $windowName;
+	}

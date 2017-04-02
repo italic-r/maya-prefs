@@ -1,0 +1,733 @@
+global proc shelf_bird () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Edit the references for the current scene" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "Reference Editor" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "RE" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.25 
+        -image "menuIconFile.png" 
+        -image1 "menuIconFile.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "ReferenceEditor" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 19
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "sep" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "sep" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "/home/italic/maya/icons/separator.png" 
+        -image1 "/home/italic/maya/icons/separator.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Pickers" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "Pickers" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "Pkrs" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.8 
+        -image "/home/italic/maya/icons/PickerIcon.png" 
+        -image1 "/home/italic/maya/icons/PickerIcon.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "print(\"Choose a picker from the menu\");" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "" ( "" )
+        -mi "" ( "" )
+        -mi "AnimSchoolLin" ( "loadPlugin -qt \"/home/italic/maya/2016/plugins/AnimSchoolPicker.so\";\nAnimSchoolPicker();" )
+        -mi "AnimSchoolWin" ( "loadPlugin -qt \"Z:\\\\maya\\\\2016\\\\plugins\\\\AnimSchoolPicker.mll\";\nAnimSchoolPicker();" )
+        -mi "abx2" ( "abxPicker2;" )
+        -mi "Mery" ( "print(\"Find Mery picker in scripts folder and run in script editor\")" )
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "slate;" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "slate;" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "Slate" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.8 
+        -image "/home/italic/maya/icons/rvplay.png" 
+        -image1 "/home/italic/maya/icons/rvplay.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "slate;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 19
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "sep" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "sep" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "/home/italic/maya/icons/separator.png" 
+        -image1 "/home/italic/maya/icons/separator.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create a NURBS circle on the grid" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "Circle" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "circle.png" 
+        -image1 "circle.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "circle -c 0 0 0 -nr 0 1 0 -sw 360 -r 1 -d 3 -ut 0 -tol 0.01 -s 8 -ch 1; objectMoveCommand" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreateNURBSCircleOptions" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create a locator object on the grid" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "Locator" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.25 
+        -image "locator.png" 
+        -image1 "locator.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreateLocator" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "CreateCameras" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "CreateCameras" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "cameraAim.png" 
+        -image1 "cameraAim.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import cameraStack\nreload(cameraStack)" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 19
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "sep" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "sep" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "/home/italic/maya/icons/separator.png" 
+        -image1 "/home/italic/maya/icons/separator.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Parent constraint options - double-click remove target" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ConstraintTools" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "Const" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.8 
+        -image "parentConstraint.png" 
+        -image1 "parentConstraint.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "print(\"Right click for constraint options\");" 
+        -sourceType "mel" 
+        -doubleClickCommand "doRemoveConstraintTarget 1  { \"all\",\"1\"};" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "" ( "" )
+        -mi "ParentConst" ( "ParentConstraintOptions" )
+        -mi "RemoveTarget" ( "doRemoveConstraintTarget 1  { \"all\",\"1\"};" )
+        -mi "LWS Const Tool" ( "###############################################################################\n# Name: \n#   lws_parentConstraint.py\n#\n# Description: \n#   Tool that help for contraint two objects, then bake and delete the constraint\n#   Just click on button \">\" to add your object and enter your frame and the sample in the case\n#\n# Author: \n#   David Jurine ( david.jurine@gmail.com // http://davidjurine.blogspot.com )\n#\n###############################################################################\n\nfrom maya import OpenMaya, OpenMayaUI, OpenMayaAnim, cmds\nfrom PySide import QtCore, QtGui\nimport shiboken, sys, os\n\npointer = long(OpenMayaUI.MQtUtil.mainWindow())\nmaya_window = shiboken.wrapInstance(pointer, QtGui.QMainWindow)\n\nclass MayaSelectionWidget (QtGui.QWidget):\n    def __init__ (self, parent=None):    \n        super (MayaSelectionWidget, self).__init__(parent)\n        layout = QtGui.QHBoxLayout(self)\n        layout.setContentsMargins(0,0,0,0)\n        self.lineEdit = QtGui.QLineEdit()\n        button = QtGui.QPushButton(\">\")\n        map(layout.addWidget, [self.lineEdit,  button])\n        button.clicked.connect(self.setSelection)\n        self.selection = \"\"\n\n    def nameLong(self):\n        return self.selectionLong\n\n    def setSelection (self):\n        selection = cmds.ls(sl=True, sn = True)\n        list = cmds.ls(sl=True, long= True) \n        self.selectionLong = list [0]\n        self.lineEdit.setText(selection[0])\n\nclass BasicDialog (QtGui.QDialog):\n    ''' Fenetre de base '''\n    def __init__ (self, parent=maya_window):\n        super(BasicDialog, self).__init__(parent)\n        object_name = \"constraintHelperDialog\"\n\n        exist = parent.findChild(QtGui.QDialog, object_name)\n        if exist:\n            shiboken.delete (exist)\n\n        self.setWindowTitle( \"LWS: parentConstraint\" )\n        self.setObjectName( object_name )\n        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)\n        self.setWindowFlags(QtCore.Qt.Tool)\n\n        layout = QtGui.QVBoxLayout(self)\n        layout_widget = QtGui.QWidget()\n        layout_user = QtGui.QFormLayout(layout_widget)\n        \n        \n        imagePath = os.path.abspath(os.path.join (cmds.internalVar (upd=True) , \"icons\", \"lws_banner.jpg\"))\n        label = QtGui.QLabel()\n        imageBanner = QtGui.QPixmap(imagePath)\n        label.setPixmap(imageBanner)\n        layout.addWidget(label)\n        layout.addWidget(layout_widget)\n\n        self.parent_widget = MayaSelectionWidget()\n        layout_user.addRow(\"Parent :\", self.parent_widget)\n        \n        self.child_widget = MayaSelectionWidget()\n        layout_user.addRow(\"Child :\", self.child_widget)\n        \n        constraint_button = QtGui.QPushButton(\"Constraint\")\n        constraint_button.clicked.connect(self.parentCons)\n        layout_user.addRow(constraint_button)\n        \n        self.frstFrm_widget = QtGui.QSpinBox()\n        self.frstFrm_widget.setValue(int(OpenMayaAnim.MAnimControl().minTime().value()))\n        self.frstFrm_widget.setMinimum(-1000000)\n        self.frstFrm_widget.setMaximum(1000000)\n        layout_user.addRow(\"First Frame :\", self.frstFrm_widget)\n        \n        \n        self.endFrm_widget = QtGui.QSpinBox()\n        self.endFrm_widget.setValue(int(OpenMayaAnim.MAnimControl().maxTime().value()))\n        self.endFrm_widget.setMinimum(-1000000)\n        self.endFrm_widget.setMaximum(1000000)\n        layout_user.addRow(\"End Frame :\", self.endFrm_widget)\n        \n        self.bake_widget = QtGui.QSpinBox()\n        self.bake_widget.setValue(int(1))\n        layout_user.addRow(\"Bake by :\", self.bake_widget)\n        \n        bakeBtn_button = QtGui.QPushButton(\"Bake\")  \n        bakeBtn_button.clicked.connect(self.bakeDelete)\n        layout_user.addRow(bakeBtn_button)\n        \n        self.endFrm_widget.editingFinished.connect(self.focusBake)\n        \n        self.pConstraint = None\n  \n    def focusEndFr (self):\n        self.endFrm_widget.setFocus()\n        \n    def focusBake (self):\n        fstFrame = self.frstFrm_widget.text()\n        endFrame = self.endFrm_widget.text()\n        if fstFrame > endFrame:\n            fstFrame, endFrame = endFrame, fstFrame\n            self.frstFrm_widget.setValue(int(fstFrame))\n            self.endFrm_widget.setValue(int(endFrame)) \n               \n    def parentCons (self, *args):\n        self.objParent = self.parent_widget.nameLong()\n        self.objChild = self.child_widget.nameLong()\n        self.pConstraint = cmds.parentConstraint (self.objParent, self.objChild, mo=True)\n            \n    def bakeDelete (self, *args):\n        if self.pConstraint :  \n            pass   \n        else:\n            self.objParent = self.parent_widget.nameLong()\n            self.objChild = self.child_widget.nameLong()\n            self.pConstraint = cmds.parentConstraint (self.objParent, self.objChild, mo=True)    \n        fstFrame = self.frstFrm_widget.text()\n        endFrame = self.endFrm_widget.text()\n        userChoice = self.bake_widget.text()\n        self.objChild = self.child_widget.nameLong()\n        cmds.bakeResults( self.objChild, t=(fstFrame,endFrame), sb=userChoice, simulation=True )\n        cmds.delete (self.pConstraint)\n        self.pConstraint = None\n\ndef UI ():\n    w=BasicDialog()\n    w.show()\n\nif __name__ == \"__main__\":\n    UI()" )
+        -mip 3
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Snap" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "Snap" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "Snap" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.8 
+        -image "posConstraint.png" 
+        -image1 "posConstraint.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "print(\"Right click for snap options\");" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "" ( "" )
+        -mi "SnapPar" ( "doCreateParentConstraintArgList 1 { \"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"1\",\"\",\"1\" };\nparentConstraint -weight 1;\ndoRemoveConstraintTarget 1  { \"all\",\"1\"};\n" )
+        -mi "SnapPnt" ( "doCreatePointConstraintArgList 1 { \"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"1\",\"\",\"1\" };\npointConstraint -offset 0 0 0 -weight 1;\ndoRemoveConstraintTarget 1  { \"all\",\"1\"};\n" )
+        -mi "SnapOri" ( "doCreateOrientConstraintArgList 1 { \"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"1\",\"\",\"1\" };\norientConstraint -offset 0 0 0 -weight 1;\ndoRemoveConstraintTarget 1  { \"all\",\"1\"};\n" )
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 19
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "sep" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "sep" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "/home/italic/maya/icons/separator.png" 
+        -image1 "/home/italic/maya/icons/separator.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "aTools ON/OFF + anim tools" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "aTools+AnimTools" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "aTools" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.8 
+        -image "commandButton.xpm" 
+        -image1 "commandButton.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "print \"Select an operation from the menu\";" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "" ( "" )
+        -mi "Red9" ( "import Red9\nRed9.start()" )
+        -mip 1
+        -mi "bhGhost" ( "bhGhost;" )
+        -mi "aTools Toggle" ( "from aTools.animTools.animBar import animBarUI; animBarUI.show('toggle')" )
+        -mip 3
+        -mi "arcTrackerPro" ( "import arctrackerpro; reload(arctrackerpro)" )
+        -mip 4
+        -mi "tweenMachine" ( "import tweenMachine\ntweenMachine.start()" )
+        -mip 5
+        -mi "pose2shelf" ( "pose2shelf;" )
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "bh_timelineMarkers" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "bh_timelineMarkers" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "mark" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.8 
+        -image "commandButton.png" 
+        -image1 "commandButton.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "bh_timelineMarkers" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "ackSetup \"setup\";" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ackSetup" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "ackS" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.8 
+        -image "commandButton.png" 
+        -image1 "commandButton.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "ackSetup \"setup\";" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Delete Redundant keys (+ ackTimingFramework)" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ackDeleteRedundant;" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.8 
+        -image "/home/italic/maya/icons/remove_knot.png" 
+        -image1 "/home/italic/maya/icons/remove_knot.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "ackDeleteRedundant;" 
+        -sourceType "mel" 
+        -doubleClickCommand "ackTimingFramework;" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Viewport setup" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ViewportSetup" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "VP" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.8 
+        -image "commandButton.png" 
+        -image1 "commandButton.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "print \"Select an operation from the menu\";" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "" ( "" )
+        -mi "cycleCheckOff" ( "cycleCheck -e off" )
+        -mi "SkinClusters" ( "import maya.cmds as cmds\n\nsceneGeo = cmds.ls(g=True)\ncharSC = []\n\nfor skin in cmds.listConnections(sceneGeo ,type='skinCluster'):\n\tif skin not in charSC:\n\t\tcharSC.append(skin)\n\nfor sc in charSC:\n\tcmds.setAttr((sc + '.deformUserNormals'), False)" )
+        -mip 2
+        -mi "CycleCheck" ( "cycleCheck -e off" )
+        -mi "V2.0" ( "ActivateViewport20;\ncreateViewport20OptionsUI;\n\nsetAttr \"hardwareRenderingGlobals.consolidateWorld\" 1;\nsetAttr \"hardwareRenderingGlobals.vertexAnimationCache\" 2;\nhwInstancingCheckBoxOnCommand;\nsetAttr \"hardwareRenderingGlobals.threadDGEvaluation\" 1;\nsetAttr \"hardwareRenderingGlobals.maxHardwareLights\" 2;\nsetAttr \"hardwareRenderingGlobals.transparencyAlgorithm\" 0;\nsetAttr \"hardwareRenderingGlobals.enableTextureMaxRes\" 1;\nsetAttr \"hardwareRenderingGlobals.textureMaxResolution\" 1024;\n\nsetAttr \"hardwareRenderingGlobals.ssaoEnable\" 0;\nsetAttr \"hardwareRenderingGlobals.motionBlurEnable\" 0;\nsetAttr \"hardwareRenderingGlobals.lineAAEnable\" 0;\nsetAttr \"hardwareRenderingGlobals.multiSampleEnable\" 0;\nsetAttr \"hardwareRenderingGlobals.gammaCorrectionEnable\" 0;\nsetAttr \"hardwareRenderingGlobals.floatingPointRTEnable\" 0;\nsetAttr \"hardwareRenderingGlobals.caching\" 1;\n" )
+        -mi "Cache" ( "undoInfo -stateWithoutFlush off;\n\nstring $activePanel = `getPanel -wf`;\nmodelEditor -e -grid false $activePanel;\nmodelEditor -e -allObjects 0 $activePanel;\nmodelEditor -e -polymeshes 1 $activePanel;\n\nint $rangeStartFrame = `playbackOptions -q -min`;\n\ncurrentTime -e $rangeStartFrame;\nplaybackOptions -playbackSpeed 0 -loop \"once\" -by 1;\nplayButtonForward;\nplaybackOptions -playbackSpeed 1 -loop \"continuous\";\n\nundoInfo -stateWithoutFlush on;" )
+        -mi "Reset display" ( "string $activePanel = `getPanel -wf`;\nmodelEditor -e -grid false $activePanel;\nmodelEditor -e -allObjects 0 $activePanel;\n\nmodelEditor -e -polymeshes 1 $activePanel;\nmodelEditor -e -nurbsCurves 1 $activePanel;\nmodelEditor -e -locators 1 $activePanel;\nmodelEditor -e -cameras 1 $activePanel;\nmodelEditor -e -motionTrails 1 $activePanel;\nmodelEditor -e -twoSidedLighting true $activePanel\n" )
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Preset playblast settings" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "Playblast" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "PB" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.8 
+        -image "/home/italic/maya/icons/camera.png" 
+        -image1 "/home/italic/maya/icons/camera.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import maya.cmds as cmds\nimport maya.mel as mel\n\nfileNameLong = cmds.file(query=True, sceneName=True, shortName=True)\nfileNameShort = fileNameLong.split(\".\")\n\nTimeRange = mel.eval('$tmpVar=$gPlayBackSlider')\nSoundNode = cmds.timeControl(TimeRange, query=True, sound=True)\n\n\nif cmds.ls(renderResolutions=True):\n    ResX = cmds.getAttr(\"defaultResolution.width\")\n    ResY = cmds.getAttr(\"defaultResolution.height\")\n\n    cmds.playblast(filename=(\"movies/\" + fileNameShort[0] + \".mov\"),\n                   forceOverwrite=True, format=\"qt\", compression=\"mjpa\",\n                   offScreen=True, width=ResX, height=ResY, quality=100,\n                   percent=100, sound=SoundNode)\n\nelse:\n    cmds.error(\"No resolution data in file. Please set resolution and save.\")\n" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 19
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "sep" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "sep" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "/home/italic/maya/icons/separator.png" 
+        -image1 "/home/italic/maya/icons/separator.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Template floating shelf" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "sep" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "Temp" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.8 
+        -image "commandButton.png" 
+        -image1 "commandButton.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "string $floatShelf = \"floatShelf\";\n\nif (`window -ex $floatShelf`)\n\tdeleteUI $floatShelf;\n\t\nwindow -title \"template\" $floatShelf;\n\nstring $tabs = `tabLayout`;\n\nstring $shelf = `shelfLayout`;\n\nshelfButton\n;\n\ntabLayout -edit -tabLabel $shelf \"template\" $tabs;\n\nshowWindow $floatShelf;\n" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 19
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "sep" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "sep" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "/home/italic/maya/icons/separator.png" 
+        -image1 "/home/italic/maya/icons/separator.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "all" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "all" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "all" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "aselect.xpm" 
+        -image1 "aselect.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "select -cl;\ncatch (`select -add \"anim:ctrl_foot_l\"`);\ncatch (`select -add \"anim:ctrl_foot_r\"`);\ncatch (`select -add \"anim:woodpecker_ac_cn_upperbody_loc\"`);\ncatch (`select -add \"anim:woodpecker_ac_cn_jaw\"`);\ncatch (`select -add \"anim:woodpecker_ac_cn_base\"`);\ncatch (`select -add \"anim:woodpecker_ac_cn_free_chest\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_hip\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_hip\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_fingerstFK\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_ankleFK\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_kneeFK\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_fingerstFK\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_ankleFK\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_kneeFK\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_wing_settings\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_wing_settings\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_wrink\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_wrink\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_elbow\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_shoulder\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_clavicle\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_elbow\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_shoulder\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_clavicle\"`);\ncatch (`select -add \"anim:woodpecker_ac_cn_pelvis\"`);\ncatch (`select -add \"anim:woodpecker_ac_cn_tail_2\"`);\ncatch (`select -add \"anim:woodpecker_ac_cn_tail_1\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_tail_settings\"`);\ncatch (`select -add \"anim:woodpecker_ac_cn_tail_settings\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_tail_settings\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_footIK\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_footIK\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_legPole\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_legPole\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_leg_settings\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_leg_settings\"`);\ncatch (`select -add \"anim:woodpecker_sk_rt_finger_1_4\"`);\ncatch (`select -add \"anim:woodpecker_sk_rt_finger_1_3\"`);\ncatch (`select -add \"anim:woodpecker_sk_rt_finger_1_2\"`);\ncatch (`select -add \"anim:woodpecker_sk_rt_finger_1_1\"`);\ncatch (`select -add \"anim:woodpecker_sk_rt_finger_2_1\"`);\ncatch (`select -add \"anim:woodpecker_sk_rt_finger_2_4\"`);\ncatch (`select -add \"anim:woodpecker_sk_rt_finger_2_3\"`);\ncatch (`select -add \"anim:woodpecker_sk_rt_finger_2_2\"`);\ncatch (`select -add \"anim:woodpecker_sk_rt_finger_4_3\"`);\ncatch (`select -add \"anim:woodpecker_sk_rt_finger_4_2\"`);\ncatch (`select -add \"anim:woodpecker_sk_rt_finger_4_1\"`);\ncatch (`select -add \"anim:woodpecker_sk_rt_finger_3_3\"`);\ncatch (`select -add \"anim:woodpecker_sk_rt_finger_3_2\"`);\ncatch (`select -add \"anim:woodpecker_sk_rt_finger_3_1\"`);\ncatch (`select -add \"anim:woodpecker_sk_lf_finger_3_3\"`);\ncatch (`select -add \"anim:woodpecker_sk_lf_finger_3_2\"`);\ncatch (`select -add \"anim:woodpecker_sk_lf_finger_3_1\"`);\ncatch (`select -add \"anim:woodpecker_sk_lf_finger_4_3\"`);\ncatch (`select -add \"anim:woodpecker_sk_lf_finger_4_2\"`);\ncatch (`select -add \"anim:woodpecker_sk_lf_finger_4_1\"`);\ncatch (`select -add \"anim:woodpecker_sk_lf_finger_2_4\"`);\ncatch (`select -add \"anim:woodpecker_sk_lf_finger_2_3\"`);\ncatch (`select -add \"anim:woodpecker_sk_lf_finger_2_2\"`);\ncatch (`select -add \"anim:woodpecker_sk_lf_finger_2_1\"`);\ncatch (`select -add \"anim:woodpecker_sk_lf_finger_1_4\"`);\ncatch (`select -add \"anim:woodpecker_sk_lf_finger_1_3\"`);\ncatch (`select -add \"anim:woodpecker_sk_lf_finger_1_2\"`);\ncatch (`select -add \"anim:woodpecker_sk_lf_finger_1_1\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_fingers_grp|anim:woodpecker_ac_lf_finger4_offset|anim:woodpecker_ac_lf_finger4\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_fingers_grp|anim:woodpecker_ac_lf_finger2_offset|anim:woodpecker_ac_lf_finger2\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_fingers_grp|anim:woodpecker_ac_lf_finger1_offset|anim:woodpecker_ac_lf_finger1\"`);\ncatch (`select -add \"anim:woodpecker_ac_lf_fingers_grp|anim:woodpecker_ac_lf_finger3_offset|anim:woodpecker_ac_lf_finger3\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_fingers_grp|anim:woodpecker_ac_lf_finger4_offset|anim:woodpecker_ac_lf_finger4\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_fingers_grp|anim:woodpecker_ac_lf_finger3_offset|anim:woodpecker_ac_lf_finger3\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_fingers_grp|anim:woodpecker_ac_lf_finger1_offset|anim:woodpecker_ac_lf_finger1\"`);\ncatch (`select -add \"anim:woodpecker_ac_rt_fingers_grp|anim:woodpecker_ac_lf_finger2_offset|anim:woodpecker_ac_lf_finger2\"`);\ncatch (`select -add \"anim:woddpecker_ac_cn_neck_1\"`);\ncatch (`select -add \"anim:woddpecker_ac_cn_neck_2\"`);\ncatch (`select -add \"anim:woddpecker_ac_cn_head\"`);\ncatch (`select -add \"anim:woodpecker_ac_cn_chest\"`);\ncatch (`select -add \"anim:woodpecker_ac_cn_spineFK1_inv\"`);\ncatch (`select -add \"anim:woodpecker_ac_cn_spineFK2\"`);\ncatch (`select -add \"anim:woodpecker_ac_cn_spineFK1\"`);\ncatch (`select -add \"anim:woodpecker_ac_cn_spineFK2_inv\"`);\ncatch (`select -add \"anim:woodpecker_ac_cn_upperbody\"`);\n" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+
+} 

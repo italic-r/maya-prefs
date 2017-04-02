@@ -1,0 +1,76 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: reverseKeys.mel v1.0
+''    Author: D.W. Kim
+''    Last Updated: December 19, 2000
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=animation#759
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+// REVERSE KEYS V1.0.1
+//
+// Copyright (C) 2000 GearCGI Ltd.,
+// a subsidary of CGI Inc.
+//
+// D.W. KIM AND GEARCGI DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL D.W. KIM OR GEARCGI BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+// MODIFY THIS AT YOUR OWN RISK
+//
+// If you are having problems with this script,
+// please feel free to mail me directly (dwk@gearprod.com)
+// I hope you find it useful and I appreciate any comments,
+// suggestions and bug reports.
+//
+//
+// Creation Date:  Dec-19-2000
+//
+// Author: D.W. Kim
+//
+//	dwk@gearprod.com
+//
+//
+//  Procedure Name:
+//
+//      reverseKeys;
+//
+//  Description:
+//	This simple script reverses keyframes of all objects below in a heiarchy
+//	Be careful when using this script with objects with any set driven Keys
+//	because it will reverse them as well.
+//
+//  Usage:
+//	user must enter the first and last of the frames to be scaled
+//	usually this will be the last keyframe of the objects selected.
+//	eg.	reverseKeys(1,200);
+//
+//  Limitations:
+//	any keyframes outside the range of keyframes entered will not be scaled
+//	and could result in unpredictable animation behavior.  Best when used with
+//	an entire range of keyframes.
+//
+//-----------------------------------------------------------------------------
+
+global proc reverseKeys (int $firstkey, int $lastkey)
+
+{
+	int $firstkey ;
+	int $lastkey;
+	float $mediankey;
+		$mediankey =  ($firstkey + $lastkey)/2;
+		//calculates the pivotpoint of the keys to be scaled
+		
+	selectKey -hi below;
+	scaleKey -timeScale -1 -timePivot $mediankey;
+	}

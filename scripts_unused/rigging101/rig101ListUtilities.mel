@@ -1,0 +1,698 @@
+// rig101ListUtilities
+//
+//////////////////////////
+//
+// Maya script file
+//
+//////////////////////////
+//
+// Author : Lluís Llobera
+//	    (lluisllobera@rigging101.com)
+//
+// Creation date : 14/IV/2003
+//    Update 1.1 : 26/IV/2003
+//    Update 1.2 : 30/IV/2004
+//    Update 1.5 : 6/VII/2004
+//    Update 1.55 : 21/VII/2004
+//    Update 1.75 : 25/VII/2004
+//
+// Main procedure : type "rig101ListUtilities" in the Command Line or Script Editor
+//
+//////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// This script will create a window listing the most significant Maya utility nodes, such as
+// the condition, the multiplyDivide and the setRange.
+//
+// Most Maya users won't be familiar with them, but I use them a lot; and since it always takes me a long way
+// to find them once created... Hence this script!
+//
+// UPDATE 1.1
+// Included "blendColors" utility, as well as ordered the elements in the "filters" column alphabetically.
+//
+// UPDATE 1.2
+// Included "blendWeighted" utility.
+//
+// UPDATE 1.5
+// Included a bunch of new utilities.
+// Also re-worked the callback for the filters creation, plus added a "create" button for each utility.
+// Thanks to for Alessandro Sabatelli the feedback !! :-)
+//
+// UPDATE 1.55
+// Added Connection Editor button and better visual for utility labels.
+// Thanks to Javier Solsona for the cool idea !! :-)
+//
+// UPDATE 1.75
+// New popup menu in the textScrollList with very useful features : Attribute Editor, Load in the Left or Right 
+// side of the Connection Editor, show DG in Hypergraph or Hypershade , and print Inputs or Outputs.
+// Again, thanks to Javier Solsona for the input.
+//
+//
+//		Enjoy!!
+//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+//////////////////////////////////
+//  global string $NODETYPES[]  //
+//////////////////////////////////
+// 
+// This string[] contains a list of all the node types
+// handled by the script.
+//
+/////////////////////////////////
+
+global string $NODETYPES [] = 
+{
+"blendColors" ,
+"blendWeighted" ,
+"choice" ,
+"chooser" , 
+"clamp" ,
+"condition" ,
+"curveInfo" ,
+"multiplyDivide" ,
+"plusMinusAverage" ,
+"reverse" ,
+"setRange" ,
+"timeToUnitConversion" ,
+"unitConversion" ,
+"unitToTimeConversion" ,
+"vectorProduct"
+} ;
+
+
+
+////////////////////////////////////////
+//  global proc llLUPrintConnections  //
+////////////////////////////////////////
+// 
+// Prints the inputs ($TYPE = 0) or outputs ($TYPE = 1)
+// of the utilities selected in the textScrollList.
+//
+// <-- rig101ListUtilities
+//
+///////////////////////////////////////
+
+global proc llLUPrintConnections (int $TYPE)
+{
+
+string $SELECTED[] = `textScrollList -q -si rig101ListUtilitiesScroll` ;
+string $SPECIFY[] = {"inputs" , "outputs"} ;
+string $CONNECTIONS[] ; // all the connections
+string $SPECIFIEDCONNECTIONS[] ; // only inputs or only outputs
+int $J ;
+
+print "\n" ;
+if (`size $SELECTED` > 0)
+for ($ELEMENT in $SELECTED)
+{
+string $NODETYPE = `match "-----" $ELEMENT` ;
+if ($NODETYPE != "-----")
+  {
+  $CONNECTIONS = eval ("listConnections -p 1 -c 1 " + $ELEMENT) ;
+  $SPECIFIEDCONNECTIONS = eval ("listConnections -p 1 -s " + (!$TYPE) + " -d " + ($TYPE) + " " + $ELEMENT) ;
+  print ("\n   -----  " + $SPECIFY[$TYPE] + " of " + $ELEMENT + "  -----\n") ;
+  if (`size $SPECIFIEDCONNECTIONS` > 0)
+    for ($I = 0 ; $I <= (`size $SPECIFIEDCONNECTIONS` -1) ; $I++)
+      {
+      $J = 0 ;
+      while ($CONNECTIONS[$J] != $SPECIFIEDCONNECTIONS[$I]) 
+        $J++ ;
+      if ($TYPE == 0) // inputs specified
+        print ($CONNECTIONS[$J] + " -> " + $CONNECTIONS[($J-1)] + "\n") ;
+      else // outputs specified
+        print ($CONNECTIONS[($J-1)] + " -> " + $CONNECTIONS[$J] + "\n") ;
+      } ; // for $I in $CONNECTIONS
+  } ; // if ($NODETYPE != "-----")
+} ; // for ($ELEMENT in $SELECTED)
+
+} ; // global proc llLUPrintConnections
+
+
+
+/////////////////////////////////////////
+//  global proc llLUGraphInHypershade  //
+/////////////////////////////////////////
+// 
+// Graphs in the Hypershade the DG for the utilities
+// selected in the textScrollList.
+//
+// <-- rig101ListUtilities
+// --> rig101ListUtilitiesSelectItem
+//
+////////////////////////////////////////
+
+global proc llLUGraphInHypershade ()
+{
+string $CURRENTSELECTION[] = `ls -sl` ;
+
+rig101ListUtilitiesSelectItem ;
+ 
+if (!`window -ex hyperShadePanel1Window`) HypershadeWindow ;
+hyperShadePanelGraphCommand("hyperShadePanel1", "showUpAndDownstream") ;
+
+select -r $CURRENTSELECTION ;
+} ; // global proc llLUGraphInHypershade
+
+
+
+/////////////////////////////////////////
+//  global proc llLUGraphInHypergraph  //
+/////////////////////////////////////////
+// 
+// Graphs in the HyperGraph the DG for the utilities
+// selected in the textScrollList.
+//
+// <-- rig101ListUtilities
+// --> rig101ListUtilitiesSelectItem
+//
+////////////////////////////////////////
+
+global proc llLUGraphInHypergraph ()
+{
+string $CURRENTSELECTION[] = `ls -sl` ;
+
+rig101ListUtilitiesSelectItem ;
+  
+if (!`window -ex hyperGraphPanel1Window`) HypergraphWindow ;
+showDGLevel hyperGraphPanel1HyperGraphEd ;
+
+select -r $CURRENTSELECTION ;
+} ; // global proc llLUGraphInHypergraph
+
+
+
+//////////////////////////////////
+//  global proc llLUShowInCE    //
+//////////////////////////////////
+// 
+// Loads the utilities selected in the textScrollList in the
+// left or right side of the Connection Editor.
+//
+// <-- rig101ListUtilities
+// --> rig101ListUtilitiesSelectItem
+//
+/////////////////////////////////
+
+global proc llLUShowInCE (int $SIDE)
+{
+
+string $CURRENTSELECTION[] = `ls -sl` ;
+	
+string $SELECTED[] = `textScrollList -q -si rig101ListUtilitiesScroll` ;
+
+rig101ListUtilitiesSelectItem ;
+
+if (!`window -ex connectWindow`) ConnectionEditor ;
+
+connectWindowFillFromActiveList $SIDE ;
+
+select -r $CURRENTSELECTION ;
+
+} ; // global proc llLUCShowInCE
+
+
+
+//////////////////////////////////
+//  global proc llLUShowInAE    //
+//////////////////////////////////
+// 
+// Shows the first of the selected utilities
+// in the Attribute Editor.
+//
+// <-- rig101ListUtilities
+//
+/////////////////////////////////
+
+global proc llLUShowInAE ()
+{
+string $SELECTED[] = `textScrollList -q -si rig101ListUtilitiesScroll` ;
+string $SELECTEDNODES[] ;
+int $SIZE ;
+for ($ELEMENT in $SELECTED)
+  {
+  string $NODETYPE = `match "-----" $ELEMENT` ;
+  if ($NODETYPE != "-----") 
+    { $SELECTEDNODES[$SIZE] = $ELEMENT ; $SIZE ++ ; } ; // if
+  } ; // for
+if (`size $SELECTEDNODES` > 0) eval ("showEditor " + $SELECTEDNODES[0]) ;
+} ; // global proc llLUCShowInAE
+
+
+
+///////////////////////////////////////////////
+//  global proc rig101ListUtilitiesSetPopupMenu  //
+///////////////////////////////////////////////
+// 
+// Enables or disables the menuItems for the popup menu in the
+// textScrollList, depending on if there are selected utilities.
+//
+// <-- rig101ListUtilities
+//
+///////////////////////////////////////////////
+
+global proc rig101ListUtilitiesSetPopupMenu ()
+{
+string $SELECTED[] = `textScrollList -q -si rig101ListUtilitiesScroll` ;
+string $NAME = "no utility nodes selected" ;
+int $ENABLE = 0 ;
+
+if (`size $SELECTED` > 0)
+for ($ELEMENT in $SELECTED)
+{
+string $NODETYPE = `match "-----" $ELEMENT` ;
+if ($NODETYPE != "-----")
+  if ($ENABLE == 0)
+    {
+    $ENABLE = 1 ;
+    $NAME = $ELEMENT ;
+    } // if ($ENABLE == 0)
+  else
+    if (!`gmatch $NAME "* .."`) $NAME += " .." ;
+} ; // for ($ELEMENT in $SELECTED)
+
+menuItem -e -en $ENABLE -l $NAME llLUCPMName ;
+menuItem -e -en $ENABLE llLUCPMAttributeEditor ;
+menuItem -e -en $ENABLE llLUCPMLeftSide ;
+menuItem -e -en $ENABLE llLUCPMRightSide ;
+menuItem -e -en $ENABLE llLUCPMHypergraph ;
+menuItem -e -en $ENABLE llLUCPMHypershade ;
+menuItem -e -en $ENABLE llLUCPMPrintInputs ;
+menuItem -e -en $ENABLE llLUCPMPrintOutputs ;  
+
+} ; // global proc rig101ListUtilitiesSetPopupMenu
+
+
+
+//////////////////////////////////
+//  llLUCreateNode		        //
+//////////////////////////////////
+// 
+// When the "C" button next to an utility name is
+// pressed, this new utility node is created.
+// If the checkbox for this utility is ON, 
+// the rig101ListUtilities window is also refreshed.
+//
+// <-- rig101ListUtilities
+//
+/////////////////////////////////
+
+global proc llLUCreateNode (string $TYPE , string $NAME)
+{
+
+if ($NAME != "") createNode ($TYPE) -n ($NAME) ;
+  else createNode ($TYPE) ;
+
+if (`checkBox -q -v ("rig101ListUtilitiesItem" + $TYPE)`)
+  rig101ListUtilitiesRefresh ;  
+
+} ; // global proc llLUCreateNode
+
+
+
+//////////////////////////////////
+//  llLUName		            //
+//////////////////////////////////
+// 
+// Creates a dialog box prompting the user to
+// enter a name for the new requested node type
+//
+// <-- rig101ListUtilities
+//
+/////////////////////////////////
+
+global proc llLUName (string $TYPE)
+{
+
+string $result = `promptDialog
+-title ($TYPE + " name :")
+-message "Enter name :"
+-button "OK" -button "Cancel"
+-defaultButton "OK" -cancelButton "Cancel"
+-dismissString "Cancel"`;
+
+if ($result == "OK")
+  {
+  string $NAME = `promptDialog -q -text` ;
+  llLUCreateNode ($TYPE , $NAME) ;
+  } ; // if (OK)
+
+} ; // global proc llLUName
+
+
+
+//////////////////////////////////
+//  rig101ListUtilitiesSelectAll	//
+//////////////////////////////////
+// 
+// When the "select all" or "un-select all" buttons are pressed,
+// this proc will change the value of the check boxes accordingly
+// and, after that, refresh the scroll list
+//
+// <-- rig101ListUtilities
+//
+/////////////////////////////////
+
+global proc rig101ListUtilitesSelectAll (int $SELECT)
+{
+global string $NODETYPES[] ;
+// toggle the status of the check boxes
+for ($NODE in $NODETYPES)
+  checkBox-e -v $SELECT ("rig101ListUtilitiesItem" + $NODE) ;
+// refresh window
+rig101ListUtilitiesRefresh ;
+} ; // global proc rig101ListUtilitiesSelectAll
+
+
+
+//////////////////////////////////
+//  rig101ListUtilitiesSelectItem	//
+//////////////////////////////////
+// 
+// Whenever any items from the scroll list are selected, this proc
+// will run through them to check if the "title" items of each category
+// are in the selection. If so, they will not be considered. The final
+// result of the proc is that the selected items in the scroll list will
+// be selected in Maya.
+//
+// <-- rig101ListUtilities
+// <-- rig101ListUtilitiesShowInHypergraph
+// <-- rig101ListUtilitiesShowInHypershade
+// <-- rig101ListUtilitiesShowInCE
+//
+/////////////////////////////////
+
+global proc rig101ListUtilitiesSelectItem ()
+{
+select -cl ;
+
+// get the names of the selected items
+string $SELECTED[] = `textScrollList -q -si rig101ListUtilitiesScroll` ;
+
+// if any of the names is a "utility node", erase it from the list
+for ($ELEMENT in $SELECTED)
+  {
+  string $NODETYPE = `match "-----" $ELEMENT` ;
+  if ($NODETYPE != "-----") select -tgl $ELEMENT ;
+  } ;  // for
+} ;  // global proc rig101ListUtilitiesSelectItem
+
+
+
+////////////////////////////////////
+//  rig101ListUtilitiesChangeFilters  //
+////////////////////////////////////
+// 
+// Whenever the "FILTER" button is pressed, this script will be called on.
+// It just checks if the button is wanted to expand or contract
+// the section of the window, and goes on to call the adequate proc.
+//
+// <-- rig101ListUtilities
+// --> rig101ListUtilitiesShowFilters
+// --> rig101ListUtilitiesHideFilters
+//
+/////////////////////////////////
+
+global proc rig101ListUtilitesChangeFilters ()
+{
+// get the label in the button
+// to know if filters should be ON or OFF
+string $TEXTBUTTON = `button -q -l rig101ListUtilitiesFiltersButton` ;
+
+if ($TEXTBUTTON == "FILTER >>") rig101ListUtilitiesShowFilters ;
+  else rig101ListUtilitiesHideFilters ;
+
+} ; // global proc rig101ListUtilitesChangeFilters 
+
+
+
+//////////////////////////////////
+//  rig101ListUtilitiesShowFilters	//
+//////////////////////////////////
+// 
+// The "filters" section is shown.
+// The "filters" layout is made visible, the window
+// changes size, the label of the button is updated,
+// and so is the formLayout's configuration.
+//
+// <-- rig101ListUtilitiesChangeFilters
+//
+/////////////////////////////////
+
+global proc rig101ListUtilitiesShowFilters ()
+{
+// change the visibility of the filters layout
+scrollLayout -e -vis 1 rig101ListUtilitiesFilters ;
+
+// change the size of the window
+int $SIZEW = `window -q -w rig101ListUtilitiesWindow` + 230 ;
+window -e -w $SIZEW rig101ListUtilitiesWindow ;
+
+// change the label of the button
+button -e -l "FILTER <<" rig101ListUtilitiesFiltersButton ;
+
+// change the configuration of the formLayout
+formLayout -e
+-attachForm rig101ListUtilitiesOptionsLayout "bottom" 2
+-attachForm rig101ListUtilitiesOptionsLayout "left" 2
+-attachControl rig101ListUtilitiesOptionsLayout "right" 2 rig101ListUtilitiesFilters
+-attachNone rig101ListUtilitiesOptionsLayout "top"
+
+-attachForm rig101ListUtilitiesScroll "top" 2
+-attachForm rig101ListUtilitiesScroll "left" 2
+-attachControl rig101ListUtilitiesScroll "bottom" 2 rig101ListUtilitiesOptionsLayout
+-attachControl rig101ListUtilitiesScroll "right" 2 rig101ListUtilitiesFilters
+
+-attachForm rig101ListUtilitiesFilters "top" 2
+-attachForm rig101ListUtilitiesFilters "right" 2
+-attachNone rig101ListUtilitiesFilters "left"
+-attachForm rig101ListUtilitiesFilters "bottom" 2
+rig101ListUtilitiesWindowForm ;
+} ; // global proc rig101ListUtilitiesShowFilters
+
+
+
+//////////////////////////////////
+//  rig101ListUtilitiesHideFilters	//
+//////////////////////////////////
+// 
+// The "filters" section is hidden.
+// The "filters" layout is made invisible, the window
+// changes size, the label of the button is updated,
+// and so is the formLayout's configuration.
+//
+// <-- rig101ListUtilitiesChangeFilters
+//
+/////////////////////////////////
+
+global proc rig101ListUtilitiesHideFilters ()
+{
+// change the visibility of the filters layout
+scrollLayout -e -vis 0 rig101ListUtilitiesFilters ;
+
+// change the size of the window
+int $SIZEW = `window -q -w rig101ListUtilitiesWindow` - 230 ;
+window -e -w $SIZEW rig101ListUtilitiesWindow ;
+
+// change the label of the button
+button -e -l "FILTER >>" rig101ListUtilitiesFiltersButton ;
+
+formLayout -e
+  -attachForm rig101ListUtilitiesOptionsLayout "bottom" 2
+  -attachForm rig101ListUtilitiesOptionsLayout "left" 2
+  -attachForm rig101ListUtilitiesOptionsLayout "right" 2
+  -attachNone rig101ListUtilitiesOptionsLayout "top"
+
+  -attachForm rig101ListUtilitiesScroll "top" 2
+  -attachForm rig101ListUtilitiesScroll "left" 2
+  -attachControl rig101ListUtilitiesScroll "bottom" 2 rig101ListUtilitiesOptionsLayout
+  -attachForm rig101ListUtilitiesScroll "right" 2
+rig101ListUtilitiesWindowForm ;
+} ; // global proc rig101ListUtilitiesShowFilters
+
+
+
+//////////////////////////////////
+//  rig101ListUtilitiesRefreshItem	//
+//////////////////////////////////
+// 
+// The scroll list is updated for each category.
+// The proc takes into account the state of the
+// category's checkBox to decide whether it should be
+// taken into consideration.
+// If so, and if the category is not empty, a "category title" 
+// is written in the scroll list.
+//
+// <-- rig101ListUtilitiesRefresh
+//
+/////////////////////////////////
+
+global proc rig101ListUtilitiesRefreshItem (string $TYPE)
+{
+// get variables
+int $ENABLED = `checkBox -q -v ("rig101ListUtilitiesItem" + $TYPE)` ;
+string $LIST[] = `ls -type $TYPE` ;
+// append items to the scroll list
+if ((`size $LIST` > 0) && ($ENABLED == 1))
+  {
+  textScrollList -e -append ("    ----- "+$TYPE+" ----- ") rig101ListUtilitiesScroll ;
+  for ($ELEMENT in $LIST)
+    textScrollList -e -fn "plainLabelFont" -append $ELEMENT rig101ListUtilitiesScroll ;
+  } ; // if
+} ; // global proc rig101ListUtilitiesRefreshItem 
+
+
+
+//////////////////////////////////
+//  rig101ListUtilitiesRefresh	//
+//////////////////////////////////
+// 
+// The scroll list is cleared.
+// For each utility, the proc rig101ListUtilitiesRefreshItem is called on.
+//
+// <-- rig101ListUtilities
+// --> rig101ListUtilitiesRefreshItem
+//
+/////////////////////////////////
+
+global proc rig101ListUtilitiesRefresh ()
+{
+
+global string $NODETYPES[] ;
+
+// clear list
+textScrollList -e -ra rig101ListUtilitiesScroll ;
+// for each of the types of nodes, get if they are
+// selected and, if so, list them
+for ($NODE in $NODETYPES)
+  rig101ListUtilitiesRefreshItem ($NODE) ;
+} ; // global proc rig101ListUtilitiesRefresh
+
+
+
+//////////////////////////////////
+//  rig101ListUtilities		//
+//////////////////////////////////
+// 
+// MAIN PROC
+//
+// The main window is drawn.
+//
+// --> rig101ListUtilitiesSelectAll
+// --> rig101ListUtilitiesSelectItem
+// --> rig101ListUtilitiesChangeFilters
+// --> rig101ListUtilitiesRefresh
+//
+/////////////////////////////////
+
+global proc rig101ListUtilities ()
+{
+
+global string $NODETYPES[] ;
+
+// creates the window
+if (`window -ex rig101ListUtilitiesWindow`) deleteUI rig101ListUtilitiesWindow ;
+
+window
+  -t "rig101ListUtilitiesWindow v1.75"
+rig101ListUtilitiesWindow ;
+
+// form Layout definition
+formLayout rig101ListUtilitiesWindowForm ;
+
+// rig101ListUtilitiesScroll scroll list definition
+textScrollList
+  -ams 1
+  -selectCommand rig101ListUtilitiesSelectItem
+  -dcc "llLUShowInAE"
+rig101ListUtilitiesScroll ;
+popupMenu 
+  -pmc "rig101ListUtilitiesSetPopupMenu" ;
+  menuItem -l "" -c rig101ListUtilitiesSelectItem llLUCPMName ;
+  menuItem -d 1 llLUCPMSeparator1 ;
+  menuItem -d 1 llLUCPMSeparator2 ;
+  menuItem -l "Attribute Editor" -c "llLUShowInAE" llLUCPMAttributeEditor ;
+  menuItem -d 1 llLUCPMSeparator3 ;
+  menuItem -l "Left Side of Connection Editor" -c "llLUShowInCE (0)" llLUCPMLeftSide ;
+  menuItem -l "Right Side of Connection Editor" -c "llLUShowInCE (1)" llLUCPMRightSide ;
+  menuItem -d 1 llLUCPMSeparator4 ;
+  menuItem -l "Show DG in Hypergraph" -c "llLUGraphInHypergraph" llLUCPMHypergraph ;
+  menuItem -l "Show DG in Hypershade" -c "llLUGraphInHypershade" llLUCPMHypershade ;
+  menuItem -d 1 llLUCPMSeparator5 ;
+  menuItem -l "Print Input Connections" -c "llLUPrintConnections (0)" llLUCPMPrintInputs ;
+  menuItem -l "Print Output Connections" -c "llLUPrintConnections (1)" llLUCPMPrintOutputs ;
+setParent rig101ListUtilitiesWindowForm ;
+
+// rig101ListUtilitiesOptionsLayout layout definition
+formLayout rig101ListUtilitiesOptionsLayout ;
+  button -l "Refresh" -c "rig101ListUtilitiesRefresh" rig101ListUtilitiesRefreshButton ;
+  button -l "FILTER >>" -c "rig101ListUtilitesChangeFilters" rig101ListUtilitiesFiltersButton ;
+  formLayout -e
+    -attachForm rig101ListUtilitiesRefreshButton "top" 0
+    -attachForm rig101ListUtilitiesRefreshButton "left" 0
+    -attachForm rig101ListUtilitiesRefreshButton "bottom" 0
+    -attachControl rig101ListUtilitiesRefreshButton "right" 0 rig101ListUtilitiesFiltersButton 
+
+    -attachForm rig101ListUtilitiesFiltersButton "top" 0
+    -attachPosition rig101ListUtilitiesFiltersButton "left" 0 60
+    -attachForm rig101ListUtilitiesFiltersButton "bottom" 0
+    -attachForm rig101ListUtilitiesFiltersButton "right" 0
+  rig101ListUtilitiesOptionsLayout ;
+setParent rig101ListUtilitiesWindowForm ;
+
+// rig101ListUtilitiesFilter defintion
+  scrollLayout -cr 0 -mcw 230 -w 245 rig101ListUtilitiesFilters ;
+  columnLayout -w 210 -rs 2 -cat "both" 30 -adj 1 rig101ListUtilitiesFiltersLayout ;
+    separator -style "none" -h 2 ;
+    separator -style "none" -h 5 ;
+    rowColumnLayout -nc 2 -cw 1 150 -cw 2 20 ;
+
+  for ($NODE in $NODETYPES)
+    {
+    checkBox 
+      -al "left" -v 1 -l $NODE 
+      -onc rig101ListUtilitiesRefresh -ofc rig101ListUtilitiesRefresh 
+    ("rig101ListUtilitiesItem" + $NODE) ;
+    button -w 10 -l "C" -c ("llLUCreateNode (\"" + $NODE + "\" , \"\")") ;
+    popupMenu ; menuItem -l "create .." -c ("llLUName (\"" + $NODE + "\")") ;
+    } ; // for ($NODE in $NODETYPES)
+
+    setParent .. ;       
+
+    separator -style "none" -h 5 ;
+    
+    button -l "check all" -c "rig101ListUtilitesSelectAll (1)" ;
+    button -l "un-check all" -c "rig101ListUtilitesSelectAll (0)" ;
+    separator -h 5 -style "none" ;
+    button -l "Connection Editor" -c "ConnectionEditor" ;
+
+  setParent rig101ListUtilitiesWindowForm ;
+
+// form Layout configuration
+window -e -w 300 rig101ListUtilitiesWindow ;
+rig101ListUtilitiesHideFilters ;
+
+// refresh scroll list
+rig101ListUtilitiesRefresh ;
+
+// script jobs
+scriptJob -p rig101ListUtilitiesWindow -event deleteAll rig101ListUtilitiesRefresh ;  
+
+// showWindow
+showWindow rig101ListUtilitiesWindow ;
+
+// edit window size
+window -e -wh 250 500 rig101ListUtilitiesWindow ;
+
+} ; // global proc rig101ListUtilies ;
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// EoS rig101ListUtilities
+//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////

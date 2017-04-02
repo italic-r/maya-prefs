@@ -1,0 +1,130 @@
+// listMissingFrames
+
+global proc listMissingFrames() {
+	
+	fileBrowserDialog -m 0 -fc "jabBrowsePath"  -an "Load Image Sequence" -ds 0;
+	
+}
+
+global proc jabBrowsePath (string $sampleImageName, string $fileType) {
+	
+	///string $masterFileListUnsorted[] = `getFileList -fld $imagePath -fs "*.*"`;
+	
+	
+	
+	if (`window -ex missFramesWindow` != true)
+	{
+		window -w 300 -h 300 -t "Find Missing Frames" -in "MissFrames" -s true -tb true missFramesWindow;
+			
+		
+		//formLayout mainForm;
+		columnLayout;
+		optionMenuGrp -label "Frame/Animation Ext" nameTypeMenu;
+			menuItem "name.#.ext";
+			menuItem "name.ext.#";
+			menuItem "name.#";
+			menuItem "name#.ext";
+			menuItem "name_#.ext";
+			
+		intFieldGrp -numberOfFields 3 -label "Start/End/Step" -value1 0 -value2 100 -value3 1 startendstep;
+		intFieldGrp -numberOfFields 1 -label "Padded Zeros" -value1 1 framePd;
+		
+		button -label "Check Sequence" -c ("missFramesDoIt(\""+$sampleImageName+"\")");
+		
+			
+		//mainForm;
+		showWindow missFramesWindow;
+	}
+	else	// else just pop it up from being minimized again
+    	{
+		showWindow missFramesWindow;
+    	}
+	
+
+}
+
+global proc missFramesDoIt (string $fileFullPathName) {
+		
+	// query values
+	int $fileType = `optionMenuGrp -q -sl nameTypeMenu` ;
+	int $start = `intFieldGrp -q -value1 startendstep`;
+	int $end = `intFieldGrp -q -value2 startendstep`;
+	int $step = `intFieldGrp -q -value3 startendstep`;
+	int $padding = `intFieldGrp -q -value1 framePd`;
+	int $lastMissing = $start;
+	int $lastFound = $start;
+	string $theFileToTest = "";
+	
+	// get pathname
+	string $tokenBuffer[];
+	string $filePathOnly;
+	
+	int $i = 0;
+	tokenize $fileFullPathName "/" $tokenBuffer;
+	$filePathOnly = $tokenBuffer[0];
+	if (size($tokenBuffer) > 1){
+		for ($i=1;$i<size($tokenBuffer)-1;$i++)
+			$filePathOnly = ($filePathOnly + "/" + $tokenBuffer[$i]);
+	}
+	string $fileName = $tokenBuffer[size($tokenBuffer)-1];   
+		
+	print ("////Begin File Sequence Check/////////////\n");
+	string $tokenBuffer2[];
+	
+	for ($i=$start;$i<=$end;$i=$i+$step){
+		switch ($fileType) {
+			case 1:
+				tokenize $fileName "." $tokenBuffer2;
+				$theFileToTest = ($tokenBuffer2[0]+"."+returnPadded($i,$padding)+"."+$tokenBuffer2[2]);	
+				break;	
+			case 2:
+				break;
+			case 3: 
+				break;
+			case 4: 
+				break;
+			case 5:
+				break;
+			default:
+				break;
+		
+		}
+			
+		if (`filetest -f ($filePathOnly+"/"+$theFileToTest)`==0){
+			
+			$lastMissing = $i;
+			
+		}
+		else {
+			if ($lastMissing == $i-1 && $lastFound == $i-2) {
+				print (returnPadded($i-1,$padding)+"\n");	
+			}
+			else if ($lastMissing == $i-1 && $lastMissing != $lastFound){
+				print (returnPadded($lastFound+1,$padding)+"-"+returnPadded($i-1,$padding)+"\n");	
+	
+			}
+			$lastFound = $i;
+		}
+		
+		
+		
+	}
+	if ($lastMissing == $i-1 && $lastFound == $i-2) {
+		print (returnPadded($i-1,$padding)+"\n");	
+	}
+	else if ($lastMissing == $i-1 && $lastMissing != $lastFound){
+		print (returnPadded($lastFound+1,$padding)+"-"+returnPadded($i-1,$padding)+"\n");	
+	}
+
+	print ("////END File Sequence Check//////////////////\n");
+	
+}
+
+global proc string returnPadded (int $number, int $padding){
+	string $output = ($number);
+	while (size($output)<$padding)
+		$output = ("0"+$output);
+		
+	return $output;
+	
+}

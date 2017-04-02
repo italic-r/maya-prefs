@@ -1,0 +1,48 @@
+/*
+	.:|perfectArc|:. v. 1.0 created for Maya 5.0
+
+	Copyright (C) 2003 Simon Christen
+	www.simonchristen.com
+	me@simonchristen.com
+
+
+	Creation Date:	Nov/Dec, 2003
+
+	Description:	perfectArc is a animation tool. You can track any object
+			and see it's motion represented by a curve. In addition you
+			can use the Spacer function which allows you to check your
+			spacing. For more help check out the help.txt.
+
+	Installation:	- Copy perfectArc.mel and perfectArcSetup.mel into the Maya script folder.
+			  (usually found under ..\My Documents\maya\5.0\scripts)
+
+			- Copy perfectarc.bmp into the Maya icon folder.
+			  (usually found under ..\My Documents\maya\5.0\prefs\icons)
+
+			- In Maya type in the command line: perfectArcSetup ;
+			  This will create the perfectArc icon.
+			  This only has to be done once!
+
+			- Select a moving object and click on the newly created icon.
+
+
+	Please report bugs and suggestions to me@simonchristen.com. Thank you.
+
+	USE AND MODIFY AT YOUR OWN RISK
+	
+*/
+
+
+global proc perfectArcSetup()
+{  
+	global string $gShelfTopLevel;
+	if (`tabLayout -exists $gShelfTopLevel`)
+	shelfButton
+		-parent ($gShelfTopLevel + "|" + `tabLayout -q -st $gShelfTopLevel`)
+		-command "perfectArc"
+		-image1 "perfectarc.bmp"
+		-annotation "perfectArc Window"
+		-label "perfectArc Window";
+	else
+		print "//error : You need a shelf for perfectArc Setup to work.";
+}

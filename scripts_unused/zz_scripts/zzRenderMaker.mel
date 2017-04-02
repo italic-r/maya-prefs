@@ -1,0 +1,815 @@
+//
+// render network maker
+//
+// Created by Hamish McKenzie zootoolbox@googlegroups.com
+// Created : 25 July 2002
+// Modified : 17 September 2002
+//
+// Description:
+// HSV Control allows you to affect textures in HSV space instead of RGB.
+// The script can set up procedural effects that change a texture's HSV
+// based on lighting, incidence (facing ratio), shadows, or just another map.
+//
+// Incidence Effects quickly creates ramps based on a sampler info node's
+// facing ratio attribute to affect the selected attributes.  Useful for
+// quickly setting up backlit blinn materials.
+//
+// Light Effects converts existing normal lights to one of three special
+// types of lights.  Graph lights have their intensity controlled by a curve
+// (in the graph editor-much like a set driven key).  Sphere lights have a
+// "bounding sphere" outside of which the light has no effect.  Shadow lights
+// are lights that only cast shadows.
+//
+// Usage:
+//  assign this function to a key press:
+//	zzRenderMaker
+//
+// Hamish McKenzie ©2007...
+//
+
+
+global proc zzRenderMaker () {
+	string $windowName = "zzRenderMakerWindow";
+	string $windowTitle = "Shader Writer";
+
+	string $selObjs[] = `ls -sl `;
+	string $selLights[] = `ls -sl -dag -type light`;
+	string $selMats[] = `ls -sl -mat`;
+	int $numLights = `size $selLights`;
+	int $numMats = `size $selMats`;
+	int $numTexs = `size $selObjs` - `size $selMats` - `size $selLights`;
+
+	if ( `window -exists $windowName` ) { deleteUI $windowName; }
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0
+		-sizeable 1 -width 400 $windowName;
+		string $menuBarLayout = `menuBarLayout`;
+			menu -label "Help";
+				menuItem -label "help" -c zzRenderMakerHelp;
+
+	scriptJob -p $windowName -e "SelectionChanged" "zzRenderMakerWindowFunctions update;";
+
+		columnLayout -adjustableColumn true -rowSpacing 7;
+			frameLayout -label "HSV Control" -labelAlign "center" -collapsable 1 -collapse 0 -borderStyle "etchedOut";
+				columnLayout -rowSpacing 5;
+					text -label "Selected Items:";
+					rowLayout -numberOfColumns 3
+						-columnWidth3 55 55 55
+						-columnAttach 1 "both" 	0
+						-columnAttach 2 "both" 	0
+						-columnAttach 3 "both" 	5;
+						text -label "Materials";
+						text -label "Textures";
+						text -label "Lights";
+						setParent ..;
+					rowLayout -numberOfColumns 3
+						-columnWidth3 55 55 55
+						-columnAttach 1 "both" 	0
+						-columnAttach 2 "both" 	0
+						-columnAttach 3 "both" 	5;
+						text -l $numMats zzRenderMakeTextMats;
+						text -l $numTexs zzRenderMakeTextTexs;
+						text -l $numLights zzRenderMakeTextLights;
+						setParent ..;
+					rowLayout -numberOfColumns 2
+						-columnWidth2 140 90
+						-columnAttach 1 "both" 	0
+						-columnAttach 2 "both" 	0;
+						columnLayout -rowSpacing 2;
+							text -label "Mapping Type:";
+							radioCollection;
+							radioButton -label "Light Intensity" -sl zzRenderMakeRadioLight;
+							radioButton -label "Camera Facing" zzRenderMakeRadioEdges;
+							radioButton -label "Shadows <->" zzRenderMakeRadioShadows;
+							radioButton -label "Translucence <->" zzRenderMakeRadioTranslucence;
+							radioButton -label "None" zzRenderMakeRadioNone;
+							setParent ..;
+						columnLayout -rowSpacing 2;
+							text -label "Create Ramp For:";
+							checkBox -label "H" -v 1 -cc "zzRenderMakerWindowFunctions update" zzRenderMakeCheckH;
+							checkBox -label "S" -v 1 -cc "zzRenderMakerWindowFunctions update" zzRenderMakeCheckS;
+							checkBox -label "V" -v 1 -cc "zzRenderMakerWindowFunctions update" zzRenderMakeCheckV;
+							checkBox -label "Masked" -v 0 zzRenderMakeCheckMasked;
+							button -label "Create Nodes" -c "zzRenderMakeSaturation" zzRenderMakeButtonSaturation;
+							setParent ..;
+						setParent ..;
+					setParent ..;
+				setParent ..;
+
+				popupMenu -parent zzRenderMakeRadioShadows;
+					menuItem -label "add selected lights" -c ( "zzRenderMakerLightOps add shadow" );
+					menuItem -label "remove selected lights" -c ( "zzRenderMakerLightOps remove shadow" );
+				popupMenu -parent zzRenderMakeRadioTranslucence;
+					menuItem -label "add selected lights" -c ( "zzRenderMakerLightOps add translucence" );
+					menuItem -label "remove selected lights" -c ( "zzRenderMakerLightOps remove translucence" );
+
+			frameLayout -label "Incidence Effects" -labelAlign "center" -collapsable 1 -collapse 1 -borderStyle "etchedOut";
+				columnLayout -rowSpacing 5;
+					text -label "Channels:";
+					rowLayout -numberOfColumns 3
+						-columnAttach 1 "both" 	0
+						-columnAttach 2 "both" 	0
+						-columnAttach 3 "both" 	0;
+						columnLayout -rowSpacing 5;
+							checkBox -label "Colour" -v 1 -cc "zzRenderMakerWindowFunctions update" zzRenderMakeCheckColour;
+							checkBox -label "Specular" -v 1 -cc "zzRenderMakerWindowFunctions update" zzRenderMakeCheckSpecular;
+							checkBox -label "Eccentricity" -v 1 -cc "zzRenderMakerWindowFunctions update" zzRenderMakeCheckEccen;
+							setParent ..;
+						columnLayout -rowSpacing 5;
+							checkBox -label "temp" -v 0 -cc "zzRenderMakerWindowFunctions update" zzRenderMakeCheckTemp;
+							checkBox -label "Reflectivity" -v 0 -cc "zzRenderMakerWindowFunctions update" zzRenderMakeCheckReflect;
+							checkBox -label "Diffuse" -v 0 -cc "zzRenderMakerWindowFunctions update" zzRenderMakeCheckDiffuse;
+							setParent ..;
+						setParent ..;
+					button -label "Create Nodes" -c "zzRenderMakeIncidence" zzRenderMakeButtonIncidence;
+					setParent ..;
+				setParent ..;
+
+			frameLayout -label "Light Effects" -labelAlign "center" -collapsable 1 -collapse 1 -borderStyle "etchedOut";
+				columnLayout -rowSpacing 5;
+					text -label "Convert Light To:";
+					rowLayout -numberOfColumns 3
+						-columnAttach 1 "both" 	2
+						-columnAttach 2 "both" 	2
+						-columnAttach 3 "both" 	2;
+						button -label "Graph Light" -c "zzRenderMakeLights graphLight" zzRenderMakeLightButtGraph;
+						button -label "Sphere Light" -c "zzRenderMakeLights sphereLight" zzRenderMakeLightButtSphere;
+						button -label "Shadow Light" -c "zzRenderMakeLights shadowLight" zzRenderMakeLightButtShadow;
+						setParent ..;
+					setParent ..;
+				setParent ..;
+
+			if ( `exists zzMakeUVDistortion` ) {
+				frameLayout -label "UV Effects" -labelAlign "center" -collapsable 1 -collapse 1 -borderStyle "etchedOut";
+					columnLayout -rowSpacing 5;
+						rowLayout -numberOfColumns 2
+							-columnAttach 1 "both" 	2
+							-columnAttach 2 "both" 	2;
+							text -label "Texture to Distort:";
+							text -label "Distortion Map:";
+							setParent ..;
+						rowLayout -numberOfColumns 2
+							-columnAttach 1 "both" 	2
+							-columnAttach 2 "both" 	2;
+							textField -ed 0 -text "" zzRenderMakeUVTextTexture;
+							textField -ed 0 -text "" zzRenderMakeUVTextDistortionMap;
+							setParent ..;
+
+							button -label "Create Network" -c "zzMakeUVDistortion" zzRenderMakeUVButtGo;
+						setParent ..;
+					setParent ..;
+					}
+
+	showWindow $windowName;
+	zzRenderMakerWindowFunctions update;
+	}
+
+
+global proc zzRenderMakerWindowFunctions ( string $function ) {
+	string $selObjs[] = `ls -sl`;
+	string $selLights[] = `ls -sl -dag -type light`;
+	string $selMats[] = `ls -sl -mat`;
+	string $selTexs[] = `zzRenderMakeGetTextures`;
+	int $numLights = `size $selLights`;
+	int $numMats = `size $selMats`;
+	int $numTexs = `size $selTexs`;
+	switch ( $function ) {
+		case "update":
+		//update saturation
+		int $checkA = `checkBox -q -v zzRenderMakeCheckH`;
+		int $checkB = `checkBox -q -v zzRenderMakeCheckS`;
+		int $checkC = `checkBox -q -v zzRenderMakeCheckV`;
+
+		if ( !$checkA && !$checkB && !$checkC ) { button -e -enable 0 zzRenderMakeButtonSaturation; }
+		else { button -e -enable 1 zzRenderMakeButtonSaturation; }
+
+		//disable for materials only
+		if ( $numMats < 1 ) {
+			checkBox -e -enable 0 zzRenderMakeCheckColour;
+			checkBox -e -enable 0 zzRenderMakeCheckSpecular;
+			checkBox -e -enable 0 zzRenderMakeCheckEccen;
+			checkBox -e -enable 0 zzRenderMakeCheckTemp;
+			checkBox -e -enable 0 zzRenderMakeCheckReflect;
+			checkBox -e -enable 0 zzRenderMakeCheckDiffuse;
+			button -e -enable 0 zzRenderMakeButtonIncidence;
+			}
+		else {
+			checkBox -e -enable 1 zzRenderMakeCheckColour;
+			checkBox -e -enable 1 zzRenderMakeCheckSpecular;
+			checkBox -e -enable 1 zzRenderMakeCheckEccen;
+			checkBox -e -enable 1 zzRenderMakeCheckTemp;
+			checkBox -e -enable 1 zzRenderMakeCheckReflect;
+			checkBox -e -enable 1 zzRenderMakeCheckDiffuse;
+			button -e -enable 1 zzRenderMakeButtonIncidence;
+			}
+
+		//disable for materials and textures:
+		if ( $numMats < 1 || $numTexs < 1 ) {
+			radioButton -e -enable 0 zzRenderMakeRadioLight;
+			radioButton -e -enable 0 zzRenderMakeRadioEdges;
+			radioButton -e -enable 0 zzRenderMakeRadioShadows;
+			radioButton -e -enable 0 zzRenderMakeRadioTranslucence;
+			radioButton -e -enable 0 zzRenderMakeRadioNone;
+			button -e -enable 0 zzRenderMakeButtonSaturation;
+			}
+		else {
+			radioButton -e -enable 1 zzRenderMakeRadioLight;
+			radioButton -e -enable 1 zzRenderMakeRadioEdges;
+			radioButton -e -enable 1 zzRenderMakeRadioShadows;
+			radioButton -e -enable 1 zzRenderMakeRadioTranslucence;
+			radioButton -e -enable 1 zzRenderMakeRadioNone;
+			button -e -enable 1 zzRenderMakeButtonSaturation;
+			}
+
+		//disable for lights:
+		if ( $numLights < 1 ) {
+			radioButton -e -enable 0 zzRenderMakeRadioShadows;
+			radioButton -e -enable 0 zzRenderMakeRadioTranslucence;
+
+			button -e -enable 0 zzRenderMakeLightButtGraph;
+			button -e -enable 0 zzRenderMakeLightButtSphere;
+			button -e -enable 0 zzRenderMakeLightButtShadow;
+			}
+		else {
+			radioButton -e -enable 1 zzRenderMakeRadioShadows;
+			radioButton -e -enable 1 zzRenderMakeRadioTranslucence;
+
+			button -e -enable 1 zzRenderMakeLightButtGraph;
+			button -e -enable 1 zzRenderMakeLightButtSphere;
+			button -e -enable 1 zzRenderMakeLightButtShadow;
+			}
+
+		text -e -l $numMats zzRenderMakeTextMats;
+		text -e -l $numTexs zzRenderMakeTextTexs;
+		text -e -l $numLights zzRenderMakeTextLights;
+
+		//update incidence
+		int $checkA = `checkBox -q -v zzRenderMakeCheckSpecular`;
+		int $checkB = `checkBox -q -v zzRenderMakeCheckEccen`;
+		int $checkC = `checkBox -q -v zzRenderMakeCheckReflect`;
+		int $checkD = `checkBox -q -v zzRenderMakeCheckDiffuse`;
+		int $checkE = `checkBox -q -v zzRenderMakeCheckColour`;
+		int $checkF = `checkBox -q -v zzRenderMakeCheckTemp`;
+		if ( !$checkA && !$checkB && !$checkC && !$checkD && !$checkE && !$checkF ) {
+			button -e -enable 0 zzRenderMakeButtonIncidence;
+			}
+		else { button -e -enable 1 zzRenderMakeButtonIncidence; }
+
+		//update lights
+		if ( `size $selLights` < 1 ) {
+			button -e -enable 0 zzRenderMakeLightButtGraph;
+			button -e -enable 0 zzRenderMakeLightButtSphere;
+			button -e -enable 0 zzRenderMakeLightButtShadow;
+			}
+		else {
+			button -e -enable 1 zzRenderMakeLightButtGraph;
+			button -e -enable 1 zzRenderMakeLightButtSphere;
+			button -e -enable 1 zzRenderMakeLightButtShadow;
+			}
+
+		//update UV section
+		if ( `exists zzMakeUVDistortion` ) {
+			string $nodeTypeOnFirst = `nodeType $selObjs[0]`;
+			//if ( `getClassification $nodeTypeOnFirst` == "texture/2d" ) { print "do nothing\n"; }
+			}
+		break;
+		}
+	}
+
+
+//this should work with listHistory, search through the list, and determine whether any plusMinusAverage nodes are valid, then add the light to it...
+global proc zzRenderMakerLightOps ( string $function, string $type ) {
+	string $selObjs[] = `ls -sl`;
+	string $addNodes[] = {};
+	string $selLights[] = `ls -sl -dag -type light`;
+	string $connection = ( $type == "shadow" ) ? ".lightShadowFraction":".lightIntensity";
+	int $n = 0;
+
+	//this loop generates a list of all plusMinusAverage nodes in the history tree of each selected object
+	for ( $obj in $selObjs ) {
+		string $historyList[] = eval( "ls -type plusMinusAverage `listHistory " + $obj + "`" );
+
+		for ( $entry in $historyList ) {
+			string $pmaInputs[] = `listHistory $entry`;
+			int $isProperNode = 1;
+
+			$addNodes[$n] = $entry;
+			$n++;
+			}
+		}
+
+	switch ( $function ) {
+		case "add":
+		for ( $addNode in $addNodes ) {
+			for ( $light in $selLights ) {  //needs error checking here
+				connectAttr -f -nextAvailable ( $light + $connection ) ( $addNode + ".input1D" );
+				}
+			}
+		break;
+
+		case "remove":
+		for ( $addNode in $addNodes ) {
+			for ( $light in $selLights ) {  //needs error checking here
+				disconnectAttr -nextAvailable ( $light + $connection ) ( $addNode + ".input1D" );
+				}
+			}
+		break;
+		}
+	}
+
+
+global proc string[] zzRenderMakeGetTextures () {
+	string $selObjs[] = `ls -sl`;
+	string $selMats[] = `ls -sl -mat`;
+	string $selLights[] = `ls -sl -dag -type light`;
+	string $return[] = {};
+	int $n = 0;
+
+	for ( $material in $selMats ) {
+		string $connected[] = `listConnections -d 0 $material`;
+		for ( $obj in $selObjs ) {
+			for ( $node in $connected ) {
+				if ( $node == $obj ) {
+					$return[$n] = $node;
+					$n++;
+					}
+				}
+			}
+		}
+
+	return $return;
+	}
+
+
+global proc zzRenderMakeSaturation () {
+	string $selObjs[] = `ls -sl`;
+	string $selTexs[] = `zzRenderMakeGetTextures`;
+	string $selLights[] = `ls -sl -dag -type light`;
+	string $useLights = `radioButton -q -sl zzRenderMakeRadioShadows`;
+	int $lightsForget = 1;
+	if ( $useLights && `size $selLights` < 1 ) {
+		$lightsForget = 0;
+		}
+
+	if ( `size $selObjs` > 1 && $lightsForget ) {
+		for ( $textureName in $selTexs ) {
+			string $connections[] = `listConnections -s 0 -p 1 ( $textureName + ".outColor" )`;
+			string $connectedMats[] = {};
+			string $connectedAttribs[] = {};
+			int $n = 0;
+			int $i = 0;
+
+			//loop creates an array holding all attributes the texture is connected to
+			for ( $connection in $connections ) {
+				string $returnBuf01[] = {};
+				string $attributeName = "";
+				int $j = 1;
+
+				tokenize $connection "." $returnBuf01;
+				$connectedMats[$i] = $returnBuf01[0];
+				for ( $j; $j < `size $returnBuf01`; $j++ ) {
+					$attributeName = $attributeName + "." + $returnBuf01[$j];
+					}
+
+				$connectedAttribs[$i] = $attributeName;
+				$i++;
+				}
+
+			//create the utility nodes
+			string $hsv2rgbName = `shadingNode -asUtility hsvToRgb`;
+			string $rgb2hsvName = `shadingNode -asUtility rgbToHsv`;
+			string $multName = `shadingNode -asUtility multiplyDivide`;
+
+			//create the ramp nodes
+			string $rampNameH = `shadingNode -asTexture ramp`;
+			string $rampNameS = `shadingNode -asTexture ramp`;
+			string $rampNameV = `shadingNode -asTexture ramp`;
+			string $rampSExpr = `expression -s ( $multName + ".input2.input2Y = " + $rampNameS + ".outAlpha + 1\r" )`;
+
+			//rename the ramp nodes
+			$rampNameH = `rename $rampNameH ( $textureName + "HueControl" )`;
+			$rampNameS = `rename $rampNameS ( $textureName + "SaturationControl" )`;
+			$rampNameV = `rename $rampNameV ( $textureName + "ValueControl" )`;
+
+			connectAttr -f ( $multName + ".output" ) ( $hsv2rgbName + ".inHsv" );
+			connectAttr -f ( $rgb2hsvName + ".outHsv" ) ( $multName + ".input1" );
+			connectAttr -f ( $rampNameH + ".outAlpha" ) ( $multName + ".input2.input2X" );
+			connectAttr -f ( $rampNameV + ".outAlpha" ) ( $multName + ".input2.input2Z" );
+
+			//change the ramp's colour entries to more useable ones
+			setAttr ( $rampNameH + ".colorEntryList[2].color" ) -type double3 1 1 1;
+			setAttr ( $rampNameS + ".colorEntryList[0].color" ) -type double3 0 0 0;
+			setAttr ( $rampNameS + ".colorEntryList[1].color" ) -type double3 0.6 0.6 0.6;
+			setAttr ( $rampNameS + ".colorEntryList[2].color" ) -type double3 1 1 1;
+			setAttr ( $rampNameV + ".colorEntryList[0].color" ) -type double3 1 1 1;
+			setAttr ( $rampNameV + ".colorEntryList[1].color" ) -type double3 0.5 0.5 0.5;
+			setAttr ( $rampNameV + ".colorEntryList[2].color" ) -type double3 0 0 0;
+
+			removeMultiInstance -break true ( $rampNameH + ".colorEntryList[0]" );
+			removeMultiInstance -break true ( $rampNameH + ".colorEntryList[1]" );
+			setAttr ( $rampNameH + ".colorEntryList[2].position" ) 0;
+			setAttr ( $rampNameS + ".colorEntryList[0].position" ) 1;
+			setAttr ( $rampNameS + ".colorEntryList[1].position" ) 0.6;
+			setAttr ( $rampNameS + ".colorEntryList[2].position" ) 0;
+			setAttr ( $rampNameV + ".colorEntryList[0].position" ) 1;
+			setAttr ( $rampNameV + ".colorEntryList[1].position" ) 0.6;
+			setAttr ( $rampNameV + ".colorEntryList[2].position" ) 0;
+
+			//connect the ramps up to their controllers, depending on what control the user specified
+			if ( `radioButton -q -sl zzRenderMakeRadioLight` ) {
+				string $lumName = `shadingNode -asUtility surfaceLuminance`;
+				string $clampName = `shadingNode -asUtility clamp`;
+
+				setAttr ( $clampName + ".maxR" ) 1;
+				connectAttr -f ( $lumName + ".outValue" ) ( $clampName + ".inputR" );
+				connectAttr -f ( $clampName + ".output.outputR" ) ( $rampNameH + ".uvCoord.vCoord" );
+				connectAttr -f ( $clampName + ".output.outputR" ) ( $rampNameS + ".uvCoord.vCoord" );
+				connectAttr -f ( $clampName + ".output.outputR" ) ( $rampNameV + ".uvCoord.vCoord" );
+				}
+
+			if ( `radioButton -q -sl zzRenderMakeRadioEdges` ) {
+				string $samplerName = `shadingNode -asUtility samplerInfo`;
+
+				connectAttr -f ( $samplerName + ".facingRatio" ) ( $rampNameH + ".uvCoord.vCoord" );
+				connectAttr -f ( $samplerName + ".facingRatio" ) ( $rampNameS + ".uvCoord.vCoord" );
+				connectAttr -f ( $samplerName + ".facingRatio" ) ( $rampNameV + ".uvCoord.vCoord" );
+				}
+
+			if ( `radioButton -q -sl zzRenderMakeRadioShadows` ) {
+				string $clampName = `shadingNode -asUtility clamp`;
+				string $shadowAdder = `shadingNode -asUtility plusMinusAverage`;
+
+				setAttr ( $clampName + ".maxR" ) 1;
+				connectAttr -f ( $shadowAdder + ".output1D" ) ( $clampName + ".input.inputR" );
+				connectAttr -f ( $clampName + ".output.outputR" ) ( $rampNameH + ".uvCoord.vCoord" );
+				connectAttr -f ( $clampName + ".output.outputR" ) ( $rampNameS + ".uvCoord.vCoord" );
+				connectAttr -f ( $clampName + ".output.outputR" ) ( $rampNameV + ".uvCoord.vCoord" );
+
+				//change the ramp's colour entries to more useable ones
+				setAttr ( $rampNameH + ".colorEntryList[2].color" ) -type double3 1 1 1;
+				setAttr ( $rampNameS + ".colorEntryList[0].color" ) -type double3 0.3 0.3 0.3;
+				setAttr ( $rampNameS + ".colorEntryList[2].color" ) -type double3 0 0 0;
+				setAttr ( $rampNameV + ".colorEntryList[0].color" ) -type double3 0.2 0.2 0.2;
+				setAttr ( $rampNameV + ".colorEntryList[2].color" ) -type double3 0 0 0;
+
+				removeMultiInstance -break true ( $rampNameH + ".colorEntryList[0]" );
+				removeMultiInstance -break true ( $rampNameH + ".colorEntryList[1]" );
+				removeMultiInstance -break true ( $rampNameS + ".colorEntryList[1]" );
+				removeMultiInstance -break true ( $rampNameV + ".colorEntryList[1]" );
+				setAttr ( $rampNameH + ".colorEntryList[2].position" ) 0;
+				setAttr ( $rampNameS + ".colorEntryList[0].position" ) 1;
+				setAttr ( $rampNameS + ".colorEntryList[2].position" ) 0;
+				setAttr ( $rampNameV + ".colorEntryList[0].position" ) 1;
+				setAttr ( $rampNameV + ".colorEntryList[2].position" ) 0;
+
+				for ( $n; $n < `size $selLights`; $n++ ) {
+					connectAttr -f -nextAvailable ( $selLights[$n] + ".lightShadowFraction" ) ( $shadowAdder + ".input1D" );
+					}
+				}
+
+			if ( `radioButton -q -sl zzRenderMakeRadioTranslucence` ) {
+				string $averageName = `shadingNode -asUtility plusMinusAverage`;
+				string $vectorName = `shadingNode -asUtility vectorProduct`;
+				string $rangeName = `shadingNode -asUtility setRange`;
+				string $samplerName = `shadingNode -asUtility samplerInfo`;
+
+				setAttr ( $rangeName + ".oldMinX" ) -1;
+				setAttr ( $rangeName + ".oldMaxX" ) 1;
+				connectAttr -f ( $averageName + ".output3D" ) ( $vectorName + ".input1" );
+				connectAttr -f ( $samplerName + ".normalCamera" ) ( $vectorName + ".input2" );
+				connectAttr -f ( $vectorName + ".output" ) ( $rangeName + ".value" );
+				connectAttr -f ( $rangeName + ".outValue.outValueX" ) ( $rampNameH + ".uvCoord.vCoord" );
+				connectAttr -f ( $rangeName + ".outValue.outValueX" ) ( $rampNameS + ".uvCoord.vCoord" );
+				connectAttr -f ( $rangeName + ".outValue.outValueX" ) ( $rampNameV + ".uvCoord.vCoord" );
+
+				for ( $n; $n < `size $selLights`; $n++ ) {
+					connectAttr -f -nextAvailable ( $selLights[$n] + ".lightData.lightIntensity" ) ( $averageName + ".input3D" );
+					}
+				}
+
+			//this part check to see what ramp controls aren't wanted by the user, and deletes them
+			if ( !`checkBox -q -v zzRenderMakeCheckH` ) { delete $rampNameH; }
+			if ( !`checkBox -q -v zzRenderMakeCheckS` ) { delete $rampNameS; delete $rampSExpr; }
+			if ( !`checkBox -q -v zzRenderMakeCheckV` ) { delete $rampNameV; }
+
+			connectAttr -f ( $textureName + ".outColor" ) ( $rgb2hsvName + ".inRgb" );
+
+			string $newTexture = $hsv2rgbName;
+			string $outAttrib = "outRgb";
+			if ( `checkBox -q -v zzRenderMakeCheckMasked` ) {
+				$newTexture = `shadingNode -asTexture layeredTexture`;
+				$outAttrib = "outColor";
+				$mask = `shadingNode -asTexture ramp`;
+				connectAttr -f ( $hsv2rgbName + ".outRgb" ) ( $newTexture + "inputs[0].color" );
+				connectAttr -f ( $textureName + ".outColor" ) ( $newTexture + "inputs[1].color" );
+				connectAttr -f ( $mask + ".outAlpha" ) ( $newTexture + "inputs[0].alpha" );
+				}
+
+			//loop connects new texture to the attributes the original texture was connected
+			$n = 0;
+			for ( $n; $n < `size $connectedMats`; $n++ ) {
+				connectAttr -f ( $hsv2rgbName + "." + $outAttrib ) ( $connectedMats[$n] + $connectedAttribs[$n] );
+				}
+			}
+		}
+	else { warning "must make a selection\n"; }
+
+	select $selObjs;
+	}
+
+
+global proc zzRenderMakeIncidence () {
+	string $selObjs[] = `ls -sl`;
+	string $materials[] = `ls -sl -mat`;
+	string $channelNames[6];
+	int $channelValues[6];
+	int $channelTypes[6];
+
+	//the vector stores 2 pieces of info <ticked,is vector,empty>  is vector is whether its a triplet or a scalar attrib value
+	$channelValues[0] = `checkBox -q -v zzRenderMakeCheckSpecular`;
+	$channelValues[1] = `checkBox -q -v zzRenderMakeCheckColour`;
+	$channelValues[2] = `checkBox -q -v zzRenderMakeCheckEccen`;
+	$channelValues[3] = `checkBox -q -v zzRenderMakeCheckReflect`;
+	$channelValues[4] = `checkBox -q -v zzRenderMakeCheckDiffuse`;
+	$channelValues[5] = `checkBox -q -v zzRenderMakeCheckTemp`;
+	$channelTypes[0] = 1;
+	$channelTypes[1] = 1;
+	$channelTypes[2] = 0;
+	$channelTypes[3] = 0;
+	$channelTypes[4] = 0;
+	$channelTypes[5] = 0;
+
+	$channelNames[0] = "specularColor";
+	$channelNames[1] = "color";
+	$channelNames[2] = "eccentricity";
+	$channelNames[3] = "reflectivity";
+	$channelNames[4] = "diffuse";
+	$channelNames[5] = "color";
+	for ( $material in $materials ) {
+		string $samplerInfoNode = `createNode samplerInfo`;
+		int $n = 0;
+
+		$samplerInfoNode = `rename $samplerInfoNode ( $material + "_samperInfo" )`;
+		for ( $channel in $channelNames ) {
+			if ( $channelValues[$n] ) {  //check to see if the channel value is ticked or not
+				if ( `objExists ( $material + "." + $channelNames[$n] )` ) {  //check to see attribute exists on material
+					if ( !`connectionInfo -id ( $material + "." + $channelNames[$n] )` ) {  //check to see if connection already exists
+						string $ramp = `createNode ramp`;
+
+						$ramp = `rename $ramp ( $material + "_" + $channelNames[$n] )`;
+						removeMultiInstance -break true ($ramp + ".colorEntryList[2]");
+
+						setAttr ( $ramp + ".colorEntryList[0].color") -type double3 1 1 1;
+						setAttr ( $ramp + ".colorEntryList[0].position") 0;
+						setAttr ( $ramp + ".colorEntryList[1].color") -type double3 0 0 0;
+						setAttr ( $ramp + ".colorEntryList[1].position") 1;
+						setAttr ( $ramp + ".interpolation") 4;
+						connectAttr -f ( $samplerInfoNode + ".facingRatio" ) ( $ramp + ".vCoord" );
+						if ( $channelTypes[$n] ) { connectAttr -f ( $ramp + ".outColor" ) ( $material + "." + $channelNames[$n] ); }
+						else { connectAttr -f ( $ramp + ".outColorR" ) ( $material + "." + $channelNames[$n] ); }
+						}
+					}
+				}
+			$n++;
+			}
+		}
+	select $selObjs;
+	}
+
+
+global proc zzRenderMakeLights ( string $function ) {
+	string $selObjs[] = `ls -sl`;
+	string $selLights[] = `ls -sl -dag -type light`;
+
+	switch ( $function ) {
+		case "sphereLight":
+		for ( $light in $selLights ) {
+			if ( !`connectionInfo -id ( $light + ".intensity" )` ) {
+				string $clampNode = `createNode clamp`;
+				string $multDivideNode = `createNode multiplyDivide`;
+				string $rampNode = `createNode ramp`;
+				string $samplerNode = `createNode samplerInfo`;
+				string $sphereShape = eval ( "createNode renderSphere -p ( `listRelatives -p " + $light + "` )" );
+				string $vectorMult = `createNode vectorProduct`;
+				string $vectorDot = `createNode vectorProduct`;
+
+				$rampNode = `rename $rampNode ( $light + "_colourRamp" )`;
+				$clampNode = `rename $clampNode ( $rampNode + "_clamp" )`;
+				$multDivideNode = `rename $multDivideNode ( $light + "_multiplyDivide" )`;
+				$vectorMult = `rename $vectorMult ( $light + "_vectorMult" )`;
+				$vectorDot = `rename $vectorDot ( $light + "_vectorDot" )`;
+				$samplerNode = `rename $samplerNode ( $light + "_sampler" )`;
+				$sphereShape = `rename $sphereShape ( $light + "_lightShape" )`;
+
+				addAttr -ln rampIntensity -at double $light;
+				setAttr -e -keyable 1 ( $light + ".rampIntensity" ) 1;
+				setAttr -e -keyable 0 ( $light + ".intensity" );
+				connectAttr -f ( $light + ".rampIntensity" ) ( $rampNode + ".colorEntryList[0].colorR" );
+				connectAttr -f ( $light + ".rampIntensity" ) ( $rampNode + ".colorEntryList[0].colorG" );
+				connectAttr -f ( $light + ".rampIntensity" ) ( $rampNode + ".colorEntryList[0].colorB" );
+
+				removeMultiInstance -break true ($rampNode + ".colorEntryList[2]");
+				setAttr ( $rampNode + ".colorEntryList[0].position" ) 0;
+				setAttr ( $rampNode + ".colorEntryList[1].color" ) -type double3 0 0 0;
+				setAttr ( $rampNode + ".colorEntryList[1].position" ) 1;
+				setAttr ( $rampNode + ".interpolation") 4;
+				setAttr	( $vectorMult + ".operation" ) 4;
+				setAttr	( $vectorDot + ".operation" ) 1;
+				setAttr	( $multDivideNode + ".operation" ) 3;
+				setAttr	( $multDivideNode  + ".input2X" ) 0.5;
+				setAttr	( $clampNode + ".maxR" ) 1.0;
+
+				connectAttr -f ( $rampNode + ".outColorR" ) ( $light + ".intensity" );
+				connectAttr -f ( $clampNode + ".outputR" ) ( $rampNode + ".vCoord" );
+				connectAttr -f ( $multDivideNode + ".outputX" ) ( $clampNode + ".inputR" );
+				connectAttr -f ( $vectorDot + ".outputX" ) ( $multDivideNode + ".input1X" );
+				connectAttr -f ( $vectorMult + ".output" ) ( $vectorDot + ".input1" );
+				connectAttr -f ( $vectorMult + ".output" ) ( $vectorDot + ".input2" );
+				connectAttr -f ( $samplerNode + ".pointWorld" ) ( $vectorMult + ".input1" );
+				connectAttr -f ( $sphereShape + ".worldInverseMatrix " ) ( $vectorMult + ".matrix" );
+				}
+
+			else { warning ( $light + " already has a connection to its intensity attribute\n" ); }
+			}
+		break;
+
+
+		case "graphLight":
+		for ( $light in $selLights ) {
+			if ( !`connectionInfo -id ( $light + ".intensity" )` ) {
+				string $intensityNode = `createNode animCurveUU`;
+				string $lightInfoNode = `createNode lightInfo`;
+
+				$intensityNode = `rename $intensityNode ( $light + "_intensity" )`;
+				$lightInfoNode = `rename $lightInfoNode ( $light + "_lightInfo" )`;
+				setKeyframe -itt "linear" -ott "linear" -v 1 - f 0 $intensityNode;
+				setKeyframe -itt "linear" -ott "linear" -v 0 - f 100 $intensityNode;
+				connectAttr -f ($light + ".worldMatrix[0]")  ($lightInfoNode + ".worldMatrix");
+				connectAttr -f ($lightInfoNode + ".sampleDistance") ($intensityNode + ".input");
+				connectAttr -f ($intensityNode + ".output") ($light + ".intensity");
+				}
+
+			else { warning ( $light + " already has a connection to its intensity attribute\n" ); }
+			}
+		break;
+
+
+		case "shadowLight":
+		for ( $light in $selLights ) {
+			string $lightType = `nodeType $light`;
+			string $transformNode[] = `listRelatives -p $light`;
+			string $shadowLight = `createNode $lightType -p $transformNode[0]`;
+			string $multiplyNode = `createNode multiplyDivide`;
+			string $multiplyNode02 = `createNode multiplyDivide`;
+
+			addAttr -ln darkness -at double -min 0 -max 1 $transformNode[0];
+			setAttr -e -keyable 1 ( $transformNode[0] + ".darkness" ) 1;
+
+			$shadowLight = `rename $shadowLight ( $light + "_shadowLightShape" )`;
+			$multiplyNode = `rename $multiplyNode ( $light + "_multiplyDivide" )`;
+			connectAttr -f ( $light + ".color" ) ( $shadowLight + ".color" );
+			connectAttr -f ( $light + ".intensity" ) ( $multiplyNode + ".input1X" );
+			connectAttr -f ( $multiplyNode + ".outputX" ) ( $shadowLight + ".intensity" );
+			connectAttr -f ( $transformNode[0] + ".darkness" ) ( $multiplyNode02 + ".input1X" );
+			connectAttr -f ( $multiplyNode02 + ".outputX" ) ( $multiplyNode + ".input2X" );
+
+			setAttr ( $shadowLight + ".useRayTraceShadows" ) 0;
+			//setAttr ( $multiplyNode + ".input2X" ) -1;
+			setAttr ( $multiplyNode02 + ".input2X" ) -1;
+			setAttr -k 0 ( $shadowLight + ".useRayTraceShadows" );
+
+			if ( $lightType == "pointLight" || $lightType == "areaLight" || $lightType == "directionalLight" ) {
+				setAttr ( $shadowLight + ".useDepthMapShadows" ) 0;
+				setAttr -k 0 ( $shadowLight + ".useDepthMapShadows" );
+				setAttr -k 0 ( $shadowLight + ".dmapBias" );
+				setAttr -k 0 ( $shadowLight + ".shadColorR" );
+				setAttr -k 0 ( $shadowLight + ".shadColorG" );
+				setAttr -k 0 ( $shadowLight + ".shadColorB" );
+				}
+
+			if ( $lightType == "ambientLight" ) {
+				connectAttr -f ( $light + ".ambientShade" ) ( $shadowLight + ".ambientShade" );
+				}
+
+			if ( $lightType == "spotLight" ) {
+				connectAttr -f ( $light + ".coneAngle" ) ( $shadowLight + ".coneAngle" );
+				connectAttr -f ( $light + ".penumbraAngle" ) ( $shadowLight + ".penumbraAngle" );
+				connectAttr -f ( $light + ".dropoff" ) ( $shadowLight + ".dropoff" );
+				connectAttr -f ( $light + ".barnDoors" ) ( $shadowLight + ".barnDoors" );
+				connectAttr -f ( $light + ".leftBarnDoor" ) ( $shadowLight + ".leftBarnDoor" );
+				connectAttr -f ( $light + ".rightBarnDoor" ) ( $shadowLight + ".rightBarnDoor" );
+				connectAttr -f ( $light + ".topBarnDoor" ) ( $shadowLight + ".topBarnDoor" );
+				connectAttr -f ( $light + ".bottomBarnDoor" ) ( $shadowLight + ".bottomBarnDoor" );
+
+				setAttr ( $shadowLight + ".useDepthMapShadows" ) 0;
+				setAttr -k 0 ( $shadowLight + ".useDepthMapShadows" );
+				setAttr -k 0 ( $shadowLight + ".dmapBias" );
+				setAttr -k 0 ( $shadowLight + ".shadColorR" );
+				setAttr -k 0 ( $shadowLight + ".shadColorG" );
+				setAttr -k 0 ( $shadowLight + ".shadColorB" );
+				}
+			}
+		break;
+		}
+
+	select $selObjs;
+	}
+
+
+global proc zzRenderMakerHelp () {
+string $windowName = "zzRenderMakerHelpWindow";
+	string $windowTitle = "render maker help";
+
+	string $helpLine01 =
+		"This script allows the quick setup of reasonably common/simple, yet time\n" +
+		"consuming to setup, render networks.  \n" +
+		"HSV control allows you to create controls for varying a texture's HSV based on\n" +
+		"a number of different inputs.  It requires you to select a texture node, which it\n" +
+		"applies the HSV control to, and a material node, so the script knows which\n" +
+		"material you want the HSV control for (and for the effects that require light input,\n" +
+		"you also need a light selected.  These nodes can be selected in any order).  A\n" +
+		"texture can have outputs to multiple materials, this script works between the\n" +
+		"texture and the material, so that for a single texture node, you can have mutiple\n" +
+		"different types of HSV control for different materials.";
+	string $helpLine02 =
+		"  Light Intensity:  causes the saturation to vary based on the intensity of\n" +
+		"  light hitting that part of the surface.";
+	string $helpLine03 =
+		"  Camera Facing:  affects it based on the angle of the surface with respect \n" +
+		"  to the camera (facing ratio).";
+	string $helpLine04 =
+		"  Shadows:  changes saturation varying on how much the surface is in direct\n" +
+		"  shadow.  this means actual shadows, not just areas of a surface facing away from\n" +
+		"  a light.  zero on the ramp is the saturation value when the surface is not\n" +
+		"  in shadow.  NOTE: right clicking on this option brings up a menu that allow\n" +
+		"  you to add lights to the shadows this material uses.  you must select the\n" +
+		"  plusMinusAverage node and the light you want to add.";
+	string $helpLine05 =
+		"  Translucence:  affects the texture depending on the angle between the surface\n" +
+		"  and the direction of light hitting it.  This allows effects that can be setup\n" +
+		"  to mimic a sub-surface translucence effect.  NOTE: right clicking on this option\n" +
+		"  brings up a menu that allows you to add or remove lights to the translucence\n" +
+		"  calculations.  You must select the plusMinusAverage node and the light to add.";
+	string $helpLine06 =
+		"  None:  creates the ramps for HSV control only.  It doesn't connect them to a\n" +
+		"  dynamic input.  It allows simple static control over HSV for the whole texture.";
+	string $helpLine07 =
+		"Incidence effects are even simpler than HSV control, as they work directly on\n" +
+		"material attributes.  This part of the script only requires that a material be\n" +
+		"selected.  It then adds a ramp to control the checked attributes.";
+	string $helpLine08 =
+		"Light effects converts normal maya lights into one of 3 special kinda of lights.";
+	string $helpLine09 =
+		"  Graph Light:  is a light who's intensity is based upon a falloff graph.  This\n" +
+		"  allows complete control over any light's intensity falloff.";
+	string $helpLine10 =
+		"  Sphere Light:  light intensity is linked to the shape of an implicit sphere.\n" +
+		"  The sphere may be scaled in order control the area of effect of the light.  When\n" +
+		"  this light is ambient, pools of light and dark may be added to scenes easily.";
+	string $helpLine11 =
+		"  Shadow Light:  converts any light to a shadow only light.  These lights cast\n" +
+		"  shadows only.  They allow you to place shadows exactly where needed without \n" +
+		"  affecting lighting already set up in a scene.  To stop a light being a shadow\n" +
+		"  light, display shape nodes in the outliner, and delete the light shape with\n" +
+		"  the _shadowLightShape in its name.";
+
+	if ( `window -exists $windowName` ) { deleteUI $windowName; }
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0
+		-sizeable 1 -width 400 $windowName;
+
+		scrollLayout -hst 0 -vst 16 -childResizable true;
+			columnLayout -adjustableColumn false -cat left 10 -rowSpacing 10;
+				text -align left -label "HSV Control:" -width 150 -font boldLabelFont;
+				text -align left -label $helpLine01;
+				text -align left -label $helpLine02;
+				text -align left -label $helpLine03;
+				text -align left -label $helpLine04;
+				text -align left -label $helpLine05;
+				text -align left -label $helpLine06;
+				text -align left -label "Incidence Effects:" -width 150 -font boldLabelFont;
+				text -align left -label $helpLine07;
+				text -align left -label "Light Effects:" -width 150 -font boldLabelFont;
+				text -align left -label $helpLine08;
+				text -align left -label $helpLine09;
+				text -align left -label $helpLine10;
+				text -align left -label $helpLine11;
+				setParent ..;
+			setParent ..;
+
+	showWindow $windowName;
+	}
+
+
+global proc string[] zzRenderMakerDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $helpDependencies[] = {};
+	string $iconDependencies[] = {};
+	string $return[] = {};
+
+	if( $mode == "-scripts" ) $return = $melDependencies;
+	if( $mode == "-docs" ) $return = $helpDependencies;
+	if( $mode == "-icons" ) $return = $iconDependencies;
+	return $return;
+	}
+
+
+//zoo.end

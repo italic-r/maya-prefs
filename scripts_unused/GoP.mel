@@ -1,0 +1,137 @@
+//GoP by Dave Girard (www.can-con.ca)
+//email any comments or suggestions to daveg@can-con.ca
+//version 1.1: added time-based temp directory because textures files don't get overwritten on OBJ export, so Photoshop would load the new model but older textures if they had the same name.  
+////version 1.2: added a check to make sure OBJ Export plug-in is loaded
+//version 1.3 added object name so it's clearer which object is sent to PS
+//version 1.4 added translation for V-Ray materials
+//version 2.0: now uses DAE format so you can export selected Maya cameras to Photoshop 
+ 
+
+global proc GoPUI()
+{
+if ( `window -exists GoPwindow` )
+  deleteUI -window GoPwindow;
+string $GoPwindow = `window -title "GoP" -sizeable 0 GoPwindow`;
+columnLayout -adjustableColumn true -columnAttach "both" 8;
+columnLayout;
+separator -style "none" -h 12;
+//checkBox -l "Make a new mat on retrieval" -ann "Otherwise, all materials are linked from a temp folder." -value false GoPCheckbox1;
+//separator -style "none" -h 6;
+checkBox -l "Also send selected cameras (doesn't work with bump maps)" -ann "Uses DAE format and sends camera but doesn't send bump textures." -value false GoPCheckbox1;
+//separator -style "none" -h 6;
+
+//text "Work on object's texture:";	
+//separator -style "none" -h 2;
+//columnLayout;
+//			optionMenuGrp -width 200 gopSettingsMenu;
+//					menuItem -label "diffuse";
+//					menuItem -label "bump";
+//					menuItem -label "self illuminance";					
+//					menuItem -label "xxxx";
+//					menuItem -label "xxx";
+separator -style "none" -h 6;
+button -w 240 -h 30 -l "Go to Photoshop" -c "GoPProc;";
+
+separator -style "none" -h 3;
+
+//button -w 240 -h 30 -l "Retrieve from Photoshop" -c "GoPProc;";
+//separator -style "none" -h 12;
+
+showWindow $GoPwindow;
+}
+
+global proc GoP()
+{
+if (!(`pluginInfo -q -l fbxmaya`))
+	{
+		loadPlugin fbxmaya;
+	}
+//if (!(`pluginInfo -q -l objExport`))
+//	{
+//		loadPlugin objExport;
+//	}
+string $mySelection[] = `ls -sl`;
+//if persp1 selected, make a temp duplicated and export that
+string $selectedCams[] = `ls -sl -dag -ca`;
+string $newDupCam[];
+if ($selectedCams[0] == "perspShape")
+	{
+	$newDupCam = `duplicate perspShape`;
+	select -r $newDupCam;
+	}
+int $sendCOLLADA = 1;
+//$sendCOLLADA = `checkBox -q -v GoPCheckbox1`;
+select -add $mySelection;
+global string $timestamper; 
+$timestamper = `date -format YYYYYYMMDDhhmmss`;
+
+
+
+//string $mySelectionShapes[] = `listRelatives -s $mySelection[0]`;
+//string $sGroupTempToCopy[] = `listSets -type 1 -o $mySelectionShapes[0]`;
+//string $surfaceShader[] = `listConnections ($sGroupTempToCopy[0] + ".surfaceShader")`;
+//string $shaderType[] = `ls -showType $surfaceShader[0]`;
+//string $fileNodeVRayMat[] = `listConnections -d 0 -s 1 ($shaderType[0] + ".color")`;
+//if ($shaderType[1] == "VRayMtl")
+//    {
+//    //check if it's gamma corrected
+//    string $newMat = `shadingNode -asShader lambert`;
+//    connectAttr ($fileNodeVRayMat[0] + ".outColor") ($newMat + ".color");
+//    select -r $mySelection[0];
+//    hyperShade -assign $newMat $mySelection[0];
+//    rename $newMat ($mySelection[0] + "_lambertTemp");
+//    }
+//
+//else if ($shaderType[1] == "VRayFastSSS2")
+// {print "Vray SSS2 conversion goes here";}
+//
+//else if ($shaderType[1] == "VRayBlendMat")
+// {print "Vray BlendMat conversion goes here";}
+
+
+if( `about -win`)
+	{
+	system ((("md %TEMP%") + "\\") + $timestamper);
+
+	if ($sendCOLLADA == 0)
+		{
+		file -force -options "(groups=1;ptgroups=1;materials=1;smoothing=1;normals=1" 
+	     -typ "OBJexport" -pr 
+	     -es ((("%TEMP%/" + $timestamper + "/") + $mySelection[0]) + ".obj");
+		system ((("%TEMP%" + "\\") + $timestamper + "\\") + $mySelection[0] + ".obj"); 
+		}
+		
+	else if ($sendCOLLADA == 1)
+		{
+		//FBXExport -f ((("%TEMP%/" + $timestamper + "/") + $mySelection[0]) + ".dae") -s;
+		//system ((("%TEMP%" + "\\") + $timestamper + "\\") + $mySelection[0] + ".dae"); 
+		string $saveDir = `workspace -q -rd`;
+		FBXExport -f ($saveDir + "data" + "GoPTemp.dae") -s;
+		system ($saveDir + "data" + "GoPTemp.dae"); 
+		}
+	}
+else if (`about -mac`)
+	{
+	system (("mkdir /tmp/") + $timestamper);
+	if ($sendCOLLADA == 0)
+		{
+		file -force -options "(groups=1;ptgroups=1;materials=1;smoothing=1;normals=1" 
+		 -typ "OBJexport" -pr 
+		 -es ((("/tmp/" + $timestamper + "/") + $mySelection[0]) + ".obj");
+		system ((("open /tmp/") + $timestamper + "/") + $mySelection[0] + ".obj");
+		}
+	else if ($sendCOLLADA == 1)
+		{
+		FBXExport -f ((("/tmp/") + $timestamper + "/") + $mySelection[0] + ".dae") -s;
+		system ((("open /tmp/") + $timestamper + "/") + $mySelection[0] + ".dae");
+		}
+	}
+if ( `objExists $newDupCam` );
+	{
+	delete $newDupCam;
+	}
+
+warning "If file opens in wrong app, you need to set Photoshop to be the owner for .dae files.";
+}
+//select -r $mySelection[0];
+//hyperShade -assign $surfaceShader[0] $mySelection[0];

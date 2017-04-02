@@ -1,0 +1,4 @@
+// matchAnim
+$firsttwo = `ls -sl`;
+copyKey $firsttwo[0];
+pasteKey -option fitReplace $firsttwo[1];

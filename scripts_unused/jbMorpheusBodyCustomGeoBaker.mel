@@ -1,0 +1,205 @@
+/*
+TITLE: jbMorpheusBodyCustomGeoBaker
+VERSION: 1.5
+AUTHOR:Josh Burton
+	   www.joshburton.com
+DATE: October 7, 2010
+
+DESCRIPTION:
+Script for baking out custom body geo for the Morpheus Rig.
+
+DISCLAIMER:
+If your computer explodes, I didn't do it.
+
+HOW TO USE:
+1. First select the custom geo to bake
+2. Then select any of the body controls for the Mophy you want to connect it to
+3. Run script
+
+LIMITATIONS:
+1. Be aware that your transformations be frozen and history on the custom geo will be deleted
+2. Doesn't work with hand meshes currently
+
+HISTORY:
+10.07.10 - BIRTH!
+
+Acknowledgements - 
+1. Blendshape extraction, size, existance checking from extractBlendShapes - Asi Sudai
+	asi@asimation.com www.reel.asimation.com
+*/
+
+//sub Procs
+
+// Debuging printing proc - Acknowledgement 1
+
+proc extractBlendShape.debug(string $msg)
+{
+	if (1==1)
+		print ("\n***Debug: " + $msg +"\n");	
+}// End
+// Get object bounding size - Acknowledgement 1
+proc extractBlendShape.getBounding(string $node)
+{
+	float $bounding[]=`xform -q -bb $node`;
+	float $xSize=(`abs $bounding[0]` +`abs $bounding[3]`);
+	print $xSize;
+}// End 
+// check the object have blendShapes  - Acknowledgement 1
+proc string extractBlendShape.getBlendShape(string $node)
+{
+	
+	string $shapes[] = `listRelatives -s $node`;
+	for ($shape in $shapes){
+		string $tempArray[]=`listConnections -s 1  -d 0 -type "blendShape" ($shape + ".inMesh")`;
+		if ($tempArray[0] != "") return $tempArray[0];
+	}
+	return "none";
+}// End
+
+//Main Proc
+global proc jbMorpheusBodyCustomGeoBaker() {
+
+//Declaring our intial variables
+string $blendShapeNamesBaked[];
+string $blendshapeConnections[];
+string $currentConnections[];
+string $selected[] = `ls -sl`;
+string $refPrefix;
+string $customGeo = $selected[0];
+string $customGeoSkinName = $customGeo+"_skinCluster";
+string $customGeoBlendShapeNode = $customGeo+"_bsNode";
+
+//error checking
+	if(!size($selected)) error "You Must Select the custom mesh AND one of the controls on the Morphy to connect to.";
+	if(`attributeExists "customGeofied" $customGeo`){ 
+			error "Geo is already connected" ;	 
+	}	else {
+
+//freeze transforms and delete history for baking purposes
+makeIdentity -apply true -t 1 -r 0 -s 1 -n 0 $customGeo;
+DeleteHistory $customGeo;
+
+//renames our original custom geo properly
+$customGeoProperName = $customGeo+"_customGeo";
+rename $customGeo $customGeoProperName;
+
+//checks for referencing
+int $isReferenced = `referenceQuery -isNodeReferenced $selected[1]`;
+
+if ($isReferenced == 1){
+	string $buffer[] ; // Create Empty Array To Hold Tokens  
+	tokenize $selected[1] ":" $buffer ; // Split $objectName by ":" 
+	$refPrefix = $buffer[0]+":";
+} else {}
+
+$deformerGeo = $refPrefix + "body_geo";
+
+//create and store name of Wrap deformer
+string $wrapDeformer[] = `deformer -type wrap $customGeoProperName`;
+setAttr ($wrapDeformer[0] + ".autoWeightThreshold") 1;
+select -r $customGeoProperName;
+select -tgl $deformerGeo;
+AddWrapInfluence;
+select -cl;
+
+//reorders deformation order for proper baking of skinned mesh
+//reorderDeformers "tweak1" "face_skinCluster" $deformerGeo;
+
+
+// Check if object have blendShape node. - Acknowledgement 1
+string $blendShapeNode = $refPrefix + "bodyMorph_bsNode";
+if ($blendShapeNode == "none") { print ("\n"+ $deformerGeo + " don't have blendShape"); return; }
+// Get all BlendShapes shapes - Acknowledgement 1
+extractBlendShape.debug $blendShapeNode;
+string $blendShapeNamesShort[] = `listAttr -m ($blendShapeNode + ".weight")`;
+
+int $n = 0;
+
+
+
+//Creates a new name for the geo to be baked
+for ($name in $blendShapeNamesShort)	{
+	$blendShapeNamesBaked[$n] = $customGeo + "_" + $blendShapeNamesShort[$n];
+	$n++;
+	}
+// Start extracting 
+// Get object size, to better spread the blendShapes - Acknowledgement 1
+float $bounding[]=`xform -q -bb $customGeoProperName`;
+float $boundingSizeX=(`abs $bounding[0]` +`abs $bounding[3]`);
+float $boundingSizeY=(`abs $bounding[1]` +`abs $bounding[4]`);
+extractBlendShape.debug ("Bounding size = " + $boundingSizeX);
+// Start extracting each shape - Acknowledgement 1, changed to export the custom geo instead of the deforming Geo
+int $t=1;
+string $bakedCustomGeo[];
+for ($i=0; $i<`size($blendShapeNamesShort)`; $i++)
+{
+	int $row = `floor($i/5)`;
+	if ($t>5) $t=1;		
+	extractBlendShape.debug ("doing blendShape - " + $blendShapeNamesShort[$i]);
+	//queries the connection that goes into the blendshape node and stores it
+	string $currentBlendShapeChannel = $blendShapeNode + "." + $blendShapeNamesShort[$i];
+	$currentConnections = `listConnections -d off -p on -s on $currentBlendShapeChannel`;
+	$blendshapeConnections[$i] = $currentConnections[0];
+	//breaks connection on blendshape node
+	disconnectAttr $blendshapeConnections[$i] ($blendShapeNode + "." + $blendShapeNamesShort[$i] ) ;
+	//back to Asi's code
+	setAttr ($blendShapeNode + "." + $blendShapeNamesShort[$i] ) 1;
+	string $bakedCustomGeo[]=`duplicate -name $blendShapeNamesBaked[$i] $customGeoProperName`;	
+	xform -r -t (($boundingSizeX*($t+1.2))*1.1) (($boundingSizeY*$row)*-1) 0 $bakedCustomGeo[0];	
+	setAttr ($blendShapeNode + "." + $blendShapeNamesShort[$i] ) 0;		
+//		Restores connection
+	connectAttr $blendshapeConnections[$i] $currentBlendShapeChannel;
+		$t++;		
+	}
+//Restores deformation order of the Deformer Geo
+//reorderDeformers "face_skinCluster" "tweak1" $deformerGeo;
+//reorderDeformers "face_skinCluster" "face_bsNode" $deformerGeo;
+
+//Delete wrap and connect baked custom geo as blendshapes to original custom geo
+delete $wrapDeformer[0];
+blendShape -n $customGeoBlendShapeNode $blendShapeNamesBaked $customGeoProperName ;
+
+//groups our new baked geo for easy cleanup later on	
+$bakedCustomGeoGroupName = $customGeo+"_bsGeo_grp";
+group -n $bakedCustomGeoGroupName $blendShapeNamesBaked;
+setAttr ($bakedCustomGeoGroupName +".v") 0;
+
+
+//Connects our custom geo blendshape channels to the original deforming mesh channels
+int $b=0;
+for ($bshape in $blendShapeNamesBaked) {		
+	connectAttr ($blendShapeNode + "." + $blendShapeNamesShort[$b]) ($customGeoBlendShapeNode +"."+ $blendShapeNamesBaked[$b]);
+	$b++;
+	}
+
+//Skin the custom geo
+$skinJoints =  $refPrefix + "qssBodyBindJoints";
+skinCluster -n $customGeoSkinName -tsb $skinJoints $customGeoProperName;
+
+//copy the skin weights from the deformer geo to the custom geo
+$skinCluster = $refPrefix + "body_geo_skinCluster";
+copySkinWeights -ds $customGeoSkinName -ss $skinCluster -noMirror -surfaceAssociation closestPoint -influenceAssociation name;
+
+//adds an attribute to tag a geo as having been processed
+addAttr -ln "customGeofied"  -dt "string" $customGeoProperName;
+addAttr -ln "skinName" -dt "string" $customGeoProperName;
+addAttr -ln "bsNodeName" -dt "string" $customGeoProperName;
+addAttr -ln "bsShapesGrpName" -dt "string" $customGeoProperName;
+addAttr -ln "orignalName" -dt "string" $customGeoProperName;
+addAttr -ln "skinTemplate" -dt "string" $customGeoProperName;
+
+setAttr -type "string" ($customGeoProperName+".skinName") $customGeoSkinName;
+setAttr -type "string" ($customGeoProperName+".bsNodeName") $customGeoBlendShapeNode;
+setAttr -type "string" ($customGeoProperName+".bsShapesGrpName") $bakedCustomGeoGroupName;
+setAttr -type "string" ($customGeoProperName+".orignalName") $customGeo;
+setAttr -type "string" ($customGeoProperName+".skinTemplate") $skinCluster;
+
+//Report complete
+print ($customGeoProperName + " exported properly. I'd move the joysticks around to make sure.") ;
+
+}	
+}	
+
+
+
+

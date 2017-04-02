@@ -1,0 +1,4 @@
+Animates Overshoot and Settle on any channels selected in the channelbox 
+ 
+ 
+ 

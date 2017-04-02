@@ -1,0 +1,9 @@
+[submodule "scripts/loomis"]
+	path = scripts/loomis
+	url = git@github.com:morganloomis/ml_tools.git
+[submodule "scripts/anim/cgm"]
+	path = scripts/anim/cgm
+	url = git@bitbucket.org:jjburton/cgmtools.git
+[submodule "scripts/anim/Red9"]
+	path = scripts/anim/Red9
+	url = git@github.com:markj3d/Red9_StudioPack.git

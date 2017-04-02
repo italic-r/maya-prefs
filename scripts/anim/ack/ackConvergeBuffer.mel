@@ -1,0 +1,87 @@
+/*
+//////////////////////////////////////////////////////////
+
+ackConvergeBuffer 1.0
+11/1/07					
+Aaron Koressel				
+www.aaronkoressel.com
+
+Converges selected keys towards or away from it's
+buffer curve.  Also has a command to just snap selected keys
+to the buffer curve.  If keys don't line up, the key
+will move towards the interpolated value on the buffer
+curve.
+
+SYNTAX:
+ackConvergeBuffer "toward";
+ackConvergeBuffer "away";
+ackConvergeBuffer "snap";
+
+EXAMPLE:
+Assign this commnad to "Ctrl Alt PgDown":  ackConvergeBuffer "toward";
+Assign this commnad to "Ctrl Alt PgUp":  ackConvergeBuffer "away";
+Assign this commnad to "Ctrl Alt Home":  ackConvergeBuffer "snap";
+
+//////////////////////////////////////////////////////////
+*/
+
+
+global proc ackConvergeBuffer(string $cmd){
+	global float $ackSetup_scaleFactor;
+	//set default value if doesn't exist
+	if ($ackSetup_scaleFactor <= .000001){
+		$ackSetup_scaleFactor = .9;
+	}
+
+	//only run if at least one key is selected
+	$keyCount = `keyframe -an keys -q -keyframeCount`;
+	if ($keyCount != 0) {
+	
+			//loop over selected curves and process independently
+			string $selectedCurves[] = `keyframe -selected -q -name`;
+			for ($c = 0; $c < size($selectedCurves); $c++){
+				//channel to use for this pass
+				$channel = $selectedCurves[$c];			
+
+
+				//get array of key times in selection
+				$timeArray = `keyframe -selected -q -timeChange $channel`;
+
+				//get buffer values
+				float $bufferValueArray[];
+				bufferCurve -swap;
+				for ($i = 0; $i < size($timeArray); $i++){
+					 $bufferValue = `keyframe -time $timeArray[$i] -q -eval $channel`;
+					 $bufferValueArray[$i] = $bufferValue[0];
+				}
+				bufferCurve -swap;
+
+				//converge keys to buffer values (of selected keys)
+				if ($cmd == "toward"){
+					$selected = `keyframe -selected -q -indexValue $channel`;
+					for ($i = 0; $i < size($selected); $i++){
+						scaleKey -index $selected[$i] -valuePivot $bufferValueArray[$i] -valueScale ($ackSetup_scaleFactor) $channel;
+					}
+					
+				} else if ($cmd == "away"){
+					$selected = `keyframe -selected -q -indexValue $channel`;
+					for ($i = 0; $i < size($selected); $i++){
+						scaleKey -index $selected[$i] -valuePivot $bufferValueArray[$i] -valueScale (1/$ackSetup_scaleFactor) $channel;
+					}
+					
+				} else if ($cmd == "snap"){
+					$selected = `keyframe -selected -q -indexValue $channel`;
+					for ($i = 0; $i < size($selected); $i++){
+						keyframe -index $selected[$i] -valueChange ($bufferValueArray[$i]) $channel;
+					}
+				}
+				
+
+
+
+			}		
+
+		
+		
+	}	
+}

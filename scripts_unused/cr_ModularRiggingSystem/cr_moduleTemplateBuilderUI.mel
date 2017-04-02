@@ -1,0 +1,1537 @@
+//---------------------------------------------------------------------------
+// cr_moduleTemplateBuilderUI.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:
+//		module template builder UI
+//
+// REQUIRES:
+//      cr_createModuleRigFromUI.mel
+//      cr_moduleSymmetryLib.mel
+//      cr_dummyRigPartModulesLib.mel
+//      cr_buildModuleJointSkeleton.mel
+//      cr_buildModulesFromUI.mel
+//      cr_buildModuleJointSkeletonLib.mel
+//
+// AUTHOR:
+//		Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+cr_createModuleRigFromUI;
+cr_moduleSymmetryLib;
+cr_dummyRigPartModulesLib;
+cr_buildModuleJointSkeleton;
+cr_buildModulesFromUI;
+cr_buildModuleJointSkeletonLib;
+cr_moduleTemplates;
+cr_help;
+
+{
+if (`window -exists moduleTempalesWin`)
+deleteUI moduleTempalesWin;
+
+	window
+	-t "creatureRigs: Modules Builder"
+	-wh 450 630
+	-mxb off
+	-mnb on
+	-resizeToFitChildren on
+	-sizeable on
+	-menuBar true
+	moduleTempalesWin;
+
+//option menu
+menu -label "File";
+	menuItem -label "install shelf button" -c "cr_installShelfBtn(\"cr_moduleTemplateBuilder\",\"cr_moduleTemplateBuilder\", \"smoothSkin\")";
+	menuItem -divider true;
+	menuItem -label "Close" -c ("deleteUI moduleTempalesWin");
+menu -label "Edit";
+	menuItem -label "Toggle Selectable" -c "cr_toggleBaseSkeletonSelect()";
+	menuItem -divider true;
+menu -label "Tools";
+	menuItem -label "Auto Rigger" -c "cr_autoRigging";
+	menuItem -divider true;
+	menuItem -label "Curve Utilities" -c "cr_curveUtil";
+menu -label "Help" -helpMenu true;
+	menuItem -label "How to use" -c "cr_helpWindow()";
+
+columnLayout -adj 1 -p moduleTempalesWin moduleTempalesMainColoumn;
+tabLayout -innerMarginWidth 5 -innerMarginHeight 5 -p moduleTempalesMainColoumn moduleRigTab;
+iconTextButton -style "iconOnly" -i "creatureRigs.png" -ann ("creatureRigs Tool \"Module Rig Builder\" - Copyright ©2010 Wasim Khan creaturerigs.com") -c ("showHelp -a \"http://creaturerigs.com/\"") -w 450 -h 30 -al "left" -p moduleTempalesMainColoumn;
+
+columnLayout -adj 1 -p moduleRigTab createSkColumnLayout;
+tabLayout -innerMarginWidth 5 -innerMarginHeight 5 -p createSkColumnLayout modulePartTab;
+
+columnLayout -adj 1 -p modulePartTab mainColumnLayout;
+
+//name prefix
+frameLayout -l "Prefix: "
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-marginHeight 3
+	-marginWidth 3
+	-p mainColumnLayout
+	prefixModuleFrame;
+
+columnLayout -adj 1 -p prefixModuleFrame prefixColumnLayout;
+
+rowColumnLayout -nc 4 -cw 1 50 -cw 2 90 -cw 3 100 -cw 4 100  -p  prefixColumnLayout nameModuleRCL;
+	text  -l "Name :" -align "left" -p nameModuleRCL nameModuleTitle;
+	textField -p nameModuleRCL nameModuleTF;
+	
+	text -label "      Side : " -al "center" -p nameModuleRCL sideModuleText;
+	optionMenu -p nameModuleRCL sideModulePrefix;  //select side prefix menu
+	menuItem -label "l/r";
+	menuItem -label "lt/rt";
+	menuItem -label "left/right";
+	menuItem -label "custom";
+	menuItem -label "none";
+
+separator -height 7 -style "none" -p prefixColumnLayout colorIndexSep1;
+text  -l "Color:" -align "left" -fn "boldLabelFont" -p prefixColumnLayout colorIndexTitle;
+
+rowColumnLayout -nc 3 -cw 1 137 -cw 2 137 -cw 3 137 -p prefixColumnLayout colorIndexModuleRCL;
+text  -l "Right" -align "center" -p colorIndexModuleRCL rightColorIndexTitle;
+text  -l "Center" -align "center" -p colorIndexModuleRCL centerColorIndexTitle;
+text  -l "Left" -align "center" -p colorIndexModuleRCL leftColorIndexTitle;
+
+colorIndexSliderGrp  -min 1 -max 31 -value 16 -columnWidth 1 37 -columnWidth 2 100 -p colorIndexModuleRCL rightColorIndexClSG;
+colorIndexSliderGrp  -min 1 -max 31 -value 8 -columnWidth 1 37 -columnWidth 2 100 -p colorIndexModuleRCL centerColorIndexClSG;
+colorIndexSliderGrp  -min 1 -max 31 -value 11 -columnWidth 1 37 -columnWidth 2 100 -p colorIndexModuleRCL leftColorIndexClSG;
+
+
+separator -height 7 -style "none" -p mainColumnLayout prefixTemplateSep1;
+
+scrollLayout -h 285 -verticalScrollBarThickness 16 -p mainColumnLayout mainScrollLayout;
+rowColumnLayout -nc 2 -cw 1 125 -cw 2 275 -p mainScrollLayout mainModuleRCL;
+
+//separator -height 5 -style "none" -p mainModuleRCL mainScrollLayoutSep1;
+//separator -height 5 -style "none" -p mainModuleRCL mainScrollLayoutSep2;
+
+int $hgt = 135;
+
+frameLayout -l " Arm" 
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p mainModuleRCL
+	armModuleFrame;
+
+symbolButton -h 80 -i "armModule.bmp" -c "cr_buildArmDummySkeletonModulePreCMD()" -p armModuleFrame armTempModuleBtn;
+
+frameLayout -l " options:"
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p mainModuleRCL
+	armOpModuleFrame;
+
+formLayout -p armOpModuleFrame armOpModuleForm;
+
+	text -l "joints:  " -al "right" noArmLimbsJointsTitle;
+	intField -minValue 3 -maxValue 10 -value 3 -s 1 noArmLimbsJointsISG;
+	//intScrollBar -minValue 3 -maxValue 10 -value 3 -s 1 -hr 0 -cc "cr_updateIntFToScrollBar(\"noArmLimbsJointsISB\",\"noArmLimbsJointsISG\")" noArmLimbsJointsISB;
+
+	text -l "fingers:  " -al "right" armFingersTitle;
+	checkBox -l "" -v 1 -cc "cr_armFingersModuleSwitch()" armFingersChk;
+
+	text -l "no:  " -al "right" noArmFingersJointsTitle;
+	intField -minValue 0 -maxValue 5 -value 5 -s 4 noArmFingersJointISG;
+	//intScrollBar -minValue 0 -maxValue 5 -value 5 -s 1 -hr 0 -cc "cr_updateIntFToScrollBar(\"noArmFingersJointISB\",\"noArmFingersJointISG\")" noArmFingersJointISB;
+
+	text -l "segment:  " -al "right" noArmFingersSegJointsTitle;
+	intField -minValue 2 -maxValue 10 -value 4 -s 1 noArmFingersSegJointISG;
+	//intScrollBar -minValue 2 -maxValue 10 -value 4 -s 1 -hr 0 -cc "cr_updateIntFToScrollBar(\"noArmFingersSegJointISB\",\"noArmFingersSegJointISG\")" noArmFingersSegJointISB;
+
+	text -l "symmetry:  " -al "right" armSymmetryTitle;
+	checkBox -l "" -v 0 armSymmetryChk;
+
+	separator -height 5 -style "out" armSep1;
+
+	text -l "Side:  " -align "left" armModuleSideTitle;
+	radioButtonGrp -nrb 2  -la2 "L" "R" -cw2 30 30 -sl 1 armModuleSideRdBnGrp;
+
+	scrollField -wordWrap true -text "creates arm skeleton template setup. ideal use: any arm Humans, Insects.." -editable false armSF;
+
+formLayout -e
+
+	-af noArmLimbsJointsTitle top 5
+	-af noArmLimbsJointsTitle left 0
+	-ap noArmLimbsJointsTitle right 0 15
+	
+	-ac noArmLimbsJointsISG top 5 noArmLimbsJointsTitle
+	-af noArmLimbsJointsISG left 0
+	-ap noArmLimbsJointsISG right 0 10
+
+	//-ac noArmLimbsJointsISB top 5 noArmLimbsJointsTitle
+	//-ac noArmLimbsJointsISB left 0 noArmLimbsJointsISG
+	//-ap noArmLimbsJointsISB right 0 15
+
+	-af armFingersTitle top 5
+	-ac armFingersTitle left 0 noArmLimbsJointsTitle
+	-ap armFingersTitle right 0 35
+
+	-ac armFingersChk top 5 armFingersTitle
+	-ac armFingersChk left 25 noArmLimbsJointsISG
+	-ap armFingersChk right 0 35
+
+	-af noArmFingersJointsTitle top 5
+	-ac noArmFingersJointsTitle left 0 armFingersTitle
+	-ap noArmFingersJointsTitle right 0 47
+	
+	-ac noArmFingersJointISG top 5 noArmFingersJointsTitle
+	-ac noArmFingersJointISG left 7 armFingersChk
+	-ap noArmFingersJointISG right 0 45	
+
+	//-ac noArmFingersJointISB top 5 noArmFingersJointsTitle
+	//-ac noArmFingersJointISB left 0 noArmFingersJointISG 
+	//-ap noArmFingersJointISB right 0 50
+
+	-af noArmFingersSegJointsTitle top 5
+	-ac noArmFingersSegJointsTitle left 0 noArmFingersJointsTitle
+	-ap noArmFingersSegJointsTitle right 0 75
+	
+	-ac noArmFingersSegJointISG top 5 noArmFingersSegJointsTitle
+	-ac noArmFingersSegJointISG left 20 noArmFingersJointISG
+	-ap noArmFingersSegJointISG right 0 65	
+
+	//-ac noArmFingersSegJointISB top 5 noArmFingersSegJointsTitle
+	//-ac noArmFingersSegJointISB left 0 noArmFingersSegJointISG
+	//-ap noArmFingersSegJointISB right 0 70
+
+	-af armSymmetryTitle top 5
+	-ac armSymmetryTitle left 0 noArmFingersSegJointsTitle
+	-ap armSymmetryTitle right 0 100
+
+	-ac armSymmetryChk top 5 armFingersTitle
+	-ac armSymmetryChk left 35 noArmFingersSegJointISG 
+	-ap armSymmetryChk right 0 100
+
+	-ac armSep1 top 2 noArmLimbsJointsISG 
+	-af armSep1 left 0 
+	-ap armSep1 right 0 100
+
+	-ac armModuleSideTitle top 15 armSep1 
+	-af armModuleSideTitle left 0 
+	-ap armModuleSideTitle right 0 25
+
+	-ac armModuleSideRdBnGrp top 5 armModuleSideTitle 
+	-af armModuleSideRdBnGrp left 0 
+	-ap armModuleSideRdBnGrp right 0 25
+
+	-ac armSF top 0 armSep1 
+	-ac armSF left 0 armModuleSideTitle
+	-ap armSF right 0 100
+
+armOpModuleForm;
+
+separator -height 5 -style "none" -p mainModuleRCL armTemplateSep1;
+separator -height 5 -style "none" -p mainModuleRCL armTemplateSep2;
+
+
+frameLayout -l " Leg" 
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p mainModuleRCL
+	legModuleFrame;
+
+symbolButton -i "legModule.bmp" -c "cr_buildLegDummySkeletonModulePreCMD()" -p legModuleFrame legTempModuleBtn;
+
+frameLayout -l " options:" 
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p mainModuleRCL
+	legOpModuledFrame;
+
+formLayout -p legOpModuledFrame legOpModuledForm;
+	text -l "joints:  " -al "right" noLegLimbsJointsTitle;
+	intField -minValue 3 -maxValue 10 -value 3 -s 1 noLegLimbsJointsISG;
+	//intScrollBar -minValue 3 -maxValue 10 -value 3 -s 1 -hr 0 -cc "cr_updateIntFToScrollBar(\"noLegLimbsJointsISB\",\"noLegLimbsJointsISG\")" noLegLimbsJointsISB;
+	text -l "fingers:  " -al "right" legFingersTitle;
+	checkBox -l "" -v 1 -cc "cr_legFingersModuleSwitch()" legFingersChk;
+	text -l "no:  " -al "right" noLegFingersJointsTitle;
+	intField -minValue 0 -maxValue 5 -value 5 -s 1 noLegFingersJointISG;
+	//intScrollBar -minValue 0 -maxValue 5 -value 5 -s 1 -hr 0 -cc "cr_updateIntFToScrollBar(\"noLegFingersJointISB\",\"noLegFingersJointISG\")" noLegFingersJointISB;
+	text -l "segment:  " -al "right" noLegFingersSegJointsTitle;
+	intField -minValue 2 -maxValue 10 -value 4 -s 1 noLegFingersSegJointISG;
+	//intScrollBar -minValue 2 -maxValue 10 -value 4 -s 1 -hr 0 -cc "cr_updateIntFToScrollBar(\"noLegFingersSegJointISB\",\"noLegFingersSegJointISG\")" noLegFingersSegJointISB;
+	text -l "symmetry:  " -al "right" legSymmetryTitle;
+	checkBox -l "" -v 0 legSymmetryChk;
+	separator -height 5 -style "out" legSep1;
+	text -l "Side:  " -align "left" legModuleSideTitle;
+	radioButtonGrp -nrb 2  -la2 "L" "R" -cw2 30 30 -sl 1 legModuleSideRdBnGrp;
+	scrollField -wordWrap true -text "creates leg skeleton template setup. ideal use: any leg Biped, Quadroped.." -editable false legSF;
+
+formLayout -e
+	-af noLegLimbsJointsTitle top 5
+	-af noLegLimbsJointsTitle left 0
+	-ap noLegLimbsJointsTitle right 0 15
+	
+	-ac noLegLimbsJointsISG top 5 noLegLimbsJointsTitle
+	-af noLegLimbsJointsISG left 0
+	-ap noLegLimbsJointsISG right 0 10
+
+	//-ac noLegLimbsJointsISB top 5 noLegLimbsJointsTitle
+	//-ac noLegLimbsJointsISB left 0 noLegLimbsJointsISG
+	//-ap noLegLimbsJointsISB right 0 15
+
+	-af legFingersTitle top 5
+	-ac legFingersTitle left 0 noLegLimbsJointsTitle
+	-ap legFingersTitle right 0 35
+
+	-ac legFingersChk top 5 legFingersTitle
+	-ac legFingersChk left 25 noLegLimbsJointsISG
+	-ap legFingersChk right 0 35
+
+	-af noLegFingersJointsTitle top 5
+	-ac noLegFingersJointsTitle left 0 legFingersTitle
+	-ap noLegFingersJointsTitle right 0 47
+	
+	-ac noLegFingersJointISG top 5 noLegFingersJointsTitle
+	-ac noLegFingersJointISG left 7 legFingersChk
+	-ap noLegFingersJointISG right 0 45	
+
+	//-ac noLegFingersJointISB top 5 noLegFingersJointsTitle
+	//-ac noLegFingersJointISB left 0 noLegFingersJointISG 
+	//-ap noLegFingersJointISB right 0 50
+
+	-af noLegFingersSegJointsTitle top 5
+	-ac noLegFingersSegJointsTitle left 0 noLegFingersJointsTitle
+	-ap noLegFingersSegJointsTitle right 0 75
+	
+	-ac noLegFingersSegJointISG top 5 noLegFingersSegJointsTitle
+	-ac noLegFingersSegJointISG left 20 noLegFingersJointISG
+	-ap noLegFingersSegJointISG right 0 65	
+
+	//-ac noLegFingersSegJointISB top 5 noLegFingersSegJointsTitle
+	//-ac noLegFingersSegJointISB left 0 noLegFingersSegJointISG
+	//-ap noLegFingersSegJointISB right 0 70
+
+	-af legSymmetryTitle top 5
+	-ac legSymmetryTitle left 0 noLegFingersSegJointsTitle
+	-ap legSymmetryTitle right 0 100
+
+	-ac legSymmetryChk top 5 legFingersTitle
+	-ac legSymmetryChk left 35 noLegFingersSegJointISG 
+	-ap legSymmetryChk right 0 100
+
+	-ac legSep1 top 2 noLegLimbsJointsISG 
+	-af legSep1 left 0 
+	-ap legSep1 right 0 100
+
+	-ac legModuleSideTitle top 15 legSep1 
+	-af legModuleSideTitle left 0 
+	-ap legModuleSideTitle right 0 25
+
+	-ac legModuleSideRdBnGrp top 5 legModuleSideTitle 
+	-af legModuleSideRdBnGrp left 0 
+	-ap legModuleSideRdBnGrp right 0 25
+
+	-ac legSF top 0 legSep1 
+	-ac legSF left 0 legModuleSideTitle 
+	-ap legSF right 0 100
+legOpModuledForm;
+
+separator -height 5 -style "none" -p mainModuleRCL legTemplateSep1;
+separator -height 5 -style "none" -p mainModuleRCL legTemplateSep2;
+
+frameLayout -l " Spine" 
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p mainModuleRCL
+	spineModuleFrame;
+
+symbolButton -i "spineModule.bmp" -c "cr_buildSpineDummySkeletonModulePreCMD()" -p spineModuleFrame spineTempModuleBtn;
+
+frameLayout -l " options:" 
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p mainModuleRCL
+	spineOpModuledFrame;
+
+formLayout -p spineOpModuledFrame spineOpModuledForm;
+	text -l "title:  " -al "right" spineTemplateTitle;
+	textField -tx "spine" spineTemplateTF;
+	text -l "controls:  " -al "right" noSpineConTitle;
+	intField -minValue 2 -maxValue 10 -value 4 -s 1 noSpineConIF;
+	//intScrollBar -minValue 2 -maxValue 10 -value 4 -s 1 -hr 0 -cc "cr_updateIntFToScrollBar(\"noSpineConISB\",\"noSpineConIF\")" noSpineConISB;
+	text -l "axis:  " -al "right" spineTemplateAxisTitle;
+	optionMenu spineAxisOM;
+	menuItem -label "x";
+	menuItem -label "y";
+	menuItem -label "z";
+	text -l "length:  " -al "right" disSpineConTitle;
+	intField -minValue 3 -maxValue 50 -value 4 -s 1 disSpineConIF;
+	//intScrollBar -minValue 3 -maxValue 50 -value 4 -s 1 -hr 0 -cc "cr_updateIntFToScrollBar(\"disSpineConISB\",\"disSpineConIF\")" disSpineConISB;
+	text -l "symmetry:  " -al "right" spineSymmetryTitle;
+	checkBox -l "" -v 0 spineSymmetryChk;
+	separator -height 5 -style "out" spineInfoSep1;
+	scrollField -wordWrap true -text "creates spine skeleton template setup. ideal use: any spine \nNote: control defines how many control you want in the rig not joints.." -editable false spineInfoSF;
+
+formLayout -e
+
+	-af spineTemplateTitle top 5
+	-af spineTemplateTitle left 0
+	-ap spineTemplateTitle right 0 15
+
+	-ac spineTemplateTF top 5 spineTemplateTitle 
+	-af spineTemplateTF left 0
+	-ap spineTemplateTF right 0 20
+
+	-af noSpineConTitle top 5
+	-ac noSpineConTitle left 0 spineTemplateTitle 
+	-ap noSpineConTitle right 0 40
+
+	-ac noSpineConIF top 5 noSpineConTitle 
+	-ac noSpineConIF left 5 spineTemplateTF 
+	-ap noSpineConIF right 0 35
+
+	//-ac noSpineConISB top 5 noSpineConTitle 
+	//-ac noSpineConISB left 0 noSpineConIF 
+	//-ap noSpineConISB right 0 40
+
+	-af spineTemplateAxisTitle top 5
+	-ac spineTemplateAxisTitle left 0 noSpineConTitle 
+	-ap spineTemplateAxisTitle right 0 55
+
+	-ac spineAxisOM top 5 spineTemplateAxisTitle 
+	-ac spineAxisOM left 20 noSpineConIF 
+	-ap spineAxisOM right 0 60
+
+	-af disSpineConTitle top 5
+	-ac disSpineConTitle left 0 spineTemplateAxisTitle 
+	-ap disSpineConTitle right 0 77
+
+	-ac disSpineConIF top 5 disSpineConTitle 
+	-ac disSpineConIF left 4 spineAxisOM 
+	-ap disSpineConIF right 0 72
+
+	//-ac disSpineConISB top 5 disSpineConTitle 
+	//-ac disSpineConISB left 0 disSpineConIF 
+	//-ap disSpineConISB right 0 77
+
+	-af spineSymmetryTitle top 5
+	-ac spineSymmetryTitle left 0 disSpineConTitle
+	-ap spineSymmetryTitle right 0 100
+
+	-ac spineSymmetryChk top 5 spineSymmetryTitle 
+	-ac spineSymmetryChk left 17 disSpineConIF 
+	-ap spineSymmetryChk right 0 100
+
+	-ac spineInfoSep1 top 2 spineTemplateTF 
+	-af spineInfoSep1 left 0 
+	-ap spineInfoSep1 right 0 100
+
+	-ac spineInfoSF top 0 spineInfoSep1 
+	-af spineInfoSF left 0 
+	-ap spineInfoSF right 0 100
+spineOpModuledForm;
+
+separator -height 5 -style "none" -p mainModuleRCL spineTemplateSep1;
+separator -height 5 -style "none" -p mainModuleRCL spineTemplateSep2;
+
+frameLayout -l " Neck Head" 
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p mainModuleRCL
+	neckModuleFrame;
+
+symbolButton -i "headNeckModule.bmp" -c "cr_buildHeadNeckDummySkeletonModulePreCMD()" -p neckModuleFrame neckTempModuleBtn;
+
+frameLayout -l " options:" 
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p mainModuleRCL
+	neckOpModuledFrame;
+
+formLayout -p neckOpModuledFrame neckOpModuledForm;
+	text -l "title:  " -al "right" neckTemplateTitle;
+	textField -tx "neck" neckTemplateTF;
+	text -l "controls:  " -al "right" noNeckConTitle;
+	intField -minValue 1 -maxValue 10 -value 1 -s 1 noNeckConIF;
+	//intScrollBar -minValue 1 -maxValue 10 -value 1 -s 1 -hr 0 -cc "cr_updateIntFToScrollBar(\"noNeckConISB\",\"noNeckConIF\")" noNeckConISB;
+	text -l "axis:  " -al "right" neckTemplateAxisTitle;
+	optionMenu neckAxisOM;
+	menuItem -label "x";
+	menuItem -label "y";
+	menuItem -label "z";
+	text -l "length:  " -al "right" disNeckConTitle;
+	intField -minValue -50 -maxValue 50 -value 1 -s 1 disNeckConIF;
+	//intScrollBar -minValue -50 -maxValue 50 -value 1 -s 1 -hr 0 -cc "cr_updateIntFToScrollBar(\"disNeckConISB\",\"disNeckConIF\")" disNeckConISB;
+	text -l "symmetry:  " -al "right" neckSymmetryTitle;
+	checkBox -l "" -v 0 neckSymmetryChk;
+	separator -height 5 -style "out" neckInfoSep1;
+	scrollField -wordWrap true -text "creates neck skeleton template setup. ideal use: any neck \nNote: control defines how many control you want in the rig not joints.." -editable false neckInfoSF;
+
+formLayout -e
+
+	-af neckTemplateTitle top 5
+	-af neckTemplateTitle left 0
+	-ap neckTemplateTitle right 0 15
+
+	-ac neckTemplateTF top 5 neckTemplateTitle 
+	-af neckTemplateTF left 0
+	-ap neckTemplateTF right 0 20
+
+	-af noNeckConTitle top 5
+	-ac noNeckConTitle left 0 neckTemplateTitle 
+	-ap noNeckConTitle right 0 40
+
+	-ac noNeckConIF top 5 noNeckConTitle 
+	-ac noNeckConIF left 5 neckTemplateTF 
+	-ap noNeckConIF right 0 35
+
+	//-ac noNeckConISB top 5 noNeckConTitle 
+	//-ac noNeckConISB left 0 noNeckConIF 
+	//-ap noNeckConISB right 0 40
+
+	-af neckTemplateAxisTitle top 5
+	-ac neckTemplateAxisTitle left 0 noNeckConTitle 
+	-ap neckTemplateAxisTitle right 0 55
+
+	-ac neckAxisOM top 5 neckTemplateAxisTitle 
+	-ac neckAxisOM left 20 noNeckConIF 
+	-ap neckAxisOM right 0 60
+
+	-af disNeckConTitle top 5
+	-ac disNeckConTitle left 0 neckTemplateAxisTitle 
+	-ap disNeckConTitle right 0 77
+
+	-ac disNeckConIF top 5 disNeckConTitle 
+	-ac disNeckConIF left 4 neckAxisOM 
+	-ap disNeckConIF right 0 72
+
+	//-ac disNeckConISB top 5 disNeckConTitle 
+	//-ac disNeckConISB left 0 disNeckConIF 
+	//-ap disNeckConISB right 0 77
+
+	-af neckSymmetryTitle top 5
+	-ac neckSymmetryTitle left 0 disNeckConTitle
+	-ap neckSymmetryTitle right 0 100
+
+	-ac neckSymmetryChk top 5 neckSymmetryTitle 
+	-ac neckSymmetryChk left 17 disNeckConIF 
+	-ap neckSymmetryChk right 0 100
+
+	-ac neckInfoSep1 top 2 neckTemplateTF 
+	-af neckInfoSep1 left 0 
+	-ap neckInfoSep1 right 0 100
+
+	-ac neckInfoSF top 0 neckInfoSep1 
+	-af neckInfoSF left 0 
+	-ap neckInfoSF right 0 100
+neckOpModuledForm;
+
+separator -height 5 -style "none" -p mainModuleRCL neckTemplateSep1;
+separator -height 5 -style "none" -p mainModuleRCL neckTemplateSep2;
+
+frameLayout -l " Tentacle" 
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p mainModuleRCL
+	tentacleModuleFrame;
+
+symbolButton -i "tentacleModule.bmp" -c "cr_buildTentacleDummySkeletonModulePreCMD()" -p tentacleModuleFrame tentacleTempModuleBtn;
+
+frameLayout -l " options:" 
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p mainModuleRCL
+	tentacleOpModuledFrame;
+
+formLayout -p tentacleOpModuledFrame tentacleOpModuledForm;
+	text -l "title:  " -al "right" tentacleTemplateTitle;
+	textField -tx "tail" tentacleTemplateTF;
+	text -l "controls:  " -al "right" noTentacleConTitle;
+	intField -minValue 2 -maxValue 20 -value 7 -s 1 noTentacleConIF;
+	//intScrollBar -minValue 2 -maxValue 20 -value 7 -s 1 -hr 0 -cc "cr_updateIntFToScrollBar(\"noTentacleConISB\",\"noTentacleConIF\")" noTentacleConISB;
+	text -l "axis:  " -al "right" tentacleTemplateAxisTitle;
+	optionMenu tentacleAxisOM;
+	menuItem -label "x";
+	menuItem -label "y";
+	menuItem -label "z";
+	text -l "length:  " -al "right" disTentacleConTitle;
+	intField -minValue -50 -maxValue 50 -value 7 -s 1 disTentacleConIF;
+	//intScrollBar -minValue -50 -maxValue 50 -value 7 -s 1 -hr 0 -cc "cr_updateIntFToScrollBar(\"disTentacleConISB\",\"disTentacleConIF\")" disTentacleConISB;
+	text -l "symmetry:  " -al "right" tentacleSymmetryTitle;
+	checkBox -l "" -v 0 tentacleSymmetryChk;
+	separator -height 5 -style "out" tentacleInfoSep1;
+	scrollField -wordWrap true -text "creates tentacle skeleton template setup. ideal use: Tail, Ears \nNote control defines how many control you want in the rig not joints.." -editable false tentacleInfoSF;
+
+formLayout -e
+
+	-af tentacleTemplateTitle top 5
+	-af tentacleTemplateTitle left 0
+	-ap tentacleTemplateTitle right 0 15
+
+	-ac tentacleTemplateTF top 5 tentacleTemplateTitle 
+	-af tentacleTemplateTF left 0
+	-ap tentacleTemplateTF right 0 20
+
+	-af noTentacleConTitle top 5
+	-ac noTentacleConTitle left 0 tentacleTemplateTitle 
+	-ap noTentacleConTitle right 0 40
+
+	-ac noTentacleConIF top 5 noTentacleConTitle 
+	-ac noTentacleConIF left 5 tentacleTemplateTF 
+	-ap noTentacleConIF right 0 35
+
+	//-ac noTentacleConISB top 5 noTentacleConTitle 
+	//-ac noTentacleConISB left 0 noTentacleConIF 
+	//-ap noTentacleConISB right 0 40
+
+	-af tentacleTemplateAxisTitle top 5
+	-ac tentacleTemplateAxisTitle left 0 noTentacleConTitle 
+	-ap tentacleTemplateAxisTitle right 0 55
+
+	-ac tentacleAxisOM top 5 tentacleTemplateAxisTitle 
+	-ac tentacleAxisOM left 20 noTentacleConIF 
+	-ap tentacleAxisOM right 0 60
+
+	-af disTentacleConTitle top 5
+	-ac disTentacleConTitle left 0 tentacleTemplateAxisTitle 
+	-ap disTentacleConTitle right 0 77
+
+	-ac disTentacleConIF top 5 disTentacleConTitle 
+	-ac disTentacleConIF left 4 tentacleAxisOM 
+	-ap disTentacleConIF right 0 72
+
+	//-ac disTentacleConISB top 5 disTentacleConTitle 
+	//-ac disTentacleConISB left 0 disTentacleConIF 
+	//-ap disTentacleConISB right 0 77
+
+	-af tentacleSymmetryTitle top 5
+	-ac tentacleSymmetryTitle left 0 disTentacleConTitle
+	-ap tentacleSymmetryTitle right 0 100
+
+	-ac tentacleSymmetryChk top 5 tentacleSymmetryTitle 
+	-ac tentacleSymmetryChk left 15 disTentacleConIF 
+	-ap tentacleSymmetryChk right 0 100
+
+	-ac tentacleInfoSep1 top 2 tentacleTemplateTF 
+	-af tentacleInfoSep1 left 0 
+	-ap tentacleInfoSep1 right 0 100
+
+	-ac tentacleInfoSF top 0 tentacleInfoSep1 
+	-af tentacleInfoSF left 0 
+	-ap tentacleInfoSF right 0 100
+tentacleOpModuledForm;
+
+separator -height 5 -style "none" -p mainModuleRCL tentTemplateSep1;
+separator -height 5 -style "none" -p mainModuleRCL tentTemplateSep2;
+
+frameLayout -l " Finger" 
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p mainModuleRCL
+	fingerModuleFrame;
+
+symbolButton -i "fingerModule.bmp" -c "cr_buildFingerDummySkeletonModulePreCMD()" -p fingerModuleFrame fingerTempModuleBtn;
+
+frameLayout -l " options:" 
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p mainModuleRCL
+	fingerOpModuledFrame;
+
+formLayout -p fingerOpModuledFrame fingerOpModuledForm;
+	text -l "title:  " -al "right" fingerTemplateTitle;
+	textField -tx "index" fingerTemplateTF;
+	text -l "segments:  " -al "right" noFingerConTitle;
+	intField -minValue 2 -maxValue 10 -value 4 -s 1 noFingerConIF;
+	//intScrollBar -minValue 2 -maxValue 10 -value 4 -s 1 -hr 0 -cc "cr_updateIntFToScrollBar(\"noFingerConISB\",\"noFingerConIF\")" noFingerConISB;
+	text -l "axis:  " -al "right" fingerTemplateAxisTitle;
+	optionMenu fingerAxisOM;
+	menuItem -label "x";
+	menuItem -label "y";
+	menuItem -label "z";
+	text -l "length:  " -al "right" disFingerConTitle;
+	intField -minValue 3 -maxValue 15 -value 4 -s 1 disFingerConIF;
+	//intScrollBar -minValue 3 -maxValue 15 -value 4 -s 1 -hr 0 -cc "cr_updateIntFToScrollBar(\"disFingerConISB\",\"disFingerConIF\")" disFingerConISB;
+	text -l "symmetry:  " -al "right" fingerSymmetryTitle;
+	checkBox -l "" -v 0 fingerSymmetryChk;
+	separator -height 5 -style "out" fingerInfoSep1;
+	text -l "Side:  " -align "left" fingerModuleSideTitle;
+	radioButtonGrp -nrb 2  -la2 "L" "R" -cw2 30 30 -sl 1 fingerModuleSideRdBnGrp;
+	scrollField -wordWrap true -text "creates finger skeleton template setup. ideal use: any fingers Human, Animals" -editable false fingerInfoSF;
+
+formLayout -e
+	-af fingerTemplateTitle top 5
+	-af fingerTemplateTitle left 0
+	-ap fingerTemplateTitle right 0 15
+
+	-ac fingerTemplateTF top 5 fingerTemplateTitle 
+	-af fingerTemplateTF left 0
+	-ap fingerTemplateTF right 0 17
+
+	-af noFingerConTitle top 5
+	-ac noFingerConTitle left 0 fingerTemplateTitle 
+	-ap noFingerConTitle right 0 40
+
+	-ac noFingerConIF top 5 noFingerConTitle 
+	-ac noFingerConIF left 4 fingerTemplateTF 
+	-ap noFingerConIF right 0 30
+
+	//-ac noFingerConISB top 5 noFingerConTitle 
+	//-ac noFingerConISB left 0 noFingerConIF 
+	//-ap noFingerConISB right 0 40
+
+	-af fingerTemplateAxisTitle top 5
+	-ac fingerTemplateAxisTitle left 0 noFingerConTitle 
+	-ap fingerTemplateAxisTitle right 0 55
+
+	-ac fingerAxisOM top 5 fingerTemplateAxisTitle 
+	-ac fingerAxisOM left 35 noFingerConIF 
+	-ap fingerAxisOM right 0 60
+
+	-af disFingerConTitle top 5
+	-ac disFingerConTitle left 0 fingerTemplateAxisTitle 
+	-ap disFingerConTitle right 0 77
+
+	-ac disFingerConIF top 5 disFingerConTitle 
+	-ac disFingerConIF left 5 fingerAxisOM 
+	-ap disFingerConIF right 0 72
+
+	//-ac disFingerConISB top 5 disFingerConTitle 
+	//-ac disFingerConISB left 0 disFingerConIF 
+	//-ap disFingerConISB right 0 77
+
+	-af fingerSymmetryTitle top 5
+	-ac fingerSymmetryTitle left 0 disFingerConTitle
+	-ap fingerSymmetryTitle right 0 100
+
+	-ac fingerSymmetryChk top 5 fingerSymmetryTitle 
+	-ac fingerSymmetryChk left 15 disFingerConIF 
+	-ap fingerSymmetryChk right 0 100
+
+	-ac fingerInfoSep1 top 2 fingerTemplateTF 
+	-af fingerInfoSep1 left 0 
+	-ap fingerInfoSep1 right 0 100
+
+	-ac fingerModuleSideTitle top 10 fingerInfoSep1 
+	-af fingerModuleSideTitle left 0 
+	-ap fingerModuleSideTitle right 0 25
+
+	-ac fingerModuleSideRdBnGrp top 10 fingerModuleSideTitle 
+	-af fingerModuleSideRdBnGrp left 0 
+	-ap fingerModuleSideRdBnGrp right 0 25
+
+	-ac fingerInfoSF top 0 fingerInfoSep1 
+	-ac fingerInfoSF left 0 fingerModuleSideTitle 
+	-ap fingerInfoSF right 0 100
+fingerOpModuledForm;
+
+separator -height 7 -style "out" -p mainColumnLayout headOpModuledFormSep1;
+
+rowColumnLayout -nc 3 -cw 1 141 -cw 2 141 -cw 3 141 -p mainColumnLayout mainModuleRCL;
+    button -l "Connect Modules"  -c "cr_connectModuleComponants(\"\",\"\")" connectModulesBtn;
+    button -l "Add To Heirarchy"  -c "cr_addToModuleComponantsHierarchy(\"\",\"\")" addHeirarchyBtn;
+    button -l "Delete"  -c "cr_deleteModules()" delModulessBtn;
+    button -l "Symmetry"  -c "cr_connectModuleSymmetry()" symmetryModuleBtn;
+    button -l "Break Symmetry"  -c "cr_breakModuleSymConnection(\"\")" symmModuleBtn;
+    button -l "Mirror Seleted"  -c "cr_mirrorModuleTemplates(\"\")" mirrorModuleBtn;
+    separator -height 7 -style "out" -p createSkColumnLayout OpModuledFormSep1;
+    button -h 50 -l "Build Skeleton" -p createSkColumnLayout -c "cr_buildModuleSkeleton()" buildModulesBtn;
+    separator -height 7 -style "out" -p createSkColumnLayout OpModuledFormSep2;
+
+
+frameLayout -l ""
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedIn"
+	-marginHeight 3
+	-marginWidth 3
+	-p modulePartTab
+	templatesFrame;
+
+columnLayout -adj 1 -p templatesFrame tempMainColumnLayout;
+
+rowColumnLayout -nc 1 -cw 1 300 -p tempMainColumnLayout chooseDirRCL;
+	text  -l "Choose Directory :" -fn "boldLabelFont" -align "left" -p chooseDirRCL chooseDirTitle;
+
+rowColumnLayout -nc 3 -cw 1 50 -cw 2 300 -cw 3 30 -p tempMainColumnLayout  moduleTempdirMainRCL;
+	text  -l "path :  " -align "right" -p moduleTempdirMainRCL moduleTempdirTitle;
+	textField -editable 1 -tx "Choose your skeleton template directory...." -p moduleTempdirMainRCL moduleTempdirTF;
+	button -l "..." -c "cr_chooseModuleTemplatesDir()" -p moduleTempdirMainRCL moduleTempdirBtn;
+
+rowColumnLayout -nc 1 -cw 1 410 -p tempMainColumnLayout templateTitleRCL;
+	separator -height 10 -style "out" -p templateTitleRCL templatesTitleSep1;
+	text  -l "Templates:" -fn "boldLabelFont" -align "left" -p templateTitleRCL templatesTitle;
+	separator -height 10 -style "none" -p templateTitleRCL templatesTitleSep2;
+
+scrollLayout -h 285 -verticalScrollBarThickness 16 -p tempMainColumnLayout tempMainScrollLayout;
+rowColumnLayout -nc 2 -cw 1 120 -cw 2 270 -p tempMainScrollLayout tempalteMainRCL;
+
+//separator -height 5 -style "none" -p tempalteMainRCL tempMainScrollLayoutSep1;
+//separator -height 5 -style "none" -p tempalteMainRCL tempMainScrollLayoutSep2;
+
+int $hgt = 135;
+
+frameLayout -l "Biped" 
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p tempalteMainRCL
+	bipedTempFrame;
+
+symbolButton -i "bipedModule.bmp" -c "cr_buildBipedModulePreCMD()" -p bipedTempFrame bipedTemplateBtn;
+
+frameLayout -l " options:"
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p tempalteMainRCL
+	bipedTempInfoFrame;
+
+formLayout -p bipedTempInfoFrame bipedOpModuleForm;
+
+	text -l "spine:  " -al "right" noBipedSpineJointsTitle;
+	intField -minValue 3 -maxValue 10 -value 4 -s 1 noBipedSpineJointsISG;
+
+	text -l "neck:  " -al "right" noBipedNeckJointsTitle;
+	intField -minValue 1 -maxValue 10 -value 1 -s 1 noBipedNeckJointsISG;
+
+	text -l "fingers:  " -al "right" bipedFingersTitle;
+	checkBox -l "" -v 1 -cc "cr_bipedFingersModuleSwitch()" bipedFingersChk;
+
+	text -l "no:  " -al "right" noBipedFingersJointsTitle;
+	intField -minValue 0 -maxValue 5 -value 5 -s 4 noBipedFingersJointISG;
+
+	text -l "Toes:  " -al "right" bipedToesTitle;
+	checkBox -l "" -v 1 -cc "cr_bipedToesModuleSwitch()" bipedToesChk;
+
+	text -l "no:  " -al "right" noBipedToesJointsTitle;
+	intField -minValue 0 -maxValue 5 -value 5 -s 4 noBipedToesJointISG;
+
+	separator -height 5 -style "out" bipedInfoSep1;
+
+	scrollField -wordWrap true -text "This is Biped skeleton template created from several modules.\nImportant Note: \ndifferent module still can be added or deleted.\nfor example: \nears, tail etc..." -editable false bipedTempInfoSF;
+
+formLayout -e
+
+	-af noBipedSpineJointsTitle top 5
+	-af noBipedSpineJointsTitle left 0
+	-ap noBipedSpineJointsTitle right 0 15
+	
+	-ac noBipedSpineJointsISG top 5 noBipedSpineJointsTitle
+	-af noBipedSpineJointsISG left 0
+	-ap noBipedSpineJointsISG right 0 10
+
+	-af noBipedNeckJointsTitle top 5
+	-ac noBipedNeckJointsTitle left 0 noBipedSpineJointsTitle
+	-ap noBipedNeckJointsTitle right 0 30
+
+	-ac noBipedNeckJointsISG top 5 noBipedNeckJointsTitle
+	-ac noBipedNeckJointsISG left 20 noBipedSpineJointsISG
+	-ap noBipedNeckJointsISG right 0 30
+
+	-af bipedFingersTitle top 5
+	-ac bipedFingersTitle left 0 noBipedNeckJointsTitle
+	-ap bipedFingersTitle right 0 50
+	
+	-ac bipedFingersChk top 5 bipedFingersTitle
+	-ac bipedFingersChk left 10 noBipedNeckJointsISG
+	-ap bipedFingersChk right 0 50	
+
+	-af noBipedFingersJointsTitle top 5
+	-ac noBipedFingersJointsTitle left 0 bipedFingersTitle
+	-ap noBipedFingersJointsTitle right 0 60
+	
+	-ac noBipedFingersJointISG top 5 noBipedFingersJointsTitle
+	-ac noBipedFingersJointISG left 0 bipedFingersChk
+	-ap noBipedFingersJointISG right 0 60
+
+	-af bipedToesTitle top 5
+	-ac bipedToesTitle left 0 noBipedFingersJointsTitle
+	-ap bipedToesTitle right 0 80
+
+	-ac bipedToesChk top 5 bipedToesTitle
+	-ac bipedToesChk left 20 noBipedFingersJointISG
+	-ap bipedToesChk right 0 80
+
+	-af noBipedToesJointsTitle top 5
+	-ac noBipedToesJointsTitle left 0 bipedToesTitle
+	-ap noBipedToesJointsTitle right 0 95
+	
+	-ac noBipedToesJointISG top 5 noBipedToesJointsTitle
+	-ac noBipedToesJointISG left 15 bipedToesChk
+	-ap noBipedToesJointISG right 0 95
+
+	-ac bipedInfoSep1 top 2 noBipedSpineJointsISG 
+	-af bipedInfoSep1 left 0 
+	-ap bipedInfoSep1 right 0 100
+
+	-ac bipedTempInfoSF top 0 bipedInfoSep1 
+	-af bipedTempInfoSF left 0 
+	-ap bipedTempInfoSF right 0 100
+
+bipedOpModuleForm;
+
+separator -height 5 -style "none" -p tempalteMainRCL bipedTemplateSep1;
+separator -height 5 -style "none" -p tempalteMainRCL bipedTemplateSep2;
+
+frameLayout -l "Quadroped" 
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p tempalteMainRCL
+	QuadTempFrame;
+
+symbolButton -i "quadModule.bmp" -c "cr_buildQuadModulePreCMD()" -p QuadTempFrame QuadTemplateBtn;
+
+
+frameLayout -l " Information:"
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p tempalteMainRCL
+	QuadTempInfoFrame;
+
+formLayout -p QuadTempInfoFrame quadOpModuleForm;
+
+	text -l "spine:  " -al "right" noQuadSpineJointsTitle;
+	intField -minValue 3 -maxValue 10 -value 4 -s 1 noQuadSpineJointsISG;
+
+	text -l "neck:  " -al "right" noQuadNeckJointsTitle;
+	intField -minValue 1 -maxValue 10 -value 2 -s 1 noQuadNeckJointsISG;
+
+	text -l "ears:  " -al "right" noQuadEarsJointsTitle;
+	intField -minValue 1 -maxValue 10 -value 4 -s 1 noQuadEarsJointsISG;
+
+	text -l "tail:  " -al "right" noQuadTailJointsTitle;
+	intField -minValue 1 -maxValue 10 -value 7 -s 1 noQuadTailJointsISG;	
+
+	text -l "Toes:  " -al "right" quadToesTitle;
+	checkBox -l "" -v 1 -cc "cr_quadToesModuleSwitch()" quadToesChk;
+
+	text -l "no:  " -al "right" noQuadToesJointsTitle;
+	intField -minValue 0 -maxValue 5 -value 5 -s 4 noQuadToesJointISG;
+
+	separator -height 5 -style "out" quadInfoSep1;
+
+	scrollField -wordWrap true -text "This is Quadroped skeleton template created from several modules.\nImportant Note: \ndifferent modules can be added or deleted.\nfor example: \nears, tail etc..." -editable false QuadTempInfoSF;
+
+formLayout -e
+
+	-af noQuadSpineJointsTitle top 5
+	-af noQuadSpineJointsTitle left 0
+	-ap noQuadSpineJointsTitle right 0 15
+	
+	-ac noQuadSpineJointsISG top 5 noQuadSpineJointsTitle
+	-af noQuadSpineJointsISG left 0
+	-ap noQuadSpineJointsISG right 0 10
+
+	-af noQuadNeckJointsTitle top 5
+	-ac noQuadNeckJointsTitle left 0 noQuadSpineJointsTitle
+	-ap noQuadNeckJointsTitle right 0 30
+
+	-ac noQuadNeckJointsISG top 5 noQuadNeckJointsTitle
+	-ac noQuadNeckJointsISG left 15 noQuadSpineJointsISG
+	-ap noQuadNeckJointsISG right 0 25
+
+	-af noQuadEarsJointsTitle top 5
+	-ac noQuadEarsJointsTitle left 10 noQuadNeckJointsTitle
+	-ap noQuadEarsJointsTitle right 0 45
+
+	-ac noQuadEarsJointsISG top 5 noQuadEarsJointsTitle
+	-ac noQuadEarsJointsISG left 15 noQuadNeckJointsISG
+	-ap noQuadEarsJointsISG right 0 40
+
+	-af noQuadTailJointsTitle top 5
+	-ac noQuadTailJointsTitle left 0 noQuadEarsJointsTitle
+	-ap noQuadTailJointsTitle right 0 60
+
+	-ac noQuadTailJointsISG top 5 noQuadTailJointsTitle
+	-ac noQuadTailJointsISG left 20 noQuadEarsJointsISG
+	-ap noQuadTailJointsISG right 0 60
+
+	-af quadToesTitle top 5
+	-ac quadToesTitle left 0 noQuadTailJointsTitle
+	-ap quadToesTitle right 0 80
+
+	-ac quadToesChk top 5 quadToesTitle
+	-ac quadToesChk left 20 noQuadTailJointsISG
+	-ap quadToesChk right 0 80
+
+	-af noQuadToesJointsTitle top 5
+	-ac noQuadToesJointsTitle left 0 quadToesTitle
+	-ap noQuadToesJointsTitle right 0 95
+	
+	-ac noQuadToesJointISG top 5 noQuadToesJointsTitle
+	-ac noQuadToesJointISG left 15 quadToesChk
+	-ap noQuadToesJointISG right 0 95
+
+	-ac quadInfoSep1 top 2 noQuadSpineJointsISG 
+	-af quadInfoSep1 left 0 
+	-ap quadInfoSep1 right 0 100
+
+	-ac QuadTempInfoSF top 0 quadInfoSep1 
+	-af QuadTempInfoSF left 0 
+	-ap QuadTempInfoSF right 0 100
+
+quadOpModuleForm;
+
+separator -height 5 -style "none" -p tempalteMainRCL bipedTemplateSep3;
+separator -height 5 -style "none" -p tempalteMainRCL bipedTemplateSep4;
+/*
+frameLayout -l "Dinosaur" 
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p tempalteMainRCL
+	InsectTempFrame;
+
+symbolButton -i "dinoTemplate.bmp" -c "file -import \"E:/Maya/Projects/scenes/rigging Camponants/trex.ma\"" -p InsectTempFrame InsectTemplateBtn;
+
+frameLayout -l " Information:"
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-h $hgt
+	-marginHeight 3
+	-marginWidth 3
+	-p tempalteMainRCL
+	InsectTempInfoFrame;
+
+scrollField -wordWrap true -text "This is Dinosaur skeleton template created from several modules.\nImportant Note: \ndifferent module still can be added.\nfor example: \nspikes, claws etc..." -editable false -p InsectTempInfoFrame InsectTempInfoSF;
+*/
+rowColumnLayout -nc 2 -cw 1 204 -cw 2 204 -cs 2 3 -p tempMainColumnLayout eximModuleRCL;
+    separator -height 10 -style "out" -p eximModuleRCL eximTitleSep1;
+    separator -height 10 -style "out" -p eximModuleRCL eximTitleSep2;
+    button -h 50 -l "Export"  -c "cr_exportModuleTemplates()" -p eximModuleRCL exportModulesBtn;
+    button -h 50 -l "Import"  -c "cr_importModuleTemplates()" -p eximModuleRCL importModulesBtn;
+    separator -height 10 -style "out" -p eximModuleRCL eximTitleSep3;
+    separator -height 10 -style "out" -p eximModuleRCL eximTitleSep4;
+
+tabLayout -edit
+	-tabLabel mainColumnLayout	"   -   M O D U L E S   -   " 
+	-tabLabel templatesFrame	"   -   T E M P L A T E S   -   "
+modulePartTab;
+
+columnLayout -adj 1 -p moduleRigTab cr_createRigColumnLayout;
+
+frameLayout -l "Global Options :"
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-marginHeight 3
+	-marginWidth 1
+	-p cr_createRigColumnLayout
+	globalRigOpFrame;
+
+rowColumnLayout -nc 4 -cw 1 70 -cw 2 120 -cw 3 95 -cw 4 95 -cs 1 0 -cs 2 0 -cs 3 10 -cs 4 0 -p globalRigOpFrame globalRigOpRCL;	
+	checkBox -label "Stretch" -v 1 -cc "cr_globalStretchSwitch()" -p globalRigOpRCL stretchGlobalChk;
+	optionMenu -l "Method:" -p globalRigOpRCL scaleTypeGlobalOpGrp;
+	menuItem -l "scale";
+	menuItem -l "translate";
+	checkBox -label "Volume" -v 1 -cc "" -p globalRigOpRCL volGlobalChk;
+	checkBox -label "Mid Lock" -v 1 -cc "" -p globalRigOpRCL midGlobalChk;
+
+rowColumnLayout -nc 2 -cw 1 140 -cw 2 300 -p cr_createRigColumnLayout globalRigXtraOpRCL;
+
+frameLayout -l "IK FK :"
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-marginHeight 3
+	-marginWidth 1
+	-p globalRigXtraOpRCL
+	globalRigXtraOpFrame;
+columnLayout -adj 1 -p globalRigXtraOpFrame globalRigXtraOpColumn;
+	
+rowColumnLayout -nc 2 -cw 1 120 -cw 2 20 -p globalRigXtraOpColumn rigIkFkOpRCL;
+
+	optionMenu -l "Method :" -p rigIkFkOpRCL rotTypeGlobalOpGrp;
+	menuItem -l "constrain";
+	//menuItem -l "utilNode";
+	text  -l "" -p rigIkFkOpRCL globalfill1;
+
+rowColumnLayout -nc 2 -cw 1 65 -cw 2 75 -p globalRigXtraOpColumn rigTentacleOpRCL;
+
+	text  -l "Tentacle:" -fn "boldLabelFont" -p rigTentacleOpRCL buildGlobalTitle;
+	text  -l "" -p rigTentacleOpRCL globalfill2;
+
+	checkBox -l "Dynamic" -v 1 -cc "" -p rigTentacleOpRCL dynamicGlobalChk;
+	checkBox -l "Offset Ctrl" -v 1 -cc "" -p rigTentacleOpRCL offsetGlobalChk;
+
+frameLayout -l "Joint Options :"
+	-collapsable off
+	-collapse off
+	-borderStyle "etchedOut"
+	-p globalRigXtraOpRCL
+	globalRigJointOpFrame;
+
+rowColumnLayout -nc 2 -cw 1 145 -cw 2 145 -p globalRigJointOpFrame globalRigJointOpRCL;
+	text -l "Add" -align "center" -p globalRigJointOpRCL globalRigAddTitle;
+	text -l "Remove" -align "center" -p globalRigJointOpRCL globalRigRemoveTitle;	
+	button -l "Twist Joint"  -c "cr_addTwistJointsAttr(\"twistJoints\")" -p globalRigJointOpRCL AddTwistJointBtn;
+	button -l "Twist Joint"  -c "cr_removeTwistJointsAttr(\"twistJoints\")" -p globalRigJointOpRCL RemoveTwistJointBtn;
+	button -l "spline Joints"  -c "cr_addSplineJointAttrs(\"joints\")" -p globalRigJointOpRCL AddSplineJointsBtn;
+	button -l "spline Joints"  -c "cr_removeTwistJointsAttr(\"joints\")" -p globalRigJointOpRCL RemoveSplineJointsBtn;
+
+formLayout -p cr_createRigColumnLayout createAnimRigForm;
+button -h 420 -l "CREATE ANIMATION RIG"  -c "cr_createRig()" -p createAnimRigForm createAnimRigBtn;
+
+formLayout -e
+	-af createAnimRigBtn top 3
+	-af createAnimRigBtn left 0
+	-ap createAnimRigBtn right 0 100	
+createAnimRigForm;
+
+tabLayout -edit
+	-tabLabel createSkColumnLayout "Create Skeleton" 
+	-tabLabel cr_createRigColumnLayout "Create Rig"
+moduleRigTab;
+ 
+//UI Edits
+optionMenu -e -v "lt/rt" sideModulePrefix;
+optionMenu -e -v "y" spineAxisOM;
+optionMenu -e -v "y" neckAxisOM;
+optionMenu -e -v "z" tentacleAxisOM;
+
+showWindow moduleTempalesWin;
+}
+
+global proc cr_updateIntFToScrollBar(string $ScrollBar, string $intField)
+{
+int $val = `intScrollBar -q -v $ScrollBar`;
+intField -e -v $val $intField;
+}
+
+global proc cr_chooseModuleTemplatesDir()
+	{
+	fileBrowserDialog -mode 4 -fc "cr_updateModuleTemplatesDirPath" -an "Pick Your Skeleton Templates Directory";
+	return;
+	}
+
+global proc cr_updateModuleTemplatesDirPath(string $path, string $mode)
+	{
+	textField -e -tx ($path+"/") moduleTempdirTF;
+	}
+
+global proc cr_exportModuleTemplates()
+{
+string $templateDir = `textField -q -tx moduleTempdirTF`;
+	string $objs[] = `ls -sl`;
+if(size($objs)>0 && size($objs)<2)
+	{
+	for ($obj in $objs)
+		{
+		select $obj;
+		string $path = `fileDialog -mode 1 -title "export " -directoryMask ($templateDir+"/*.ma")`;
+		if($path!= "")
+			{
+			file -es -type "mayaAscii" $path;
+			print "successfully exported objects! \n";
+			}
+		else
+			print "operation calceled";
+		}
+	}
+else
+	error "Too many objects selected. Select root Node and try again";
+}
+
+global proc cr_importModuleTemplates()
+{
+string $templateDir = `textField -q -tx moduleTempdirTF`;
+
+string $path = `fileDialog -mode 0 -directoryMask ($templateDir+"/*.ma")`;
+if($path!= "")
+	{
+	file -i -type "mayaAscii" $path;
+	print "successfully imported objects! \n";
+	}
+else
+	print "operation calceled";
+}
+
+global proc cr_armFingersModuleSwitch()
+{
+int $switch = `checkBox -q -v armFingersChk`;
+if($switch)
+	{
+	text -e -en 1 noArmFingersJointsTitle;
+	intField -e -en 1 noArmFingersJointISG;
+	//intScrollBar -e -en 1 noArmFingersJointISB;
+	text -e -en 1 noArmFingersSegJointsTitle;
+	intField -e -en 1 noArmFingersSegJointISG;
+	//intScrollBar -e -en 1 noArmFingersSegJointISB;
+	}
+else
+	{
+	text -e -en 0 noArmFingersJointsTitle;
+	intField -e -en 0 noArmFingersJointISG;
+	//intScrollBar -e -en 0 noArmFingersJointISB;
+	text -e -en 0 noArmFingersSegJointsTitle;
+	intField -e -en 0 noArmFingersSegJointISG;
+	//intScrollBar -e -en 0 noArmFingersSegJointISB;
+	}
+}
+
+global proc cr_legFingersModuleSwitch()
+{
+int $switch = `checkBox -q -v legFingersChk`;
+if($switch)
+	{
+	text -e -en 1 noLegFingersJointsTitle;
+	intField -e -en 1 noLegFingersJointISG;
+	//intScrollBar -e -en 1 noLegFingersJointISB;
+	text -e -en 1 noLegFingersSegJointsTitle;
+	intField -e -en 1 noLegFingersSegJointISG;
+	//intScrollBar -e -en 1 noLegFingersSegJointISB;
+	}
+else
+	{
+	text -e -en 0 noLegFingersJointsTitle;
+	intField -e -en 0 noLegFingersJointISG;
+	//intScrollBar -e -en 0 noLegFingersJointISB;
+	text -e -en 0 noLegFingersSegJointsTitle;
+	intField -e -en 0 noLegFingersSegJointISG;
+	//intScrollBar -e -en 0 noLegFingersSegJointISB;
+	}
+}
+
+
+global proc cr_bipedFingersModuleSwitch()
+{
+int $switch = `checkBox -q -v bipedFingersChk`;
+if($switch)
+	{
+	text -e -en 1 noBipedFingersJointsTitle;
+	intField -e -en 1 noBipedFingersJointISG;
+	}
+else
+	{
+	text -e -en 0 noBipedFingersJointsTitle;
+	intField -e -en 0 noBipedFingersJointISG;
+	}
+}
+
+global proc cr_bipedToesModuleSwitch()
+{
+int $switch = `checkBox -q -v bipedToesChk`;
+if($switch)
+	{
+	text -e -en 1 noBipedToesJointsTitle;
+	intField -e -en 1 noBipedToesJointISG;
+	}
+else
+	{
+	text -e -en 0 noBipedToesJointsTitle;
+	intField -e -en 0 noBipedToesJointISG;
+	}
+}
+
+global proc cr_quadToesModuleSwitch()
+{
+int $switch = `checkBox -q -v quadToesChk`;
+if($switch)
+	{
+	text -e -en 1 noQuadToesJointsTitle;
+	intField -e -en 1 noQuadToesJointISG;
+	}
+else
+	{
+	text -e -en 0 noQuadToesJointsTitle;
+	intField -e -en 0 noQuadToesJointISG;
+	}
+}
+
+global proc cr_globalStretchSwitch()
+{
+int $switch = `checkBox -q -v stretchGlobalChk`;
+if($switch)
+	{
+	//text -e -en 1 stretchMethodGlobalTitle;
+	optionMenu -e -en 1 scaleTypeGlobalOpGrp;
+	checkBox -e -en 1 volGlobalChk;
+	checkBox -e -en 1 midGlobalChk;
+	checkBox -e -v 1 volGlobalChk;
+	checkBox -e -v 1 midGlobalChk;
+	}
+else
+	{
+	//text -e -en 0 stretchMethodGlobalTitle;
+	optionMenu -e -en 0 scaleTypeGlobalOpGrp;
+	checkBox -e -v 0 volGlobalChk;
+	checkBox -e -en 0 volGlobalChk;
+	checkBox -e -v 0 midGlobalChk;
+	checkBox -e -en 0 midGlobalChk;
+	}
+}
+
+global proc cr_addTwistJointsAttr(string $type)
+{
+string $sel[]=`ls -sl`;
+string $plusMinus,$multDiv,$loc,$locShape,$parent;
+string $tempString[],$multDivs[],$attrs[];
+float $red;
+if (!size($sel))
+	warning "Select 1 joint\n";
+for ($i=0;$i<size($sel);$i++)
+	{
+	$tempString=`listRelatives -f -c $sel[$i]`;
+	$childJoint="";
+	for ($y=0;$y<size($tempString);$y++)
+		if (`objectType $tempString[$y]`=="joint")
+			$childJoint=$tempString[$y];
+	if (`objectType $sel[$i]`!="joint" || $childJoint=="" || !size($tempString))
+		continue;
+	if (`attributeExists twistJoints $sel[$i]`)
+		error ("Twist Joints Attribute already added!\n");
+	else
+		addAttr -k 1 -ln $type -at long -min 0 -max 10 -dv 2 $sel[$i];
+
+	$parent = `group -em`;
+	$parent = `rename $parent ($sel[$i]+"TwistJnt_grp")`;
+	parentConstraint -weight 1 $sel[$i] $parent;
+
+	addAttr -ln "twistJointGrp" -dt "string" $sel[$i]; 
+		setAttr -type "string" ($sel[$i] + ".twistJointGrp") $parent;
+
+	$plusMinus=`createNode -n ($sel[$i]+"Twist_pma") plusMinusAverage`;
+	connectAttr ($sel[$i]+"."+$type) ($plusMinus+".input1D[0]");
+	setAttr ($plusMinus+".input1D[1]") 1;
+	$multDiv=`createNode -n ($sel[$i]+"Twist_md") multiplyDivide`;
+	setAttr ($multDiv+".operation") 2;
+	connectAttr ($childJoint+".translate") ($multDiv+".input1");
+	connectAttr ($plusMinus+".output1D") ($multDiv+".input2.input2X");
+	connectAttr ($plusMinus+".output1D") ($multDiv+".input2.input2Y");
+	connectAttr ($plusMinus+".output1D") ($multDiv+".input2.input2Z");
+	select -cl;
+	
+	$red = `getAttr ($sel[$i]+".radius")`;
+	$red = ($red/2);
+
+	for ($y=1;$y<11;$y++)
+		{
+		$tempString=`cr_curveControl sphereCross curve`;
+		cr_resizeCurves {} 1 1 1 $red;
+		$loc=`rename $tempString[0] ($sel[$i]+"_"+$type+$y+"_loc")`;
+		addAttr -k 0 -dv $y -min 0 -max 10 -ln twistPosition -at double $loc;
+		parent $loc $parent;
+
+		setAttr ($loc+".overrideEnabled") 1;
+		setAttr ($loc+".overrideColor") 10;
+
+		$multDivs[$y]=`createNode -n ($sel[$i]+"_"+$type+$y+"_md") multiplyDivide`;
+		connectAttr ($multDiv+".output") ($multDivs[$y]+".input1");
+		connectAttr ($loc+".twistPosition") ($multDivs[$y]+".input2.input2X");
+		setAttr ($multDivs[$y]+".input2.input2Y") $y;
+		setAttr ($multDivs[$y]+".input2.input2Z") $y;
+		connectAttr ($multDivs[$y]+".output") ($loc+".translate");
+
+		$multDivsVis[$y]=`createNode -n ($sel[$i]+"_"+$type+$y+"Vis_md") multiplyDivide`;
+		connectAttr ($sel[$i]+"."+$type) ($multDivsVis[$y]+".input1.input1X");
+		setAttr ($multDivsVis[$y]+".input2.input2X") ((1.00/(2*$y))+0.001);
+		connectAttr ($multDivsVis[$y]+".outputX") ($loc+".visibility");
+
+		cr_lockAndHide $loc cr_locknHide "trans rot scale vis";
+		select -cl;
+		}
+	}
+select $sel;
+}
+
+global proc cr_removeTwistJointsAttr(string $type)
+{
+string $sel[]=`ls -sl`;
+
+if (!size($sel))
+	warning "Select 1 joint\n";
+
+for ($i=0;$i<size($sel);$i++)
+	{
+	if(`attributeExists $type $sel[$i]`)
+		{
+		string $twistJointGrp = getAttr($sel[$i]+".twistJointGrp");
+		if($twistJointGrp != "")
+			if(`objExists $twistJointGrp`)
+				delete $twistJointGrp;
+		catch (`deleteAttr -attribute $type $sel[$i]`);
+		catch (`deleteAttr -attribute "twistJointGrp" $sel[$i]`);
+		}
+	}
+}
+
+global proc cr_addSplineJointAttrs(string $type)
+{
+string $sel[]=`ls -sl`;
+string $plusMinus,$multDiv,$loc,$locShape,$joints,$curve,$parent;
+string $tempString[],$multDivs[],$attrs[],$jointsList[];
+float $red;
+
+if (!size($sel))
+	warning "Select 1 joint\n";
+for ($i=0;$i<size($sel);$i++)
+	{
+	if(`attributeExists "spineRig" $sel[$i]` || `attributeExists "neckHeadRig" $sel[$i]` || `attributeExists "tentacleRig" $sel[$i]`)
+		{
+		if(`attributeExists "spineRig" $sel[$i]`)
+			$joints = `getAttr ($sel[$i]+".spineRig")`;
+		else if (`attributeExists "neckHeadRig" $sel[$i]`)
+			$joints = `getAttr ($sel[$i]+".neckHeadRig")`;
+		else if (`attributeExists "tentacleRig" $sel[$i]`)
+			$joints = `getAttr ($sel[$i]+".tentacleRig")`;
+		}
+	else
+		error("setup could not be installed");
+
+	if (`attributeExists $type $sel[$i]`)
+		error ("Twist Joints Attribute already added!\n");
+	else
+		addAttr -k 1 -ln $type -at long -min 0 -max 25 -dv 7 $sel[$i];
+
+	$jointsList = stringToStringArray($joints," ");
+
+	$curve = cr_jointCurve($jointsList[0],$jointsList[1]);
+	skinCluster -tsb -mi 4 -dr 7 $jointsList[0] $jointsList[1] $curve;
+	hide $curve;
+	cr_lockAndHide $curve cr_locknHide "trans rot scale vis";
+	 
+	select -cl;
+	$parent = `group -em`;
+	$parent = `rename $parent ($sel[$i]+"TwistJnt_grp")`;
+	parent $curve $parent;
+
+	addAttr -ln "twistJointGrp" -dt "string" $sel[$i]; 
+		setAttr -type "string" ($sel[$i] + ".twistJointGrp") $parent;
+
+	$multDiv=`createNode -n ($sel[$i]+"Twist_md") multiplyDivide`;
+	setAttr ($multDiv+".operation") 2;
+	setAttr ($multDiv+".input1X") 10;	
+	connectAttr($sel[$i]+"."+$type) ($multDiv+".input2X");
+	
+	$red = `getAttr ($sel[$i]+".radius")`;
+	$red = ($red/2);
+
+	for ($y=1;$y<26;$y++)
+		{
+		string $curveInfo = `pointOnCurve -constructionHistory 1 $curve`;
+		setAttr ($curveInfo + ".turnOnPercentage") 1;
+
+		select -cl;
+		$tempString=`cr_curveControl sphereCross curve`;
+		$loc=`rename $tempString[0] ($sel[$i]+"_"+$type+$y+"_loc")`;
+		cr_resizeCurves {} 1 1 1 $red;
+		parent $loc $parent;
+
+		setAttr ($loc+".overrideEnabled") 1;
+		setAttr ($loc+".overrideColor") 10;
+
+		$multDivs[$y]=`createNode -n ($sel[$i]+"Twist_md") multiplyDivide`;
+		setAttr ($multDivs[$y]+".input2X") (0.1*$y);	
+		connectAttr($multDiv+".outputX") ($multDivs[$y]+".input1X");
+		connectAttr($multDivs[$y]+".outputX") ($curveInfo+".parameter");
+
+		connectAttr ($curveInfo+".position") ($loc+".translate");
+
+		$multDivsVis[$y]=`createNode -n ($sel[$i]+"_"+$type+$y+"Vis_md") multiplyDivide`;
+		connectAttr ($sel[$i]+"."+$type) ($multDivsVis[$y]+".input1.input1X");
+		setAttr ($multDivsVis[$y]+".input2.input2X") ((1.00/(2*$y))+0.001);
+		connectAttr ($multDivsVis[$y]+".outputX") ($loc+".visibility");
+
+		cr_lockAndHide $loc cr_locknHide "trans rot scale vis";
+		select -cl;
+		}
+	}
+select $sel;
+}
+
+global proc cr_installShelfBtn(string $command, string $label, string $icon)
+{
+global string $gShelfTopLevel;
+string $myPrefDir = `internalVar -userPrefDir`;
+	if (`tabLayout -exists $gShelfTopLevel`)	
+	{
+		shelfButton
+			-parent ($gShelfTopLevel + "|" + `tabLayout -q -st $gShelfTopLevel`)
+			-command ($command)
+			-image1 ($myPrefDir+"/icons/"+$icon+".png")
+			-annotation ($command)
+			-imageOverlayLabel ($label);
+	}
+	else
+		error ("Must have active shelf to create shelf button");
+}

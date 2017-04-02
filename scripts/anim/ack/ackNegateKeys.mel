@@ -1,0 +1,97 @@
+/*
+//////////////////////////////////////////////////////////
+
+ackNegateKeys 1.3		
+10/22/07					
+Aaron Koressel		
+www.aaronkoressel.com		
+					
+Flips currently selected keys over the X axis.  This
+axis is centered about next adjacent key outside of the
+selection.  Useful for getting the opposite pose, 
+or flipping the symmetry of animation.  If more
+than one curve is selected, the flipping is calculated
+independently.  
+
+By default it looks to the left for the neighboring key,
+or use ackSetup to switch between left, right, or the last
+selected key.
+
+CHANGELOG
+1.3 - 10/22/07
+ackSetup compliant
+
+1.2 - 8/29/07
+Changed behaviour to look one key outside of selection
+for flipping point.  Added interface to flip from left
+or right side.
+
+1.1 - 2/8/07
+Uses the first key as the axis to flip about
+
+1.0 - 7/28/05
+First Version
+Just multiplied by -1 so it only worked over the
+orgin axis.
+
+//////////////////////////////////////////////////////////
+*/
+
+global proc ackNegateKeys() {
+	global string $ackSetup_pivot;
+	
+	//set default value if variable doesn't exist
+	if ($ackSetup_pivot == ""){
+		$ackSetup_pivot = "left";
+	}
+	
+	//only run if at least one key is selected
+	$keyCount = `keyframe -an keys -q -keyframeCount`;
+	if ($keyCount != 0) {
+	
+		float $pivotTime;
+		float $pivotValue[];
+	
+		if ($ackSetup_pivot == "last"){
+			$pivotValue = `keyframe -lastSelected -q -valueChange`;	
+		}	
+	
+		//loop over selected curves and process independently
+		string $selectedCurves[] = `keyframe -selected -q -name`;
+		for ($c = 0; $c < size($selectedCurves); $c++){
+			//channel to use for this pass
+			$channel = $selectedCurves[$c];
+		
+			//get array of key times in selection (to find closest match key)
+			$timeArray = `keyframe -selected -q -timeChange $channel`;
+			
+			//find first frame time
+			$lastkey = `keyframe -q -lastSelected $channel`;
+			$firstKey = $lastkey[0];
+			for ($j = 0; $j < size($timeArray); $j++){
+				if ($timeArray[$j] < $firstKey){
+					$firstKey = $timeArray[$j];
+				}
+			}
+
+			switch ($ackSetup_pivot){
+				case "left":
+					$pivotTime = `findKeyframe -which "previous" -time $timeArray[0] $channel`;
+					$pivotValue = `keyframe -time $pivotTime -q -valueChange $channel`;
+					break;
+				case "right":
+					int $lastKey = size($timeArray) - 1;
+					$pivotTime = `findKeyframe -which "next" -time $timeArray[$lastKey] $channel`;
+					$pivotValue = `keyframe -time $pivotTime -q -valueChange $channel`;
+					break;
+			}
+			
+			//flip it (selected only)
+			$selected = `keyframe -selected -q -indexValue $channel`;
+			for ($i = 0; $i < size($selected); $i++){
+				scaleKey -index $selected[$i] -valuePivot $pivotValue[0] -valueScale -1 $channel;
+			}
+			
+		}		
+	}
+}

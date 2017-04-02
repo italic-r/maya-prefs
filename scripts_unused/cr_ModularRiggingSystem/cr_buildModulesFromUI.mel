@@ -1,0 +1,590 @@
+//---------------------------------------------------------------------------
+// cr_buildModulesFromUI.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:	
+//		build skeleton joint modules - UI
+//
+// REQUIRES:
+//		cr_buildModuleJointSkeletonLib.mel
+//		cr_charUtilsLib.mel
+//		libString.mel
+//		snaps.mel
+//
+// AUTHOR:
+//		Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+eval("source \"cr_moduleTemplates.mel\";");
+source "snaps.mel";
+cr_charUtilsLib;
+cr_curveUtilitiesLib;
+libString;
+
+global proc cr_buildModulesFromUI() {
+	return;
+	}
+
+global proc cr_buildArmDummySkeletonModulePreCMD()
+{
+string $name = `textField -q -tx nameModuleTF`;
+string $side = `optionMenu -q -v sideModulePrefix`;
+int $numJoints = `intField -q -v noArmLimbsJointsISG`;
+int $fingers = `checkBox -q -v armFingersChk`;
+int $numFingers = `intField -q -v noArmFingersJointISG`;
+int $numSegment = `intField -q -v noArmFingersSegJointISG`;
+int $leftColorIndex = `colorIndexSliderGrp -q -v leftColorIndexClSG`;
+int $rightColorIndex = `colorIndexSliderGrp -q -v rightColorIndexClSG`;
+int $symm = `checkBox -q -v armSymmetryChk`;
+
+int $colorIndex;
+string $sideQ[];
+int $sideDef = `radioButtonGrp -q -sl armModuleSideRdBnGrp`;
+string $customSide;
+
+if($side == "none")
+	error "You must select side to create this module....";
+
+if($side == "custom")
+	{
+	string $result = `promptDialog 
+		-title "Custom Side Seprated By /"
+		-message "Enter Name:"
+		-text "_/_"
+		-button "OK" -button "Cancel"
+		-defaultButton "OK" -cancelButton "Cancel"
+		-dismissString "Cancel"`;
+	if ($result == "Cancel")
+		error "operation canceled";
+
+	if ($result == "OK") 
+		{
+		$customSide = `promptDialog -query -text`;
+		$sideQ = cr_rigSideSep($customSide);
+		if($sideDef == 1){
+			$side = $sideQ[0];
+			$colorIndex = $leftColorIndex;}
+		else{
+			$side = $sideQ[1];
+			$colorIndex = $rightColorIndex;}
+		}
+	}
+else if($side != "none")
+	{
+	$sideQ = cr_rigSideSep($side);
+	if($sideDef == 1){
+			$side = $sideQ[0];
+			$colorIndex = $leftColorIndex;}
+	else{
+			$side = $sideQ[1];
+			$colorIndex = $rightColorIndex;}
+	}	
+else 
+	$side = "";
+
+if($name != "")
+	$name = ($name + "_");
+
+cr_buildArmDummySkeletonModule ($name, $side, $numJoints, $fingers, $numFingers, $numSegment, ($colorIndex-1));
+
+if($sideDef==2 && $symm==0)
+	cr_mirrorModuleTemplates ($name+$side+"armPlacer_loc");
+
+if($symm)
+	{
+	string $symmSide;
+	if($sideDef == 1){
+		$symmSide = $sideQ[1];
+		$colorIndex = $rightColorIndex;}
+	else{
+		$symmSide = $sideQ[0];
+		$colorIndex = $leftColorIndex;}
+
+	cr_buildArmDummySkeletonModule ($name, $symmSide, $numJoints, $fingers, $numFingers, $numSegment, ($colorIndex-1));
+
+	if($sideDef == 1)
+		{
+		string $master = ($name+$side+"armPlacer_loc"); 
+		string $slave = ($name+$symmSide+"armPlacer_loc");
+		cr_buildArmModuleSymmetry $master $slave;
+		}
+	else
+		{
+		string $master = ($name+$symmSide+"armPlacer_loc"); 
+		string $slave = ($name+$side+"armPlacer_loc");
+		cr_buildArmModuleSymmetry $master $slave;
+		}	
+	}
+}
+
+global proc cr_buildLegDummySkeletonModulePreCMD()
+{
+string $name = `textField -q -tx nameModuleTF`;
+string $side = `optionMenu -q -v sideModulePrefix`;
+int $numJoints = `intField -q -v noLegLimbsJointsISG`;
+int $fingers = `checkBox -q -v legFingersChk`;
+int $numFingers = `intField -q -v noLegFingersJointISG`;
+int $numSegment = `intField -q -v noLegFingersSegJointISG`;
+int $leftColorIndex = `colorIndexSliderGrp -q -v leftColorIndexClSG`;
+int $rightColorIndex = `colorIndexSliderGrp -q -v rightColorIndexClSG`;
+int $symm = `checkBox -q -v legSymmetryChk`;
+
+int $colorIndex;
+string $sideQ[];
+int $sideDef = `radioButtonGrp -q -sl legModuleSideRdBnGrp`;
+string $customSide;
+
+if($side == "none")
+	error "You must select side to create this module....";
+
+if($side == "custom")
+	{
+	string $result = `promptDialog 
+		-title "Custom Side Seprated By /"
+		-message "Enter Name:"
+		-text "_/_"
+		-button "OK" -button "Cancel"
+		-defaultButton "OK" -cancelButton "Cancel"
+		-dismissString "Cancel"`;
+	if ($result == "Cancel")
+		error "operation canceled";
+
+	if ($result == "OK") 
+		{
+		$customSide = `promptDialog -query -text`;
+		$sideQ = cr_rigSideSep($customSide);
+		if($sideDef == 1)
+			{
+			$side = $sideQ[0];
+			$colorIndex = $leftColorIndex;
+			}
+		else
+			{
+			$side = $sideQ[1];
+			$colorIndex = $rightColorIndex;
+			}
+		}
+	}
+else if($side != "none")
+	{
+	$sideQ = cr_rigSideSep($side);
+	if($sideDef == 1)
+			{
+			$side = $sideQ[0];
+			$colorIndex = $leftColorIndex;
+			}
+	else
+			{
+			$side = $sideQ[1];
+			$colorIndex = $rightColorIndex;
+			}
+	}	
+else 
+	$side = "";
+
+if($name != "")
+	$name = ($name + "_");
+
+string $result = `confirmDialog 
+	-title "Build Module"
+	-message "Define leg Module type?"
+	-messageAlign "center"
+	-button "Biped" -button "Quadroped"
+	-defaultButton "Biped"`;
+
+if($result == "Quadroped" && $numJoints<4)
+	error "you must define minimum 4 joints for Quadroped leg module...";
+
+if($result == "Biped")
+	cr_buildBipedLegDummySkeletonModule($name, $side, $numJoints, $fingers, $numFingers, $numSegment, ($colorIndex-1));
+if($result == "Quadroped")
+	cr_buildQuadLegDummySkeletonModule($name, $side, $numJoints, $fingers, $numFingers, $numSegment, ($colorIndex-1));
+
+if($sideDef==2 && $symm==0)
+	cr_mirrorModuleTemplates ($name+$side+"legPlacer_loc");
+
+if($symm)
+	{
+	string $symmSide;
+	if($sideDef == 1){
+		$symmSide = $sideQ[1];
+		$colorIndex = $rightColorIndex;}
+	else{
+		$symmSide = $sideQ[0];
+		$colorIndex = $leftColorIndex;}	
+	
+if($result == "Biped")
+	cr_buildBipedLegDummySkeletonModule($name, $symmSide, $numJoints, $fingers, $numFingers, $numSegment, ($colorIndex-1));
+if($result == "Quadroped")
+	cr_buildQuadLegDummySkeletonModule($name, $symmSide, $numJoints, $fingers, $numFingers, $numSegment, ($colorIndex-1));
+	
+	if($sideDef == 1)
+		{
+		string $master = ($name+$side+"legPlacer_loc"); 
+		string $slave = ($name+$symmSide+"legPlacer_loc");
+		cr_buildLegModuleSymmetry $master $slave;
+		}
+	else
+		{
+		string $master = ($name+$symmSide+"legPlacer_loc"); 
+		string $slave = ($name+$side+"legPlacer_loc");
+		cr_buildLegModuleSymmetry $master $slave;
+		}
+	}
+}
+
+global proc cr_buildSpineDummySkeletonModulePreCMD()
+{
+string $name = `textField -q -tx nameModuleTF`;
+string $side = `optionMenu -q -v sideModulePrefix`;
+string $moduleName = `textField -q -tx spineTemplateTF`;
+int $numCon = `intField -q -v noSpineConIF`;
+string $axis = `optionMenu -q -v spineAxisOM`;
+float $dis = `intField -q -v disSpineConIF`;
+int $cenColorIndex = `colorIndexSliderGrp -q -v centerColorIndexClSG`;
+int $leftColorIndex = `colorIndexSliderGrp -q -v leftColorIndexClSG`;
+int $rightColorIndex = `colorIndexSliderGrp -q -v rightColorIndexClSG`;
+
+int $colorIndex;
+
+int $symm = `checkBox -q -v spineSymmetryChk`;
+
+string $sideQ[] = cr_rigSideSep($side);
+int $sideDef = 1;
+
+if($symm)
+	{
+	if($side == "none")
+		error "You must select side in Symmtery mode....";
+	if($side == "custom")
+		{
+		string $result = `promptDialog 
+			-title "Custom Side Seprated By /"
+			-message "Enter Name:"
+			-text "_/_"
+			-button "OK" -button "Cancel"
+			-defaultButton "OK" -cancelButton "Cancel"
+			-dismissString "Cancel"`;
+		if ($result == "Cancel")
+			error "operation canceled";
+	
+		if ($result == "OK") 
+			{
+			$customSide = `promptDialog -query -text`;
+			$sideQ = cr_rigSideSep($customSide);
+			if($sideDef == 1)
+				{
+				$side = $sideQ[0];
+				$colorIndex = $leftColorIndex;
+				}
+			else
+				{
+				$side = $sideQ[1];
+				$colorIndex = $rightColorIndex;
+				}
+			}
+		}
+	else
+		{
+		if($sideDef == 1)
+			$side = $sideQ[0];
+		else
+			$side = $sideQ[1];
+		$colorIndex = $leftColorIndex ;
+		}
+	}
+else 
+	{
+	$side = "";
+	$colorIndex = $cenColorIndex;
+	}
+	if($name != "")
+		$name = ($name + "_");
+
+cr_buildSpineDummySkeletonModule($name, $side, $moduleName, $numCon, $axis, $dis, ($colorIndex-1));
+if($symm)
+	{
+	cr_buildSpineDummySkeletonModule($name, $sideQ[1], $moduleName, $numCon, $axis, $dis, ($rightColorIndex-1));
+	string $master = ($name+$side+$moduleName+"Main_ctrl"); 
+	string $slave = ($name+$sideQ[1]+$moduleName+"Main_ctrl");
+	cr_buildBodyModuleSymmetry $master $slave;
+	}
+}
+
+global proc cr_buildHeadNeckDummySkeletonModulePreCMD()
+{
+string $name = `textField -q -tx nameModuleTF`;
+string $side = `optionMenu -q -v sideModulePrefix`;
+string $moduleName = `textField -q -tx neckTemplateTF`;
+int $numCon = `intField -q -v noNeckConIF`;
+string $axis = `optionMenu -q -v neckAxisOM`;
+float $dis = `intField -q -v disNeckConIF`;
+int $cenColorIndex = `colorIndexSliderGrp -q -v centerColorIndexClSG`;
+int $leftColorIndex = `colorIndexSliderGrp -q -v leftColorIndexClSG`;
+int $rightColorIndex = `colorIndexSliderGrp -q -v rightColorIndexClSG`;
+
+int $colorIndex;
+
+int $symm = `checkBox -q -v neckSymmetryChk`;
+
+string $sideQ[] = cr_rigSideSep($side);
+int $sideDef = 1;
+
+if($symm)
+	{
+	if($side == "none")
+		error "You must select side in Symmtery mode....";
+	if($side == "custom")
+		{
+		string $result = `promptDialog 
+			-title "Custom Side Seprated By /"
+			-message "Enter Name:"
+			-text "_/_"
+			-button "OK" -button "Cancel"
+			-defaultButton "OK" -cancelButton "Cancel"
+			-dismissString "Cancel"`;
+		if ($result == "Cancel")
+			error "operation canceled";
+	
+		if ($result == "OK") 
+			{
+			$customSide = `promptDialog -query -text`;
+			$sideQ = cr_rigSideSep($customSide);
+			if($sideDef == 1)
+				{
+				$side = $sideQ[0];
+				$colorIndex = $leftColorIndex;
+				}
+			else
+				{
+				$side = $sideQ[1];
+				$colorIndex = $rightColorIndex;
+				}
+			}
+		}
+	else
+		{
+		if($sideDef == 1)
+			$side = $sideQ[0];
+		else
+			$side = $sideQ[1];
+		$colorIndex = $leftColorIndex ;
+		}
+	}
+else 
+	{
+	$side = "";
+	$colorIndex = $cenColorIndex;
+	}
+	if($name != "")
+		$name = ($name + "_");
+
+cr_buildHeadNeckDummySkeletonModule($name, $side, $moduleName, $numCon, $axis, $dis, ($colorIndex-1));
+if($symm)
+	{
+	cr_buildHeadNeckDummySkeletonModule($name, $sideQ[1], $moduleName, $numCon, $axis, $dis, ($rightColorIndex-1));
+	string $master = ($name+$side+$moduleName+"Main_ctrl"); 
+	string $slave = ($name+$sideQ[1]+$moduleName+"Main_ctrl");
+	cr_buildBodyModuleSymmetry $master $slave;
+	}
+}
+
+global proc cr_buildTentacleDummySkeletonModulePreCMD()
+{
+string $name = `textField -q -tx nameModuleTF`;
+string $side = `optionMenu -q -v sideModulePrefix`;
+string $moduleName = `textField -q -tx tentacleTemplateTF`;
+int $numCon = `intField -q -v noTentacleConIF`;
+string $axis = `optionMenu -q -v tentacleAxisOM`;
+float $dis = `intField -q -v disTentacleConIF`;
+int $cenColorIndex = `colorIndexSliderGrp -q -v centerColorIndexClSG`;
+int $leftColorIndex = `colorIndexSliderGrp -q -v leftColorIndexClSG`;
+int $rightColorIndex = `colorIndexSliderGrp -q -v rightColorIndexClSG`;
+	
+int $colorIndex;
+
+int $symm = `checkBox -q -v tentacleSymmetryChk`;
+
+string $sideQ[] = cr_rigSideSep($side);
+int $sideDef = 1;
+
+if($symm)
+	{
+	if($side == "none")
+		error "You must select side in Symmtery mode....";
+	if($side == "custom")
+		{
+		string $result = `promptDialog 
+			-title "Custom Side Seprated By /"
+			-message "Enter Name:"
+			-text "_/_"
+			-button "OK" -button "Cancel"
+			-defaultButton "OK" -cancelButton "Cancel"
+			-dismissString "Cancel"`;
+		if ($result == "Cancel")
+			error "operation canceled";
+	
+		if ($result == "OK") 
+			{
+			$customSide = `promptDialog -query -text`;
+			$sideQ = cr_rigSideSep($customSide);
+			if($sideDef == 1)
+				{
+				$side = $sideQ[0];
+				$colorIndex = $leftColorIndex;
+				}
+			else
+				{
+				$side = $sideQ[1];
+				$colorIndex = $rightColorIndex;
+				}
+			}
+		}
+	else
+		{
+		if($sideDef == 1)
+			$side = $sideQ[0];
+		else
+			$side = $sideQ[1];
+		$colorIndex = $leftColorIndex ;
+		}
+	}
+else 
+	{
+	$side = "";
+	$colorIndex = $cenColorIndex;
+	}
+	if($name != "")
+		$name = ($name + "_");
+
+cr_buildTentacleDummySkeletonModule($name, $side, $moduleName, $numCon, $axis, $dis, ($colorIndex-1));
+if($symm)
+	{
+	cr_buildTentacleDummySkeletonModule($name, $sideQ[1], $moduleName, $numCon, $axis, $dis, ($rightColorIndex-1));
+	string $master = ($name+$side+$moduleName+"Main_ctrl"); 
+	string $slave = ($name+$sideQ[1]+$moduleName+"Main_ctrl");
+	cr_buildBodyModuleSymmetry $master $slave;
+	}
+}
+
+global proc cr_buildFingerDummySkeletonModulePreCMD()
+{
+string $name = `textField -q -tx nameModuleTF`;
+string $side = `optionMenu -q -v sideModulePrefix`;
+string $fingerName = `textField -q -tx fingerTemplateTF`;
+int $numCon = `intField -q -v noFingerConIF`;
+string $axis = `optionMenu -q -v fingerAxisOM`;
+float $dis = `intField -q -v disFingerConIF`;
+int $cenColorIndex = `colorIndexSliderGrp -q -v centerColorIndexClSG`;
+int $leftColorIndex = `colorIndexSliderGrp -q -v leftColorIndexClSG`;
+int $rightColorIndex = `colorIndexSliderGrp -q -v rightColorIndexClSG`;
+
+int $colorIndex;
+
+int $symm = `checkBox -q -v fingerSymmetryChk`;
+
+string $sideQ[] = cr_rigSideSep($side);
+int $sideDef = 1;
+
+if($symm)
+	{
+	if($side == "none")
+		error "You must select side in Symmtery mode....";
+	if($side == "custom")
+		{
+		string $result = `promptDialog 
+			-title "Custom Side Seprated By /"
+			-message "Enter Name:"
+			-text "_/_"
+			-button "OK" -button "Cancel"
+			-defaultButton "OK" -cancelButton "Cancel"
+			-dismissString "Cancel"`;
+		if ($result == "Cancel")
+			error "operation canceled";
+	
+		if ($result == "OK") 
+			{
+			$customSide = `promptDialog -query -text`;
+			$sideQ = cr_rigSideSep($customSide);
+			if($sideDef == 1)
+				{
+				$side = $sideQ[0];
+				$colorIndex = $leftColorIndex;
+				}
+			else
+				{
+				$side = $sideQ[1];
+				$colorIndex = $rightColorIndex;
+				}
+			}
+		}
+	else
+		{
+		if($sideDef == 1)
+			$side = $sideQ[0];
+		else
+			$side = $sideQ[1];
+		$colorIndex = $leftColorIndex ;
+		}
+	}
+else 
+	{
+	$side = "";
+	$colorIndex = $cenColorIndex;
+	}
+	if($name != "")
+		$name = ($name + "_");
+
+cr_fingerSegmentDummyBoneCreator($name, $fingerName, $side, $numCon, $axis, $dis, ($colorIndex-1));
+if($symm)
+	{
+	cr_fingerSegmentDummyBoneCreator($name, $fingerName, $sideQ[1], $numCon, $axis, $dis, ($rightColorIndex-1));
+	string $master = ($name+$side+$fingerName+"Main_ctrl"); 
+	string $slave = ($name+$sideQ[1]+$fingerName+"Main_ctrl");
+	cr_buildBodyModuleSymmetry $master $slave;
+	}
+}
+
+global proc cr_buildBipedModulePreCMD()
+	{
+	string $name = `textField -q -tx nameModuleTF`;
+	int $spineCount = `intField -q -v noBipedSpineJointsISG`;
+	int $neckCount = `intField -q -v noBipedNeckJointsISG`;
+	int $finger = `checkBox -q -v bipedFingersChk`;
+	int $numFinger = `intField -q -v noBipedFingersJointISG`;
+	int $toe = `checkBox -q -v bipedToesChk`;
+	int $numToe = `intField -q -v noBipedToesJointISG`;
+
+	cr_bipedModuleTemplate($name, $spineCount, $neckCount, $finger, $numFinger, $toe, $numToe);
+	}
+
+global proc cr_buildQuadModulePreCMD()
+	{
+	string $name = `textField -q -tx nameModuleTF`;
+	int $spineCount = `intField -q -v noQuadSpineJointsISG`;
+	int $neckCount = `intField -q -v noQuadNeckJointsISG`;
+	int $earCount = `intField -q -v noQuadEarsJointsISG`;
+	int $tailCount = `intField -q -v noQuadTailJointsISG`;
+	int $toe = `checkBox -q -v bipedToesChk`;
+	int $numToe = `intField -q -v noBipedToesJointISG`;
+
+	cr_quadModuleTemplate($name, $spineCount, $neckCount, $earCount, $tailCount,  $toe, $numToe);
+	}

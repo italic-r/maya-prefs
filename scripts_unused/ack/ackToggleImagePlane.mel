@@ -1,0 +1,21 @@
+//////////////////////////////////////////////////////////
+//	ackToggleImagePlane 1.0
+//	7/01/05					
+//	Aaron Koressel						
+//							
+//	Toggles the visibility of all image planes
+//  in the scene
+//////////////////////////////////////////////////////////
+
+
+global proc ackToggleImagePlane() {
+	string $all[] = `ls -type imagePlane`;
+	if (size($all) != 0) {
+		int $cur = `getAttr ($all[0]+".displayMode")`;
+		if ($cur == 0){$cur=3;}else{$cur=0;}
+		
+		for ($i in $all){
+			setAttr ($i+".displayMode") $cur;
+		}
+	}
+}

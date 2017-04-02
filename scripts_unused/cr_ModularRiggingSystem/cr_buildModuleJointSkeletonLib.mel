@@ -1,0 +1,686 @@
+//---------------------------------------------------------------------------
+// cr_buildModuleJointSkeletonLib.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:	
+//		build skeleton from joint modules - library
+//
+// REQUIRES:
+//		cr_buildModuleJointSkeletonLib.mel
+//		cr_charUtilsLib.mel
+//		libString.mel
+//		snaps.mel
+//
+// AUTHOR:
+//		Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+source "snaps.mel";
+cr_charUtilsLib;
+cr_curveUtilitiesLib;
+libString;
+
+global proc cr_buildModuleJointSkeletonLib() {
+	return;
+	}
+
+global proc cr_buildTentacleSkeleton()
+{
+string $jointsList[];
+string $jointNameList[];
+string $strip;
+string $grp;
+string $list;
+
+string $sel[] = `ls -sl`;
+if(`attributeExists "jointPosList" $sel[0]`)
+	{
+	$list = `getAttr ($sel[0] + ".jointPosList")`;
+	$jointsList = stringToStringArray($list," ");
+	for($i=0;$i<size($jointsList);$i++)
+		{
+		$strip = `objGetPrefix $jointsList[$i]`;
+		$jointNameList[$i] = ($strip + "_jnt");
+		}
+	
+	cr_createJointHierarchy $jointsList $jointNameList $grp;
+	delete $sel[0];
+	}
+else
+error "selected object is not installed for current operation"; 
+}
+
+/*
+string $target[] = `ls -sl`;
+string $names[] = {"a","b","c"};
+string $grp = "null1";
+cr_createJointHierarchy $target $name $grp;
+*/
+global proc string[] cr_createJointHierarchy(string $targetPos[], string $names[], string $grp)
+{
+//will create joint chain based on location of objects in $targetPos, 
+//rename them the names in $aNames, and place the result in the existing group $grp
+//returns new pathNames
+
+string $joints[];
+
+if (size($targetPos) == size($names))
+{
+float $xForm[];
+string $jnt[];
+
+for ($i=0;$i<size($targetPos);$i++)
+	{
+	select -cl;
+	$xForm = `xform -q -ws -rp $targetPos[$i]`;	
+	$jnt[0] = `joint -p $xForm[0] $xForm[1] $xForm[2] -n $names[$i]`;
+	
+	if ($i == 0)
+		{
+		if ($grp != "" && `objExists $grp`) $jnt = parent($jnt[0], $grp);
+		else if (firstParentOf($jnt[0]) != "") $jnt = `parent -w $jnt[0]`;
+		}
+	else
+		$jnt = parent($jnt[0], $joints[$i-1]);
+	
+	$joints[$i] = $jnt[0];
+	select -cl;
+	}
+}
+select -cl;
+return $joints;
+}
+
+global proc string[] cr_buildJointSkeleton(string $grp)
+{
+string $jointsList[];
+string $jointNameList[];
+string $strip;
+string $list;
+string $jointHierarchy[];
+
+string $sel[] = `ls -sl`;
+if(`attributeExists "jointPosList" $sel[0]`)
+	{
+	$list = `getAttr ($sel[0] + ".jointPosList")`;
+	$jointsList = stringToStringArray($list," ");
+	for($i=0;$i<size($jointsList);$i++)
+		{
+		$strip = `objGetPrefix $jointsList[$i]`;
+		$jointNameList[$i] = ($strip + "_jnt");
+		}
+	
+	$jointHierarchy = cr_createJointHierarchy ($jointsList, $jointNameList, $grp);
+	}
+else
+	error "selected object is not installed for current operation"; 
+
+return $jointHierarchy;
+}
+
+global proc cr_makeRotAlignJointSetup(string $joint, vector $rotValue)
+{
+select -r $joint;
+string $tempLoc[] = `cr_curveControl loc curve`;
+setAttr ($tempLoc[0]+".r") 0 0 0;
+string $con[] =`parentConstraint -mo -skipTranslate x -skipTranslate y -skipTranslate z -weight 1 $tempLoc[0] $joint`;
+setAttr ($tempLoc[0]+".r") ($rotValue.x) ($rotValue.y) ($rotValue.z);
+delete $con[0] $tempLoc[0];
+makeIdentity -apply true -t 0 -r 1 -s 0 $joint;
+}
+
+//cr_orientJoints `ls -sl` xyz zup;
+global proc cr_orientJoints(string $joints[], string $orientAxis, string $sao)
+{
+// orients joints.  $orient is value of joint -orientJoint ("xyz") and $sao is value of joint -sao ("zdown")	
+string $jnt, $relatives[];
+for ($jnt in $joints)
+	{
+	//checking for child joint so if there is no child joint zero out joint orient.. 
+	$relatives = `listRelatives -c -type joint $jnt`;
+	if (size($relatives) > 0)
+		{
+		xform -ro 0 0 0 $jnt;
+		joint -e -orientJoint $orientAxis -sao $sao -zso $jnt;
+		}
+	else
+		setAttr ($jnt+".jointOrient") 0 0 0;
+	}
+}
+
+global proc string cr_stripSuffixToJnt(string $obj, string $attr)
+{
+string $list = getAttr($obj+"."+$attr);
+string $strip = `objGetPrefix $list`;
+string $newList = ($strip + "_jnt");
+return $newList;
+}
+
+global proc string cr_createMasterRigPartsHolder()
+{
+string $masterRigPartsHolder = "masterRigPartsHolder_node";
+
+if (!`objExists $masterRigPartsHolder`)
+	$masterRigPartsHolder = `createNode unknown`;
+	$masterRigPartsHolder = `rename $masterRigPartsHolder "masterRigPartsHolder_node"`;
+
+return $masterRigPartsHolder;
+}
+
+global proc cr_buildLegJointSkeleton(string $parent)
+{
+string $hipJointHierarchy[]; 
+string $fingerJointHierarchy[];
+vector $fingerRot[];
+vector $tempFinger;
+
+string $sel[] = `ls -sl`;
+if(!`attributeExists "symmetry" $sel[0]`)
+{
+string $foorPlacer = `getAttr ($sel[0]+".footPlacer")`;
+string $ankleloc = `getAttr ($foorPlacer+".jointPosList")`;
+string $strip = `objGetPrefix $ankleloc`;
+string $ankleJoint = ($strip + "_jnt");
+
+vector $hipRot = getAttr ($sel[0]+".r");
+setAttr ($sel[0]+".rx") 0;
+setAttr ($sel[0]+".ry") 0;
+
+vector $ankleRot = getAttr ($foorPlacer+".r");
+setAttr ($foorPlacer+".rx") 0;
+setAttr ($foorPlacer+".ry") 0;
+
+$hipJointHierarchy = cr_buildJointSkeleton ($parent);
+//orienting leg joints
+cr_orientJoints ($hipJointHierarchy, "xyz", "zdown");
+
+if(`attributeExists "child" $sel[0]`)
+	{
+	string $fingerList = `getAttr ($sel[0] + ".child")`;
+	string $fingerJointsLists[] = stringToStringArray($fingerList," ");
+	for($i=0;$i<size($fingerJointsLists);$i++)
+		{
+		select -r $fingerJointsLists[$i];
+		$tempFinger = getAttr ($fingerJointsLists[$i]+".r");
+		setAttr ($fingerJointsLists[$i]+".r") 0 0 0;
+		string $parentGrps = `getAttr ($fingerJointsLists[$i]+".parent")`;
+		$strip = `objGetPrefix $parentGrps`;
+		$parent = ($strip + "_jnt");
+		$fingerJointHierarchy = cr_buildJointSkeleton($parent);
+		//orienting leg  finger joints
+		cr_orientJoints ($fingerJointHierarchy, "xyz", "zdown");
+		cr_makeRotAlignJointSetup ($fingerJointHierarchy[0], $tempFinger);
+		}
+	}
+
+cr_makeRotAlignJointSetup ($ankleJoint, $ankleRot);
+cr_makeRotAlignJointSetup ($hipJointHierarchy[0], $hipRot);
+
+//collecting info to create leg rig CMD
+string $name = getAttr($sel[0]+".name");
+string $side = getAttr($sel[0]+".side");
+string $module = getAttr($sel[0]+".moduleTag");
+string $hipJoint = cr_stripSuffixToJnt($sel[0],($side+"hipJoint"));
+string $ankleJoint = cr_stripSuffixToJnt($sel[0],($side+"ankleJoint"));
+string $ballJoint = cr_stripSuffixToJnt($sel[0],($side+"ballJoint"));
+
+addAttr -ln "name" -dt "string" $hipJointHierarchy[0]; 
+	setAttr -type "string" ($hipJointHierarchy[0] + ".name") $name;
+addAttr -ln "sides" -dt "string" $hipJointHierarchy[0]; 
+	setAttr -type "string" ($hipJointHierarchy[0] + ".sides") $side;
+addAttr -ln "legType" -dt "string" $hipJointHierarchy[0]; 
+	setAttr -type "string" ($hipJointHierarchy[0] + ".legType") $module;
+	
+addAttr -ln "legRig"  -dt "string" $hipJointHierarchy[0];
+
+if(`getAttr($sel[0]+".moduleTag")` == "quadLeg")
+	{
+	string $hockJoint = cr_stripSuffixToJnt($sel[0],($side+"hockJoint"));
+	setAttr -type "string" ($hipJointHierarchy[0] + ".legRig") ($hipJoint+" "+$hockJoint+" "+$ankleJoint+" "+$ballJoint);
+	}
+else
+	setAttr -type "string" ($hipJointHierarchy[0] + ".legRig") ($hipJoint+" "+$ankleJoint+" "+$ballJoint);
+
+	
+if(`attributeExists "child" $sel[0]`)
+	{
+	string $finger;
+	string $fingerList[];
+	string $strip;
+	string $newList;
+	string $child = getAttr($sel[0]+".child");
+	string $childList[] = stringToStringArray($child, " ");
+		for($i=0;$i<size($childList);$i++)
+			{
+			$fingerList = stringToStringArray(`getAttr($childList[$i]+".jointPosList")`," ");
+			$strip = `objGetPrefix $fingerList[0]`;
+			$newList = ($strip + "_jnt");
+			$finger += (" "+$newList);
+			}
+	addAttr -ln "fingers" -dt "string" $hipJointHierarchy[0]; 
+	setAttr -type "string" ($hipJointHierarchy[0] + ".fingers") $finger;
+	}
+
+string $node = cr_createMasterRigPartsHolder();
+	if (!`attributeExists "legRigParts"  $node`)
+		addAttr -ln "legRigParts"  -dt "string" $node;
+
+string $rigParts = `getAttr ($node + ".legRigParts")`;
+setAttr -type "string" ($node + ".legRigParts") ($rigParts+" "+$hipJointHierarchy[0]);
+
+if(`attributeExists "doSymmetry" $sel[0]`)
+	{
+	string $doSymm = `getAttr ($sel[0]+".doSymmetry")`;
+	string $symmSide = `getAttr($doSymm+".side")`;
+	string $mirrorSide = `getAttr($sel[0]+".side")`; 
+	string $mirrorJoints[] = `mirrorJoint -mirrorYZ -mirrorBehavior -searchReplace $mirrorSide $symmSide $hipJointHierarchy[0]`;
+	string $rigAttr = getAttr($mirrorJoints[0]+".legRig");
+	$rigAttr = strSearchReplace($rigAttr, $mirrorSide, $symmSide);
+		setAttr -type "string" ($mirrorJoints[0] + ".legRig") $rigAttr;
+		setAttr -type "string" ($mirrorJoints[0] + ".sides") $symmSide;
+	
+	if(`attributeExists "child" $sel[0]`)
+		{
+		string $fingerRigAttr = getAttr($mirrorJoints[0]+".fingers");
+		$fingerRigAttr = strSearchReplace($fingerRigAttr, $mirrorSide, $symmSide);
+		setAttr -type "string" ($mirrorJoints[0] + ".fingers") $fingerRigAttr;
+		}
+
+	$rigParts = `getAttr ($node + ".legRigParts")`;
+		setAttr -type "string" ($node + ".legRigParts") ($rigParts+" "+$mirrorJoints[0]);	
+	}
+}
+delete $sel[0];
+}
+
+//cr_buildArmJointSkeleton ""
+global proc cr_buildArmJointSkeleton(string $parent)
+{
+string $armJointList;
+string $armJointListArray[];
+string $shoulderJointHierarchy[]; 
+string $fingerJointHierarchy[];
+vector $fingerRot[];
+vector $tempFinger;
+
+string $sel[] = `ls -sl`;
+
+$armJointList = `getAttr ($sel[0] + ".jointPosList")`;
+$armJointListArray = stringToStringArray($armJointList," ");
+
+if(!`attributeExists "symmetry" $sel[0]`)
+{
+string $wristPlacer = `getAttr ($sel[0]+".wristPlacer")`;
+string $wristloc = `getAttr ($wristPlacer+".jointPosList")`;
+string $strip = `objGetPrefix $wristloc`;
+string $wristJoint = ($strip + "_jnt");	
+
+vector $shoulderRot = getAttr ($sel[0]+".r");
+setAttr ($sel[0]+".r") 0 0 0;
+
+vector $wristRot = getAttr ($wristPlacer+".r");
+setAttr ($wristPlacer+".r") 0 0 0;
+
+$shoulderJointHierarchy = cr_buildJointSkeleton($parent);
+//orienting arm joints
+cr_orientJoints ($shoulderJointHierarchy, "xyz", "ydown");
+
+if(`attributeExists "child" $sel[0]`)
+	{
+	string $fingerList = `getAttr ($sel[0] + ".child")`;
+	string $fingerJointsLists[] = stringToStringArray($fingerList," ");
+	for($i=0;$i<size($fingerJointsLists);$i++)
+		{
+		select -r $fingerJointsLists[$i];
+		$tempFinger = getAttr ($fingerJointsLists[$i]+".r");
+		setAttr ($fingerJointsLists[$i]+".r") 0 0 0;
+		string $parentGrp = `getAttr ($fingerJointsLists[$i]+".parent")`;
+		$strip = `objGetPrefix $parentGrp`;
+		$parent = ($strip + "_jnt");
+		$fingerJointHierarchy = cr_buildJointSkeleton($parent);
+		//orienting finger joints
+		cr_orientJoints ($fingerJointHierarchy, "xyz", "ydown");
+		//making joint rotion align to module controllers
+		cr_makeRotAlignJointSetup ($fingerJointHierarchy[0], $tempFinger);
+		}
+	}
+cr_makeRotAlignJointSetup ($wristJoint, $wristRot);
+cr_makeRotAlignJointSetup ($shoulderJointHierarchy[1], $shoulderRot);
+
+//collecting info to create arm rig CMD
+string $name = getAttr($sel[0]+".name");
+string $side = getAttr($sel[0]+".side");
+string $shoulderJoint = cr_stripSuffixToJnt($sel[0],($side+"shoulderJoint"));
+string $wristJoint = cr_stripSuffixToJnt($sel[0],($side+"wristJoint"));
+
+addAttr -ln "name" -dt "string" $shoulderJointHierarchy[0]; 
+	setAttr -type "string" ($shoulderJointHierarchy[0] + ".name") $name;
+addAttr -ln "sides" -dt "string" $shoulderJointHierarchy[0]; 
+	setAttr -type "string" ($shoulderJointHierarchy[0] + ".sides") $side;
+
+addAttr -ln "armRig"  -dt "string" $shoulderJointHierarchy[0];
+	setAttr -type "string" ($shoulderJointHierarchy[0] + ".armRig") ($shoulderJoint+" "+$wristJoint);
+
+if(`attributeExists "child" $sel[0]`)
+	{
+	string $finger;
+	string $fingerList[];
+	string $strip;
+	string $newList;
+	string $child = getAttr($sel[0]+".child");
+	string $childList[] = stringToStringArray($child, " ");
+		for($i=0;$i<size($childList);$i++)
+			{
+			$fingerList = stringToStringArray(`getAttr($childList[$i]+".jointPosList")`," ");
+			$strip = `objGetPrefix $fingerList[0]`;
+			$newList = ($strip + "_jnt");
+			$finger += (" "+$newList);
+			}
+	addAttr -ln "fingers" -dt "string" $shoulderJointHierarchy[0]; 
+	setAttr -type "string" ($shoulderJointHierarchy[0] + ".fingers") $finger;
+	}
+	
+string $node = cr_createMasterRigPartsHolder();
+	if (!`attributeExists "armRigParts"  $node`)
+		addAttr -ln "armRigParts"  -dt "string" $node;
+
+string $rigParts = `getAttr ($node + ".armRigParts")`;
+setAttr -type "string" ($node + ".armRigParts") ($rigParts+" "+$shoulderJointHierarchy[0]);
+
+if(`attributeExists "doSymmetry" $sel[0]`)
+	{
+	string $doSymm = `getAttr ($sel[0]+".doSymmetry")`;
+	string $symmSide = `getAttr($doSymm+".side")`;
+	string $mirrorSide = `getAttr($sel[0]+".side")`; 
+	string $mirrorJoints[] = `mirrorJoint -mirrorYZ -mirrorBehavior -searchReplace $mirrorSide $symmSide $shoulderJointHierarchy[0]`;
+	string $rigAttr = getAttr($mirrorJoints[0]+".armRig");
+	$rigAttr = strSearchReplace($rigAttr, $mirrorSide, $symmSide);
+		setAttr -type "string" ($mirrorJoints[0] + ".armRig") $rigAttr;
+		setAttr -type "string" ($mirrorJoints[0] + ".sides") $symmSide;	
+	
+	if(`attributeExists "child" $sel[0]`)
+		{
+		string $fingerRigAttr = getAttr($mirrorJoints[0]+".fingers");
+		$fingerRigAttr = strSearchReplace($fingerRigAttr, $mirrorSide, $symmSide);
+		setAttr -type "string" ($mirrorJoints[0] + ".fingers") $fingerRigAttr;
+		}
+		
+	$rigParts = `getAttr ($node + ".armRigParts")`;
+		setAttr -type "string" ($node + ".armRigParts") ($rigParts+" "+$mirrorJoints[0]);
+	}
+}
+delete $armJointListArray[0];
+delete $sel[0];
+}
+
+global proc string[] cr_createChildAttrJointHierarchy(string $joint)
+{
+//this proc find child attr on main placer ctrl and create joint heirarchy..
+ 
+string $jointHierarchy[];
+if(`attributeExists "child" $joint`)
+	{
+	string $fingerList = `getAttr ($joint + ".child")`;
+	string $fingerJointsLists[] = stringToStringArray($fingerList," ");
+	for($i=0;$i<size($fingerJointsLists);$i++)
+		{
+		select -r $fingerJointsLists[$i];
+		string $parentGrp = `getAttr ($fingerJointsLists[$i]+".parent")`;
+		$strip = `objGetPrefix $parentGrp`;
+		$parent = ($strip + "_jnt");
+		$jointHierarchy = cr_buildJointSkeleton($parent);
+		} 
+	}
+else
+	error "Given object is not installed for current operation";
+return $jointHierarchy;
+}
+
+global proc cr_buildSpineJointSkeleton(string $parent)
+{
+string $sel[] = `ls -sl`;
+string $spineJoints[];
+string $hipJoint[];
+string $rigParts;
+string $node;
+if(size($sel)>0)
+	{
+	if(!`attributeExists "symmetry" $sel[0]`)
+		{	
+		vector $spineRot = getAttr ($sel[0]+".r");
+		setAttr ($sel[0]+".r") 0 0 0;			
+	
+		//creating spine joints
+		$spineJoints = cr_buildJointSkeleton($parent);
+		//creating hip joint
+		$hipJoint = cr_createChildAttrJointHierarchy ($sel[0]);
+
+		//orienting spine joints
+		cr_orientJoints ($spineJoints, "xyz", "zup");
+		cr_orientJoints ($hipJoint, "xyz", "zup");
+
+		cr_makeRotAlignJointSetup ($spineJoints[0], $spineRot);
+
+		//collecting info to create spine rig CMD
+		string $name = getAttr($sel[0]+".name");
+		string $side = getAttr($sel[0]+".side");
+		string $rootJoint = cr_stripSuffixToJnt($sel[0],($side+"rootJoint"));
+		string $chestJoint = cr_stripSuffixToJnt($sel[0],($side+"chestJoint"));
+		string $hipJoint = cr_stripSuffixToJnt($sel[0],($side+"hipJoint"));
+
+		addAttr -ln "name" -dt "string" $spineJoints[0]; 
+			setAttr -type "string" ($spineJoints[0] + ".name") $name;
+		addAttr -ln "sides" -dt "string" $spineJoints[0]; 
+			setAttr -type "string" ($spineJoints[0] + ".sides") $side;
+		addAttr -ln "spineRig"  -dt "string" $spineJoints[0];
+			setAttr -type "string" ($spineJoints[0] + ".spineRig") ($rootJoint+" "+$chestJoint+" "+$hipJoint);
+
+		$node = cr_createMasterRigPartsHolder();
+			if (!`attributeExists "spineRigParts"  $node`)
+				addAttr -ln "spineRigParts"  -dt "string" $node;
+
+		$rigParts = `getAttr ($node + ".spineRigParts")`;
+		setAttr -type "string" ($node + ".spineRigParts") ($rigParts+" "+$spineJoints[0]);
+		}	
+	if(`attributeExists "doSymmetry" $sel[0]`)
+		{
+		string $doSymm = `getAttr ($sel[0]+".doSymmetry")`;
+		string $symmSide = `getAttr($doSymm+".side")`;
+		string $mirrorSide = `getAttr($sel[0]+".side")`; 
+		string $mirrorJoints[] = `mirrorJoint -mirrorYZ -mirrorBehavior -searchReplace $mirrorSide $symmSide $spineJoints[0]`;
+		string $rigAttr = getAttr($mirrorJoints[0]+".spineRig");
+		$rigAttr = strSearchReplace($rigAttr, $mirrorSide, $symmSide);
+			setAttr -type "string" ($mirrorJoints[0] + ".spineRig") $rigAttr;
+			setAttr -type "string" ($mirrorJoints[0] + ".sides") $symmSide;
+
+		$rigParts = `getAttr ($node + ".spineRigParts")`;
+			setAttr -type "string" ($node + ".spineRigParts") ($rigParts+" "+$mirrorJoints[0]);		
+		}
+	delete $sel[0];
+	}
+else
+	error "No object is selected, plz try again...";
+}
+
+global proc cr_buildNeckHeadJointSkeleton(string $parent)
+{
+string $sel[] = `ls -sl`;
+string $neckJoints[];
+string $headJoints[];
+string $eyeJoints[];
+string $child;
+string $headParent;
+string $rigParts;
+string $node;
+if(size($sel)>0)
+	{
+	if(!`attributeExists "symmetry" $sel[0]`)
+		{
+		$child = `getAttr ($sel[0]+".child")`;
+		
+		vector $neckRot = getAttr ($sel[0]+".r");
+		setAttr ($sel[0]+".r") 0 0 0;
+			
+		vector $headRot = getAttr ($child+".r");
+		setAttr ($child+".r") 0 0 0;		
+	
+		//creating neck joints
+		$neckJoints = cr_buildJointSkeleton($parent);
+
+		$headParent = cr_getParentAttrModuleComponants($child);
+
+		//creating head joints
+		select -r $child;		
+		$headJoints = cr_buildJointSkeleton($headParent);
+		//creating eye joints
+		$eyeJoints = cr_createChildAttrJointHierarchy ($child);
+
+		//orienting neck joints
+		cr_orientJoints ($neckJoints, "xyz", "zup");
+		
+		//orienting head joints
+		cr_orientJoints ($headJoints, "xyz", "zup");
+		cr_orientJoints ($eyeJoints, "xyz", "zup");		
+
+		cr_makeRotAlignJointSetup ($headJoints[0], $headRot);
+		cr_makeRotAlignJointSetup ($neckJoints[0], $neckRot);
+
+		//collecting info to create spine rig CMD
+		string $name = getAttr($sel[0]+".name");
+		string $side = getAttr($sel[0]+".side");
+		string $neckJoint = cr_stripSuffixToJnt($sel[0],($side+"neckJoint"));
+		string $headJoint = cr_stripSuffixToJnt($sel[0],($side+"headJoint"));
+		string $eyeJoint = getAttr($sel[0]+"."+$side+"eyeJoints");
+		$eyeJoint = strSearchReplace($eyeJoint, "_loc", "_jnt");
+
+		addAttr -ln "name" -dt "string" $neckJoints[0]; 
+			setAttr -type "string" ($neckJoints[0] + ".name") $name;
+		addAttr -ln "sides" -dt "string" $neckJoints[0]; 
+			setAttr -type "string" ($neckJoints[0] + ".sides") $side;
+		addAttr -ln "neckHeadRig"  -dt "string" $neckJoints[0];
+			setAttr -type "string" ($neckJoints[0] + ".neckHeadRig") ($neckJoint+" "+$headJoint);
+		addAttr -ln "eyeRig"  -dt "string" $neckJoints[0];
+			setAttr -type "string" ($neckJoints[0] + ".eyeRig") $eyeJoint;
+
+		$node = cr_createMasterRigPartsHolder();
+			if (!`attributeExists "neckHeadRigParts"  $node`)
+				addAttr -ln "neckHeadRigParts"  -dt "string" $node;
+			if (!`attributeExists "eyeRigParts"  $node`)
+				addAttr -ln "eyeRigParts"  -dt "string" $node;
+
+		$rigParts = `getAttr ($node + ".neckHeadRigParts")`;
+		setAttr -type "string" ($node + ".neckHeadRigParts") ($rigParts+" "+$neckJoints[0]);
+		$rigParts = `getAttr ($node + ".eyeRigParts")`;
+		setAttr -type "string" ($node + ".eyeRigParts") ($rigParts+" "+$neckJoints[0]);
+		}
+		
+	if(`attributeExists "doSymmetry" $sel[0]`)
+		{
+		string $doSymm = `getAttr ($sel[0]+".doSymmetry")`;
+		string $symmSide = `getAttr($doSymm+".side")`;
+		string $mirrorSide = `getAttr($sel[0]+".side")`; 
+		string $mirrorJoints[] = `mirrorJoint -mirrorYZ -mirrorBehavior -searchReplace $mirrorSide $symmSide $neckJoints[0]`;
+
+		string $rigAttr = getAttr($mirrorJoints[0]+".neckHeadRig");
+		$rigAttr = strSearchReplace($rigAttr, $mirrorSide, $symmSide);
+			setAttr -type "string" ($mirrorJoints[0] + ".neckHeadRig") $rigAttr;
+			setAttr -type "string" ($mirrorJoints[0] + ".sides") $symmSide;
+
+		$rigParts = `getAttr ($node + ".neckHeadRigParts")`;
+			setAttr -type "string" ($node + ".neckHeadRigParts") ($rigParts+" "+$mirrorJoints[0]);
+			
+		$rigAttr = getAttr($mirrorJoints[0]+".eyeRig");
+		$rigAttr = strSearchReplace($rigAttr, $mirrorSide, $symmSide);
+			setAttr -type "string" ($mirrorJoints[0] + ".eyeRig") $rigAttr;
+
+		$rigParts = `getAttr ($node + ".eyeRigParts")`;
+			setAttr -type "string" ($node + ".eyeRigParts") ($rigParts+" "+$mirrorJoints[0]);				
+		}
+	delete $sel[0];
+	}
+else
+	error "No object is selected, plz try again...";
+}
+
+global proc cr_buildTentacleJointSkeleton(string $parent)
+{
+string $sel[] = `ls -sl`;
+string $tentacleJoints[];
+string $rigParts;
+string $node;
+if(size($sel)>0)
+	{
+	if(!`attributeExists "symmetry" $sel[0]`)
+		{	
+		vector $tentRot = getAttr ($sel[0]+".r");
+		setAttr ($sel[0]+".r") 0 0 0;
+		
+		//creating tentacle joints
+		$tentacleJoints = cr_buildJointSkeleton($parent);
+		
+		//orienting neck joints
+		cr_orientJoints ($tentacleJoints, "xyz", "ydown");
+
+		cr_makeRotAlignJointSetup ($tentacleJoints[0], $tentRot);
+
+		//collecting info to create spine rig CMD
+		string $name = getAttr($sel[0]+".name");
+		string $side = getAttr($sel[0]+".side");
+		string $moduleName = getAttr($sel[0]+"."+$side+"types");
+		string $startJoint = cr_stripSuffixToJnt($sel[0],($side+"startJoint"));
+		string $endJoint = cr_stripSuffixToJnt($sel[0],($side+"endJoint"));
+		
+		addAttr -ln "name" -dt "string" $tentacleJoints[0]; 
+			setAttr -type "string" ($tentacleJoints[0] + ".name") $name;
+		addAttr -ln "sides" -dt "string" $tentacleJoints[0]; 
+			setAttr -type "string" ($tentacleJoints[0] + ".sides") $side;
+		addAttr -ln "types" -dt "string" $tentacleJoints[0]; 
+			setAttr -type "string" ($tentacleJoints[0] + ".types") $moduleName;			
+		addAttr -ln "tentacleRig"  -dt "string" $tentacleJoints[0];
+			setAttr -type "string" ($tentacleJoints[0] + ".tentacleRig") ($startJoint+" "+$endJoint);
+		
+		$node = cr_createMasterRigPartsHolder();
+			if (!`attributeExists "tentacleRigParts"  $node`)
+				addAttr -ln "tentacleRigParts"  -dt "string" $node;
+		
+		$rigParts = `getAttr ($node + ".tentacleRigParts")`;
+		setAttr -type "string" ($node + ".tentacleRigParts") ($rigParts+" "+$tentacleJoints[0]);		
+		}
+		
+	if(`attributeExists "doSymmetry" $sel[0]`)
+		{
+		string $doSymm = `getAttr ($sel[0]+".doSymmetry")`;
+		string $symmSide = `getAttr($doSymm+".side")`;
+		string $mirrorSide = `getAttr($sel[0]+".side")`; 
+		string $mirrorJoints[] = `mirrorJoint -mirrorYZ -mirrorBehavior -searchReplace $mirrorSide $symmSide $tentacleJoints[0]`;
+		string $rigAttr = getAttr($mirrorJoints[0]+".tentacleRig");
+		$rigAttr = strSearchReplace($rigAttr, $mirrorSide, $symmSide);
+			setAttr -type "string" ($mirrorJoints[0] + ".tentacleRig") $rigAttr;
+			setAttr -type "string" ($mirrorJoints[0] + ".sides") $symmSide;
+
+		$rigParts = `getAttr ($node + ".tentacleRigParts")`;
+			setAttr -type "string" ($node + ".tentacleRigParts") ($rigParts+" "+$mirrorJoints[0]);				
+		}
+	delete $sel[0];
+	}
+else
+	error "No object is selected, plz try again...";
+}

@@ -1,0 +1,216 @@
+// Pendulate Maya Script
+// abxPendulate.mel
+//
+// Created by J. Adam Burke adam@adamburke.net
+// Version 1.5
+// Modified : 18 March 2005
+
+// DESCRIPTION:
+// This script will automatically key pendular motion for objects that need to 
+// come to a subtle realistic stop. It works for rotations, translations, scale,
+// and any keyed value that you want to apply it to.
+
+// USAGE:
+// Source script and call "abxPendulate;"
+// assign to shelf or hotkey as preferred
+
+// ©2005 J. Adam Burke 
+// http://www.adamburke.net
+
+
+global proc abxPendulate (){
+    if (`window -ex abxPendulateWindow` != true)
+        {
+	window -w 210 -h 134 -ret -menuBar true -t "Pendulate" -in "Pendulate" -s true -tb true abxPendulateWindow;
+				
+		menu -hm true -label "Help";
+		menuItem -label "How To Use..." -c "abxPendulateHelp";
+		menuItem -label "About" -c "abxPendulateAbout";
+		menuItem -d true;
+		menuItem -label "Close" -c "window -e -vis 0 abxPendulateWindow";
+
+	
+	formLayout mainForm;
+
+	//separator -style "in" -h 3 sep0 ;
+
+	floatSliderGrp 
+		-label "Decay"
+		-field true
+		-minValue 0.001
+		-maxValue 0.990
+		-fieldMinValue 0.001
+		-fieldMaxValue 0.990
+		-value 0.75
+		-pre 2
+		-cw 1 60
+		-cw 2 40
+		-cw 3 20
+		-adj 3
+		sldrDecay;
+	floatSliderGrp
+		-label "Tolerance"
+		-field true
+		-minValue 0.001
+		-maxValue 1
+		-fieldMinValue 0.001
+		-fieldMaxValue 10
+		-value 0.05
+		-pre 2
+		-cw 1 60
+		-cw 2 40
+		-cw 3 20
+		-adj 3
+		sldrTol;
+		
+	button -l "Pendulate" 
+		-c "abxPendulateKeys((1-`floatSliderGrp -q -value sldrDecay`), `floatSliderGrp -q -value sldrTol`);window -e -vis 0 abxPendulateWindow" 
+		-al "center" 
+		-h 26 
+		btnPendulate ;
+	button 
+		-l "Apply" 
+		-c "abxPendulateKeys((1-`floatSliderGrp -q -value sldrDecay`), `floatSliderGrp -q -value sldrTol`)" 
+		-al "center" 
+		-h 26 btnApply;
+	button -l "Close" 
+		-c "window -e -vis 0 abxPendulateWindow" 
+		-al "center" 
+		-h 26 btnClose ;
+	
+	formLayout -e
+	    //-attachForm sep0 "left" 0 
+	    //-attachForm sep0 "right" 0
+	    //-attachForm sep0 "top" 0
+	    //-attachNone sep0 "bottom"
+
+	    -attachForm sldrDecay "left" 5
+	    -attachForm sldrDecay "right" 5
+	    -attachForm sldrDecay "top" 5
+	    -attachNone sldrDecay "bottom"
+
+	    -attachForm sldrTol "left" 5
+	    -attachForm sldrTol "right" 5
+	    -attachControl sldrTol "top" 5 sldrDecay
+	    -attachNone sldrTol "bottom"
+
+	    -attachForm btnPendulate "left" 5 
+	    -attachPosition btnPendulate "right" 3 33
+	    -attachNone btnPendulate "top"
+	    -attachForm btnPendulate "bottom" 5
+
+	    -attachPosition btnApply "left" 3 33 
+	    -attachPosition btnApply "right" 3 66
+	    -attachNone btnApply "top"
+	    -attachForm btnApply "bottom" 5
+	    
+	    -attachPosition btnClose "left" 3 66
+	    -attachForm btnClose "right" 5
+	    -attachNone btnClose "top"
+	    -attachForm btnClose "bottom" 5
+	
+	    mainForm ;
+
+	window -e -w 210 -h 134 abxPendulateWindow;
+	showWindow abxPendulateWindow;
+	}
+    	else	// else just pop it up from being minimized again
+    	{
+		window -e -w 210 -h 134 abxPendulateWindow;
+		showWindow abxPendulateWindow;
+	}
+
+}
+
+
+global proc abxPendulateKeys (float $decay, float $stillVal) {
+
+    if ($decay > 0.900){
+	print "Pendular Decay cannot be greater than 0.900. Setting to 0.900\n";
+        $decay = 0.900;
+    }
+    if ($decay < 0.100){
+        print "Pendular Decay cannot be less than 0.100. Setting to 0.100\n";
+        $decay = 0.100;
+    }
+    if ($stillVal < .001){
+        print "Stop Tolerance must be greater than 0.000. Setting to 0.001\n";
+	$stillVal = 0.1;
+    }
+
+    string $selectedItem[];
+    string $selectedAttr[];
+    string $selectedString;
+    float $timeToSettle = 0;
+    float $prevKeyFrame =0;
+
+    float $theCurrentFrame = `currentTime -q`;
+ 
+    $selectedItem = `selectedNodes -do`;
+    for ($i=0;$i<size($selectedItem);$i++){ 
+       $selectedAttr = `listAnimatable $selectedItem[$i]`;
+	for ($a=0;$a<size($selectedAttr);$a++){
+            $selectedString = $selectedAttr[$a];
+            $currentKey = `findKeyframe -t ($theCurrentFrame + 1 ) -w previous $selectedString`;
+
+            // if there is a key on the current frame
+            if ($currentKey == $theCurrentFrame){
+                float $tempDist = 0;
+                int $iteration = 1;
+                int $addVal = 1;
+                float $endVal = 0;
+                float $startVal = 0;
+                float $period = 0;
+                float $newDist = 0;
+                $prevKeyFrame = `findKeyframe -w previous $selectedString`;
+                $startVal = `getAttr -t $prevKeyFrame $selectedString`;
+                $endVal = `getAttr -t $theCurrentFrame $selectedString`;
+                $period = $theCurrentFrame - $prevKeyFrame;
+                $newDist = ($endVal-$startVal)*pow($decay,1);
+                if ($newDist > 0) $addVal = 0;
+                else if ($newDist < 0) $addVal = 0;
+                $tempDist = $newDist; 
+                $newPeriod = float(int($period * (1)));
+                setKeyframe -v ($endVal + $newDist) -itt "flat" -ott "flat" $selectedString;
+                keyTangent -t $currentKey -ott "flat" -itt "flat" $selectedString; 
+                
+                while ($tempDist > $stillVal || $tempDist < -($stillVal)){
+                    $tempDist = $tempDist * (pow($decay,1));
+                    $iteration++;
+                }
+                for ($k=1;$k<=$iteration;$k++){
+                    $newDist = $newDist*(pow($decay,1));
+                    if ($addVal == 1){
+                        setKeyframe -v ($endVal+$newDist) -t ($theCurrentFrame + ($newPeriod * $k)) -itt "flat" -ott "flat" $selectedString; 
+                        $addVal = 0;
+                    }
+                    else{
+                        setKeyframe -v ($endVal-$newDist) -t ($theCurrentFrame + ($newPeriod * $k)) -itt "flat" -ott "flat" $selectedString;
+                        $addVal = 1;
+                    }
+                }
+            }
+        }
+    }
+}
+
+global proc abxPendulateHelp () {
+	confirmDialog -t "How To Use Pendulate" -message (
+			"Pendulate automatically generates a pendular motion on selected\n"
+			+"objects when given a start and end postion. It's great for adding\n"
+			+"overshoot and settle to object automatically.\n\n"
+			+"1. For a given action that you want to add a pendular settle to,\n"
+			+"    define a keyframe at the start and end position at the\n"
+			+"    approximate speed you desire.\n"
+			+"2. Set the current frame to the end position keyframe\n"
+			+"3. Set the Decay which represents the % of energy lost per half cycle.\n"
+			+"4. Set the Tolerance which defines how small the cycles can get before\n"
+			+"    the script stops setting keys.\n"
+			+"5. Press Pendulate or Apply and the script will add the necessary\n"
+			+"    keys"
+			) -button "OK";
+}
+
+global proc abxPendulateAbout() {
+	confirmDialog -t "About Pendulate" -message "Pendulate Script v1.0\n© 2005 J. Adam Burke\nhttp://www.adamburke.net/" -button "OK" -defaultButton "OK";
+}

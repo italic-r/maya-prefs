@@ -1,0 +1,40 @@
+/*
+/////////////////////////////////////////////////////////////////////////////
+
+ackGotoTime 1.0			
+6/20/07
+Aaron Koressel
+www.aaronkoressel.com			
+
+Quick way to jump to a frame number without touching the mouse.
+Running the command pops up a window to enter a time into.
+Pressing enter jumps to the time and kills the window.
+
+////////////////////////////////////////////////////////////////////////////
+*/
+
+global proc ackGotoTime (){
+	if ( `window -ex winAckGotoTime` ) deleteUI winAckGotoTime;
+
+	int $winWidth = 80;
+	int $winHeight = 50;
+ 	window -width $winWidth -height $winHeight winAckGotoTime; 
+	$layout = `formLayout`;		
+	 	$txt = `textField -width $winWidth -height $winHeight -enterCommand "ackGotoTime_Exec" ack_txtGotoTime`;
+		
+	formLayout -e
+		-attachForm     $txt     "top"	  1
+		-attachForm     $txt     "left"   1
+		-attachForm     $txt     "bottom" 1
+		-attachForm     $txt     "right"  1
+		$layout;
+		
+ 	showWindow;
+	window -e -width $winWidth -height $winHeight winAckGotoTime;
+}
+
+global proc ackGotoTime_Exec (){
+	float $newTime = `textField -q -text ack_txtGotoTime`;
+	currentTime -e $newTime;
+	deleteUI -window winAckGotoTime;
+}

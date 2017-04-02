@@ -1,0 +1,52 @@
+//Creates a correctly-named hierarchy for each selected joint (or object) consisting of, from bottom to top:
+//Selected Joint or Object > Nurbs Curve > Zeroed Out Locator Matching Orientation > Group Preserving Child Transforms.
+
+
+proc jointControl () {
+
+
+//Find selection.
+string $selObjs[] = `ls -sl`;
+
+
+//Execute FOR loop.
+for ($objs in $selObjs) {
+
+
+    //Create locator and group it.  Create nurbs curve.
+    string $loc[] = `spaceLocator`;
+    string $grpLoc = `group`;
+    string $circleCurve[] = `circle`;
+
+    //Match transforms of group to selected joint or object.
+    parentConstraint $objs $grpLoc;
+    string $findConstraints[] = `listRelatives -type parentConstraint $grpLoc`;
+    select $findConstraints[0];
+    doDelete;
+    
+    //Match transforms of curve to selected joint or object.
+    parentConstraint $objs $circleCurve[0];
+    string $findConstraints[] = `listRelatives -type parentConstraint $circleCurve[0]`;
+    select $findConstraints[0];
+    doDelete;
+    
+    //Parent curve to locator.
+    parent $circleCurve[0] $loc;
+    
+    //Parent joint or object to curve.
+    parent $objs $circleCurve[0];
+    makeIdentity -apply true -t 1 -r 1 -s 1 -n 0 $objs;
+        
+    //Rename locator, group, and curve.
+    string $renameGrp = `rename $grpLoc ($objs + "_GRP")`;
+    string $renameLoc = `rename $loc ($objs + "_LOC")`;   
+    string $renameCir = `rename $circleCurve[0] ($objs + "_CON")`;
+    
+    //Delete the history of the curves.
+    select $renameCir;
+    DeleteHistory;
+    }
+}
+
+
+jointControl () ;

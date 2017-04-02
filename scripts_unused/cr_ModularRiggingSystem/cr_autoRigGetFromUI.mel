@@ -1,0 +1,359 @@
+//---------------------------------------------------------------------------
+// cr_autoRigGetFromUI.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:	
+//
+// REQUIRES:
+//
+// AUTHOR:
+//		Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+global proc cr_autoRigGetFromUI(string $call)
+{
+//declaring global options...
+string $name = `textField -q -tx nameTF`;
+string $ikFkType = `optionMenu -q -v rotTypeOpGrp`;
+string $stretchType = `optionMenu -q -v scaleTypeOpGrp`;
+int $stretch = `checkBox -q -v stretchChk`;
+int $midLock = `checkBox -q -v midChk`;
+int $volume = `checkBox -q -v volChk`;
+int $cr_buildWorld = `checkBox -q -v buildChk`;
+int $mirror = `menuItem -q -checkBox autoMirrorOptionMi`;
+float $scale = `floatField -q -v scaleFloatF`;
+select -cl;
+symmetricModelling -e -symmetry false;
+softSelect -e -softSelectEnabled false;
+setToolTo nurbsSelect;
+
+switch($call)
+{
+	case "spine":
+	//spine
+	string $side = "";
+	string $rootJoint = `textFieldButtonGrp -q -tx rootJointTFBG`;
+	string $chestJoint = `textFieldButtonGrp -q -tx chestJointTFBG`;
+	string $hipJoint = `textFieldButtonGrp -q -tx hipsJointTFBG`;
+	int $numJoints = `intSliderGrp -q -v spineJointISG`;
+	
+	if((`strcmp $rootJoint $chestJoint` == 0) && (`strcmp $rootJoint $hipJoint` == 0)) error ("You must select a unique joint for each options"); 
+	else
+	cr_buildSpineSetup($name, $side, $rootJoint, $chestJoint, $hipJoint, $stretchType, $numJoints, $stretch, $volume, $cr_buildWorld,$scale);
+	
+	break;
+	
+	case "arm":
+	//arm
+	string $side = `optionMenu -q -v sidePrefix`;
+	string $shoulderJoint = `textFieldButtonGrp -q -tx shoulderJointTFBG`;
+	string $wristJoint = `textFieldButtonGrp -q -tx wristJointTFBG`;
+ 
+	string $sideQ[] = cr_rigSideSep($side);
+	int $armSide = `radioButtonGrp -q -sl armSideRdBnGrp`;
+
+	if($side != "none")
+		{
+		if($armSide == 1)
+			$side = $sideQ[0];
+		else
+			$side = $sideQ[1];
+		}
+	else 
+		$side = "";
+	if($name != "")
+		$name = ($name + "_");
+	
+	if((`strcmp $shoulderJoint $wristJoint` == 0)) error ("You must select a unique joint for each options"); 
+	else
+	cr_buildArmSetup($name, $side, $shoulderJoint, $wristJoint, $stretchType, $ikFkType, $stretch, $midLock, $volume, $cr_buildWorld, $scale);
+
+	if($mirror)
+		{
+		if(cr_prefixSepCheck($shoulderJoint)==1)
+			{	
+			string $rShoulderJoint = strSearchReplace($shoulderJoint, $sideQ[0], $sideQ[1]);
+			string $rWristJoint = strSearchReplace($wristJoint, $sideQ[0], $sideQ[1]);
+			cr_buildArmSetup($name, $sideQ[1], $rShoulderJoint, $rWristJoint, $stretchType, $ikFkType, $stretch, $midLock, $volume, $cr_buildWorld, $scale);
+			}
+		}
+	
+	break;
+	
+	case "leg":
+	//leg
+	string $side = `optionMenu -q -v sidePrefix`;
+	string $hipJoint = `textFieldButtonGrp -q -tx hipJointTFBG`;
+	string $ankleJoint = `textFieldButtonGrp -q -tx ankleJointTFBG`;
+	string $ballJoint = `textFieldButtonGrp -q -tx ballJointTFBG`;
+	
+	string $sideQ[] = cr_rigSideSep($side);
+	int $armSide = `radioButtonGrp -q -sl legSideRdBnGrp`;
+
+	if($side != "none")
+		{
+		if($armSide == 1)
+			$side = $sideQ[0];
+		else
+			$side = $sideQ[1];
+		}
+	else 
+		$side = "";
+	if($name != "")
+		$name = ($name + "_");
+	
+	if((`strcmp $hipJoint $ankleJoint` == 0) || (`strcmp $ankleJoint $ballJoint` == 0) ||(`strcmp $hipJoint $ballJoint` == 0)) error ("You must select a unique joint for each options"); 
+	else
+	cr_buildBipedLegSetup($name, $side, $hipJoint, $ankleJoint, $ballJoint, $stretchType, $ikFkType, $stretch, $midLock, $volume, $cr_buildWorld, $scale);
+
+	if($mirror)
+		{
+		if(cr_prefixSepCheck($hipJoint)==1)
+			{	
+			string $rHipJoint = strSearchReplace($hipJoint, $sideQ[0], $sideQ[1]);
+			string $rAnkleJoint = strSearchReplace($ankleJoint, $sideQ[0], $sideQ[1]);
+			string $rBallJoint = strSearchReplace($ballJoint, $sideQ[0], $sideQ[1]);
+			cr_buildBipedLegSetup($name, $sideQ[1], $rHipJoint, $rAnkleJoint, $rBallJoint, $stretchType, $ikFkType, $stretch, $midLock, $volume, $cr_buildWorld, $scale);
+			}
+		}
+	
+	break;
+	
+	case "head":
+	//head
+	string $side = "";
+	string $neckJoint = `textFieldButtonGrp -q -tx neckJointTFBG`;
+	string $headJoint = `textFieldButtonGrp -q -tx headJointTFBG`;
+	int $numJoints = `intSliderGrp -q -v neckJointISG`;
+	
+	if((`strcmp $headJoint $neckJoint` == 0)) error ("You must select a unique joint for each options");
+	else
+	cr_buildNeckHeadSetup($name, $side, $neckJoint, $headJoint, $stretchType, $stretch, $numJoints, $volume, $cr_buildWorld,$scale);
+	
+	break;
+	
+	case "eyes":
+	//eyes
+	string $side = "";
+	string $leftEye = `textFieldButtonGrp -q -tx eyeLJointTFBG`;
+	string $rightEye = `textFieldButtonGrp -q -tx eyeRJointTFBG`;
+	
+	string $parent = cr_getParent($leftEye);
+	
+	if((`strcmp $leftEye $rightEye` == 0)) error ("You must select a unique joint for each options");
+	else if($parent == "") error ("Parent for eyes joint required for complete setup");
+	else
+	cr_buildEyeSetup($name, $side, $leftEye, $rightEye, $cr_buildWorld, $scale);
+	
+	break;
+	
+	case "tentacle":
+	//tentacles
+	string $side = "";
+	string $tentStartJoint = `textFieldButtonGrp -q -tx startTentJointTFBG`;
+	string $tentEndJoint = `textFieldButtonGrp -q -tx endTentJointTFBG`;
+	string $controlType = `textFieldGrp -q -tx conTentTFG`;
+	string $offControlType = `textField -q -tx conOffTentTF`;
+	string $type = `textFieldGrp -q -tx tenticaleNameTFG`;
+	int $offsetControls = `checkBoxGrp -q -v1 offsetChk`;
+	int $dynamics = `checkBoxGrp -q -v1 dynamicChk`;
+	int $numJoints = `intSliderGrp -q -v tenticaleJointISG`;
+
+	if ($type == "")
+		error("You must define the tentacle name.");
+	
+	if((`strcmp $tentStartJoint $tentEndJoint` == 0)) error ("You must select a unique joint for each options");
+	else
+	cr_buildTentacleSetup($name, $tentStartJoint, $tentEndJoint, $controlType, $offsetControls, $offControlType, $dynamics, $type, $stretchType, $stretch, $numJoints, $volume, $cr_buildWorld, $scale);
+	
+	break;
+
+	case "hand":
+	//FINGERS UI
+	// counters
+	int $i, $j = 0;
+	
+	//GUI information
+	int $numFingers =  0;
+	for($i = 1; $i <= 5; $i++)
+		{
+		if(`checkBox -q -v ("finger" + $i + "Chk")` == 1)$numFingers = $i;
+		}
+		
+	string $fingerName[5];
+	string $startJoint[5];
+	for($i = 0; $i < $numFingers; $i++)
+		{
+		$fingerName[$i] = `textField -q -tx ("finger" + ($i+1) + "NameTF")`;
+		$startJoint[$i] = `textFieldButtonGrp -q -tx ("finger" + ($i+1) + "JointTFBG")`;
+		}
+
+	int $installCurl       = 1;
+	int $installSpread     = 1;
+	int $installSpin       = 1;
+	int $installStretch    = 1;
+	
+	string $side = `optionMenu -q -v sidePrefix`;
+	string $controller = `textFieldButtonGrp -q -tx controlHandTFBG`;
+	string $controlType = `textField -q -tx fkConHandTF`;
+	int $cr_fkControl = `checkBoxGrp -q -v1 fkConChk`;
+	 
+	int $nameMethod = `radioButtonGrp -q -sl namingRdBnGrp`;
+	int $skipLast = `checkBoxGrp -q -v1 skipOpChk`;
+	
+	int $manual = `checkBoxGrp -q -v1 manualOpChk`;
+	int $cr_buildWorld = `checkBox -q -v buildChk`;
+	
+	string $sideQ[] = cr_rigSideSep($side);
+	int $fingerSide = `radioButtonGrp -q -sl fingerSideRdBnGrp`;	
+	
+	if($side != "none")
+		{
+		if($fingerSide == 1)
+			$side = $sideQ[0];
+		else
+			$side = $sideQ[1];
+		}
+	else 
+		$side = "";
+		
+	if($name != "")
+		$name = ($name + "_");	
+	 
+	int $fingerRotAxis[];
+	if($manual == 0)
+		$fingerRotAxis = cr_getFingerAxisFigures($startJoint[0]);
+	else
+		{
+		$fingerRotAxis[0] = `radioButtonGrp -q -sl spinfacingRdBnGrp`;
+		$fingerRotAxis[1] = `radioButtonGrp -q -sl curlfacingRdBnGrp`;  
+		$fingerRotAxis[2] = `radioButtonGrp -q -sl spreadfacingRdBnGrp`;
+		$fingerRotAxis[3] = `radioButtonGrp -q -sl stretchfacingRdBnGrp`;
+		}
+	
+	///////////////
+	// Error Checking
+	//          
+	//make sure the controller actually exists
+		if(`objExists $controller` == 0) error "The controller you specified to install the hand controls on does not appear to exist!";
+		
+		//see if finger controls have been added already to the controller
+		if(`attributeExists "fingerCONTROLS" $controller` == 1) error "You appear to already have installed finger controls on this controller!";
+		
+		//make sure none of the selected axis conflict with one another
+		if($installCurl == 1)
+		{
+		if($installSpread == 1 && $fingerRotAxis[1] == $fingerRotAxis[2]) error "You must select a unique axis for for the Spread Axis"; 
+		if($installSpin == 1 && $fingerRotAxis[1] == $fingerRotAxis[0]) error "You must select a unique axis for for the Spin Axis"; 
+		}
+		if($installSpread == 1)
+		{
+		if($installCurl == 1 && $fingerRotAxis[2] == $fingerRotAxis[1]) error "You must select a unique axis for for the Spread Axis"; 
+		if($installSpin == 1 && $fingerRotAxis[2] == $fingerRotAxis[0]) error "You must select a unique axis for for the Spin Axis"; 
+		}
+		if($installSpin == 1)
+		{
+		if($installCurl == 1 && $fingerRotAxis[0] == $fingerRotAxis[1]) error "You must select a unique axis for for the Spin Axis"; 
+		if($installSpread == 1 && $fingerRotAxis[0] == $fingerRotAxis[2]) error "You must select a unique axis for for the Spin Axis"; 
+		}
+	
+	// peform some error checking on the entered names
+	for ($i = 0; $i < $numFingers; $i++)
+		{
+		//make sure the names given for these fields are valid
+		if(`isValidObjectName($fingerName[$i])` == 0) error ("FINGER " + ($i+1) + ":   The name you specified for this finger is invalid!") ;
+		
+		//run a loop to compare one entry to the others
+		for($j = 0; $j < $numFingers; $j++)
+			{
+			// compare the finger names to one another to make sure they arent used twice
+			if((`strcmp $fingerName[$i] $fingerName[$j]` == 0) && ($i != $j)) error ("FINGER " + ($i+1) + ":   You have already used finger name:  <" + $fingerName[$j] + ">  on finger (" + ($j+1) + ")!");        
+			
+			// make sure the start joints are vaild
+			if(`objExists $startJoint[$i]` == 0) error ("FINGER " + ($i+1) + ":   The start joint you specified:  <" + $startJoint[$i] + ">  does not appear to exist!");
+			
+			// compare the joint names to one another to make sure the same joint is not being used twice
+			if((`strcmp $startJoint[$i] $startJoint[$j]` == 0) && ($i != $j)) error ("FINGER " + ($i+1) + ":   You have already used the start joint:  <" + $startJoint[$j] + ">  on finger (" + ($j+1) + ")!");         
+			} //end of compare loop
+		} //end of error checking on entered names 
+	
+	addAttr -ln "damp"  -at long  -min 2  -dv 3 -keyable true $startJoint[0]; //add damp Attr for thumb 
+		
+	cr_buildHandSetup($name, $side, $controller, $cr_fkControl, $controlType, $numFingers, $fingerName, $startJoint, $fingerRotAxis, $nameMethod, $skipLast, "", $cr_buildWorld, $scale);
+	
+	if($mirror)
+		{
+		if(cr_prefixSepCheck($fingerName[0])==1)
+			{	
+			string $rStartJoint[5];
+			string $tempFinger;
+			string $tempNames;
+			
+			for($n=0;$n<$numFingers;$n++)
+				{
+				$tempFinger = `textField -q -tx ("finger" + ($n+1) + "JointTF")`;
+				$tempNames = strSearchReplace($tempFinger, $sideQ[0], $sideQ[1]);
+				$rStartJoint[$n] = $tempNames;		
+				}
+			string $rController = strSearchReplace($controller, $sideQ[0], $sideQ[1]);
+			
+			addAttr -ln "damp"  -at long  -min 2  -dv 3 -keyable true $rStartJoint[0]; //add damp Attr for thumb 	
+				
+			cr_buildHandSetup($name, $sideQ[1], $rController, $cr_fkControl, $controlType, $numFingers, $fingerName, $rStartJoint, $fingerRotAxis, $nameMethod, $skipLast, "", $cr_buildWorld, $scale);	
+			}
+		}
+	
+	break;	
+
+	case "parentSwitch":
+	//parent switch
+	string $node = `textFieldButtonGrp -q -tx parentConTFBG`;
+	string $parent = `textFieldButtonGrp -q -tx parentGrpTFBG`;
+	string $parentSpace[] = `textScrollList -q -ai spaceSwitchParentTSL`;
+	string $spaceName[] = `textScrollList -q -ai spaceSwitchNameTSL`;
+	int $spaceType = `radioButtonGrp -q -sl  parentTypeRdBnGrp`;
+	
+	if(size($parentSpace)>0)
+		cr_buildSpaceSwitchSetup($node, $parent, $parentSpace, $spaceName, $spaceType);
+	else
+		error "No target parent found to add space switch";
+	
+	break;
+}
+select -cl;
+print("Operation successful: Animation rig created for "+$call+".\n");
+}
+
+global proc int cr_prefixSepCheck(string $node)
+{
+string $side = `optionMenu -q -v sidePrefix`;
+string $sideQ[] = cr_rigSideSep($side);	
+string $split[] = stringToStringArray($node, "_");
+if((size($split)>1)&&(size($sideQ)>1))
+    {
+    if($sideQ[0] == ($split[0]+"_"))
+        return 1;
+    else
+        return 0;
+    }
+else
+    return 0;
+}

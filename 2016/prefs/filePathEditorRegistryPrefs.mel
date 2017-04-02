@@ -1,0 +1,8 @@
+//Maya Preference 2014 (Release 1)
+//
+//
+filePathEditor -registerType "audio.filename" -typeLabel "Audio" ;
+filePathEditor -registerType "dx11Shader.shader" -typeLabel "dx11Shader.shader" ;
+filePathEditor -registerType "file.fileTextureName" -typeLabel "Texture" ;
+filePathEditor -registerType "imagePlane.imageName" -typeLabel "Image Plane" ;
+filePathEditor -registerType "reference" -typeLabel "Reference" ;

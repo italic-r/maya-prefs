@@ -1,0 +1,64 @@
+/*
+//////////////////////////////////////////////////////////
+
+ackSnapToTime 1.1
+10/22/07	
+Aaron Koressel				
+www.aaronkoressel.com
+
+Moves current selection of keys to the current frame.
+If more than one key is selected it shifts the
+group so that the first key lines up on the
+current frame if in "left" mode, or the last
+last key if in "right" mode.  Defaults to "left"
+mode and which can be changed with ackSetup.
+
+CHANGELOG:
+1.1 - 10/22/07	
+ackSetup compliant
+
+1.0 - 2/07/07	
+First version
+
+//////////////////////////////////////////////////////////
+*/
+
+
+global proc ackSnapToTime() {
+	global string $ackSetup_pivot;
+	
+	//set default value if variable doesn't exist
+	if ($ackSetup_pivot == "" || $ackSetup_pivot == "last"){
+		$ackSetup_pivot = "left";
+	}
+
+	//only run if at least one key is selected
+	$keyCount = `keyframe -an keys -q -keyframeCount`;
+	if ($keyCount != 0){
+		//get array of key times in selection
+		$timeArray = `keyframe -q -timeChange`;
+			
+		float $snapKey = $timeArray[0];
+		if ($ackSetup_pivot == "left"){
+			for ($i=0; $i < size($timeArray); $i++){
+				if ($timeArray[$i] < $snapKey){
+					$snapKey = $timeArray[$i];
+				}
+			}
+			
+		} else if ($ackSetup_pivot == "right"){
+			for ($i=0; $i < size($timeArray); $i++){
+				if ($timeArray[$i] > $snapKey){
+					$snapKey = $timeArray[$i];
+				}
+			}		
+		}
+		
+		//get difference between current time and snapping key
+		float $curTime = `currentTime -q`;
+		float $delta = $curTime - $snapKey;
+		
+		//move keys by delta
+		keyframe -relative -o over -timeChange $delta;
+	}
+}

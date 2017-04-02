@@ -1,0 +1,146 @@
+/*
+This is IK FK switching for ml-type rigs. It probably 
+wont work with earlier Hogans. 
+Put this in your scripts directory, restart maya,
+then make a shelf button or hotkey for:
+	mlAutoIkFk;
+What you have selected when the script is run determines
+what happens.
+It's important that you never change the names of anything
+on the rig. 
+Any problems, give me a buzz. 
+Morgan
+*/
+
+global proc mlAutoIkFk ()
+{
+
+//get the selection
+string $sel[] = `ls -sl`;
+
+//error check the selection
+if (size($sel)==0)
+	error "Select a control from the body part that you want the script to run on. Then try again.";
+
+//declare some variables for the NameSpace Test
+string $tokened[];
+int $numTok;
+
+//This checks to see if the character has a nameSpace
+$numTok = `tokenize $sel[0] ":" $tokened`;
+	if ($numTok > 1) $ns = ($tokened[0]+":");
+	
+//This checks for an unresolved name without namespaces
+$numTok = `tokenize $sel[0] "|" $tokened`;
+if ($numTok > 1)
+	error "Sorry, for the script to work you need to have only one character in the scene or use namespaces when you import or reference.";	
+	
+//declare some more variables for the next part
+string $rl;	
+string $type;
+	
+//Test Selected to see which body part it is
+	//Left or Right
+	if (`gmatch $sel[0] "*_Lf_*"`)
+		$rl = "Lf";
+	else if (`gmatch $sel[0] "*_Rt_*"`)
+		$rl = "Rt";
+	//Arm or leg (or other)
+	if (`gmatch $sel[0] "*_Arm*"`)
+		$type = "Arm";
+	else if (`gmatch $sel[0] "*_Leg*"`)
+		$type = "Leg";
+	else
+		error "Sorry, that limb type isn't supported right now.";
+
+//name Convention variable declaration (These are the names of joints and controls in the character)
+string $jntIK 	= ($ns+"jntStrIK_"+$rl+"_"+$type);
+string $fk 		= ($ns+"ctrlFK_"+$rl+"_"+$type);
+string $rig 	= ($ns+"jntRig_"+$rl+"_"+$type);
+string $ctrlIK	= ($ns+"ctrlIK_"+$rl+"_"+$type+"IK");
+string $ctrlPV	= ($ns+"ctrlIK_"+$rl+"_"+$type+"PV");
+string $ex		= ($ns+"ctrlX_"+$rl+"_"+$type+"Extra");
+string $ABC[] 	= {"A","B","C","D"};
+
+//this might be a changable value in the future. But not yet.
+int $numJnts = 3;
+
+//These variables will hold the controls' transform data.
+float $rot[];
+float $tran[];
+
+//check to see if you have an IK control selected
+if (`gmatch $sel[0] "*ctrlIK*"`)
+	{//if so, switch to FK
+	for ($i = 0; $i < $numJnts; $i++)
+		{//cycle throught the rig joints and copy their values to the FK joints
+		$rot = `getAttr ($rig+$ABC[$i]+".rotate")`;
+		setAttr ($fk+$ABC[$i]+".rotate") $rot[0] $rot[1] $rot[2];
+		}
+	//set fkIk to FK
+	setAttr ($ex+".fkIk") 0;
+	}
+
+else if (`gmatch $sel[0] "*ctrlFK*"`)
+	{//if you have FK selected, we switch to IK, which is a little harder. 
+	string $tempLoc[];
+	string $temp[];
+	for ($i = 0; $i < $numJnts; $i++)
+		{//cycle through rig joints and match temporary locators to their positions.
+		$temp = `spaceLocator`;
+		$tempLoc[$i] = $temp[0];
+		delete `parentConstraint ($rig+$ABC[$i]) $tempLoc[$i]`;
+		}
+	//constrain the control, copy it's values, and then delete the constraint.
+	string $tempCon[] = `pointConstraint $tempLoc[0] $ctrlPV`;
+	$tran = `getAttr ($ctrlPV+".translate")`;
+	delete $tempCon[0];
+	//doing it this way will match without having to set a key.
+	move -a -os $tran[0] $tran[1] $tran[2] $ctrlPV;	
+	
+	//the pole vectors on this rig are best aligned with an aim constraint, rather than snapping to the elbow. 
+	$tempCon = `aimConstraint -aimVector 0 1 0 -upVector 0 0 1 -worldUpType "object" -worldUpObject $tempLoc[1] $tempLoc[2] $ctrlPV`;
+	$rot = `getAttr ($ctrlPV+".rotate")`;
+	delete $tempCon[0];
+	rotate -a -os $rot[0] $rot[1] $rot[2] $ctrlPV;
+	
+	//This last complicated section is because the IK control is oriented differently than the wrist joint. 
+	$temp = `spaceLocator`;
+	string $tempIK = $temp[0];
+	$temp = `spaceLocator`;
+	string $tempOri = $temp[0];
+	
+	//this will figure out the rotation offset between the control and the joint. 
+	delete `parentConstraint ($jntIK+$ABC[2]) $tempOri`;
+	delete `parentConstraint $ctrlIK $tempIK`;
+	parent $tempIK $tempOri;
+	
+	delete `parentConstraint $tempLoc[2] $tempOri`;	
+	
+	$tempCon = `orientConstraint $tempIK $ctrlIK`;
+	$rot = `getAttr ($ctrlIK+".rotate")`;
+	delete $tempCon[0];
+	rotate -a -os $rot[0] $rot[1] $rot[2] $ctrlIK;
+	
+	//then get it's location.
+	$tempCon = `pointConstraint $tempLoc[2] $ctrlIK`;
+	$tran = `getAttr ($ctrlIK+".translate")`;
+	print $tran;
+	delete $tempCon[0];
+	move -a $tran[0] $tran[1] $tran[2] $ctrlIK;	
+	
+	//delete the leftover locators.
+	delete $tempLoc;
+	delete $tempIK;
+	delete $tempOri;
+	//set it to IK
+	setAttr ($ex+".fkIk") 1;
+	}
+
+else
+	{
+	error "Pretty please select an IK or FK control from the Arm or Leg.";
+	}
+
+}
+mlAutoIkFk;

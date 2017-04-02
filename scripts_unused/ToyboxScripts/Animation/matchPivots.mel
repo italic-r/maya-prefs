@@ -1,0 +1,4 @@
+// matchPivots
+$firsttwo = `selectedNodes`;
+$alignPiv = `xform -q -a -ws -piv $firsttwo[1]`;
+xform -a -ws -piv $alignPiv[0] $alignPiv[1] $alignPiv[2] $firsttwo[0];

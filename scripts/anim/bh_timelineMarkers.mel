@@ -1,0 +1,188 @@
+//bh_timelineMarkers v1.11 260412 // adding store and recal markers functions
+
+global proc bh_timelineMarkers()
+{
+
+if (`window -exists markerUI`)
+    deleteUI markerUI;
+    
+    
+    window  -toolbox 1 -menuBar 1  -mxb 0 -mnb 0 markerUI;
+    
+   
+		menu -l "Options" -to 1 optionsMenu;
+		menuItem -l "Remove Selected Marker"  -command bh_clearSelMarker zeromkM; 
+		menuItem -l "Store Markers in Scene"  -command bh_storeMarkers zeroKeyM2; 
+		
+	menuItem -l " ";
+		menuItem -l "Clear Marker List"  -command bh_clearMarkers zeroKeyM; 
+	    menuItem -l "Reload Markers from Scene"  -command bh_reloadMarkers zeroKeyM5; 
+        menuItem -l "Delete Markers from Scene"  -command bh_deleteMarkers zeroKeyM3; 
+    
+    columnLayout -adj 1 mainCol;
+    iconTextStaticLabel -st "textOnly"  -l "Markers";
+    textScrollList -h 150 -w 150 -allowMultiSelection 0 -selectCommand "bh_jumpToMarker" markerTSL;
+    rowColumnLayout -numberOfColumns 2;
+    textField   -width 150 -enterCommand "bh_addMarker()" -aie 1 markerField;
+    setParent mainCol;   
+    button -label "Add Marker" -command "bh_addMarker()"but;
+
+
+    showWindow markerUI;
+    
+     if (`objExists bh_timelineMarkersNode`)
+           {
+               bh_reloadMarkers;
+           } 
+           
+    
+    
+    
+    }
+
+//=============
+
+   
+    
+    
+    global proc bh_addMarker()
+    {
+        float $frameNumber = `currentTime -q`;// get the current time
+        string $markerName = `textField   -q  -text markerField`;
+        
+        
+        string $markerString = ($frameNumber +" : "+$markerName);
+        textScrollList -e -a  $markerString markerTSL;
+       textField -edit -text "" markerField;
+       
+    }
+
+     global proc bh_clearMarkers ()
+		{
+		textScrollList -e -removeAll markerTSL;
+		print "Cleared Markers from list but node still exists in scene..";
+		}
+        
+	 global proc bh_clearSelMarker()
+		{
+		 string $highlighted[] =`textScrollList -q -selectItem markerTSL`;
+		 textScrollList -e -ri  $highlighted[0] markerTSL;
+		}
+        
+        
+        
+     global proc bh_jumpToMarker()
+        {
+              // need to get the frame number from the marker that was clicked
+              string $highlighted[] =`textScrollList -q -selectItem markerTSL`;
+             
+              string $frameSpace[];
+              tokenize $highlighted[0] " : " $frameSpace;
+              string $jumpFrame = ($frameSpace[0]);
+             // print $jumpFrame;
+              
+              
+              int $goFrame =$jumpFrame;
+              currentTime -edit $goFrame;// go to the frame!
+              print ("jumped to marker "+$frameSpace[1]+" on frame "+$frameSpace[0]);
+         
+        }
+        
+        global proc bh_storeMarkers()
+        {
+            
+        // does the marker node already exist?
+           if (`objExists bh_timelineMarkersNode`)
+           {
+               delete bh_timelineMarkersNode;
+           } 
+           
+           string $markerNode[] = `spaceLocator -n "bh_timelineMarkersNode"`;// create the locator to store the markers on
+           //hide the regular attrs to keep things neat
+            setAttr -keyable false -channelBox false "bh_timelineMarkersNode.tx";
+            setAttr -keyable false -channelBox false "bh_timelineMarkersNode.ty";
+            setAttr -keyable false -channelBox false "bh_timelineMarkersNode.tz";
+            setAttr -keyable false -channelBox false "bh_timelineMarkersNode.rx";
+            setAttr -keyable false -channelBox false "bh_timelineMarkersNode.ry";
+            setAttr -keyable false -channelBox false "bh_timelineMarkersNode.rz";
+            setAttr -keyable false -channelBox false "bh_timelineMarkersNode.sx";
+            setAttr -keyable false -channelBox false "bh_timelineMarkersNode.sy";
+            setAttr -keyable false -channelBox false "bh_timelineMarkersNode.sz";
+           setAttr ($markerNode[0]+".visibility") 0;// hide the locator in the view
+           setAttr -keyable false -channelBox false "bh_timelineMarkersNode.visibility";
+           select -r bh_timelineMarkersNodeShape ;
+           delete;
+           select -r bh_timelineMarkersNode;
+           // add the attributes here for each of the timeline markers 
+           
+         int $markersCount = `textScrollList -q -ni markerTSL`;
+         string $markersList[] =`textScrollList -q -ai markerTSL`;
+         
+         for ($each in $markersList)
+         {
+       
+            string $newMarkerName = $each;
+           // print $newMarkerName;
+            
+            string $frameSpace[];
+             tokenize $newMarkerName " : " $frameSpace;
+              string $frameNub = ($frameSpace[0]);
+              string $frameName =($frameSpace[1]);
+              int $frameVal =$frameNub;
+            
+      
+            // add an attribute for each marker
+            addAttr -ln $frameName  -at double  |bh_timelineMarkersNode;
+            setAttr -e-keyable true ("bh_timelineMarkersNode."+$frameName);
+            // store the markers frame number in the attribute
+            setAttr ("bh_timelineMarkersNode."+$frameName) $frameVal;
+        
+             
+         
+         }
+        
+           print "Saved Timeline Markers..";
+           
+        }
+        
+        global proc bh_reloadMarkers()
+        {
+            
+            textScrollList -e -removeAll markerTSL;
+            string $mrkLoc = "bh_timelineMarkersNode";
+             string $attrs1[] = `listAttr -userDefined -keyable -scalar -unlocked $mrkLoc`;
+           
+   
+    // cycle throught the custom attributes and load into the text scroll list
+        for ($ac = 0; $ac < size($attrs1); $ac++)
+         {
+            string $attrName= $attrs1[$ac];
+             float $attrVal = `getAttr ($mrkLoc+"."+$attrs1[$ac])`;
+			
+			    string $markerString = ($attrVal +" : "+$attrName);
+            textScrollList -e -a  $markerString markerTSL;
+			
+          
+            
+            }
+            select -r bh_timelineMarkersNode;
+            print "Reloaded Timeline Markers..";
+        }
+            
+        
+    global proc  bh_deleteMarkers() 
+    {
+          if (`objExists bh_timelineMarkersNode`)
+           {
+    
+        delete bh_timelineMarkersNode;
+        print "Deleted Timeline Markers Node from Scene..";
+    }  
+    }  
+	
+		
+        
+        
+    bh_timelineMarkers;
+       
+        

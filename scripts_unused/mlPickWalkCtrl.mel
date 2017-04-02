@@ -1,0 +1,120 @@
+global proc mlPickWalkCtrl (string $direction)
+{
+string $sel[] =`ls -sl`;
+string $current;
+string $targets[0];
+string $regularWalk[0];
+
+string $attr = ("mlPW_"+$direction);
+string $attrMirror = "mlPW_mir";
+string $attrCycle = "mlPW_cyc";
+string $targets[0];
+
+string $attrs[0];
+string $connection[0];
+
+string $ns = "";
+string $tokened[];
+int $numTok;
+string $temp[];
+string $LfRt[];
+
+select -cl;
+
+switch ($direction)
+	{
+	case "u":
+		for ($current in $sel)
+		{
+		//This checks to see if the character has a nameSpace
+		$numTok = `tokenize $current ":" $tokened`;
+			if ($numTok > 1) $ns = ($tokened[0]+":");
+			
+		if (`gmatch $current ($ns+"masterCtrl*")`)
+			{
+			$temp = `ls -tr ($ns+"ctrl*")`;
+			}
+		else if (`gmatch $current ($ns+"ctrl*")`)
+			{
+			$numTok = `tokenize $current "_" $tokened`;	
+				
+			$temp = `ls -tr ($tokened[0]+"*")`;
+			}
+		$targets = `stringArrayCatenate $targets $temp`;
+		}
+		break;
+		
+	case "d"://loop through the group and select everything 
+	case "l":
+		for ($i = 0; $i < size($sel); $i++)
+			{
+			//include the selected object in the targets
+			$targets[size($targets)] = $sel[$i];
+			string $current = "";
+			//do the initial test, before the loop
+			$attrs = `listAttr -st $attr $sel[$i]`;
+			if (size($attrs))//if attribute exists
+				{
+				$connection = `listConnections ($sel[$i]+"."+$attr)`;
+				if (size($connection))//if connection exists
+					{
+					$targets[size($targets)] = $connection[0];	
+					$current = $connection[0];
+				
+					int $kill = 1;
+					while ($kill)
+						{
+						$attrs = `listAttr -st $attr $current`;
+						if (size($attrs)) //if attribute exists
+							{
+							$connection = `listConnections ($current+"."+$attr)`;
+							if (size($connection))//if connection to attr exists
+								{
+								$targets[size($targets)] = $connection[0];
+								if ($current == $connection[0])//if it's targeting itself, kill it.
+									$kill = 0;
+								else//otherwise plug it into current to compare with origional
+									$current = $connection[0];
+								}
+							else //if there's no connection, kill it
+								$kill = 0;
+							}
+						else //if there's no attr, kill it
+							$kill = 0;
+						
+						if ($sel[$i] == $current)//if the origionally selected object matches the current in the loop, kill it
+							$kill = 0;
+						}
+					}
+				}
+			}
+		break;
+	case "r":
+		for ($current in $sel)
+			{
+			if(`gmatch $current "*Lf*"`)
+				$LfRt = {"Lf","Rt"};
+			else if(`gmatch $current "*Rt*"`)
+				$LfRt = {"Rt","Lf"};
+				
+			$numTok = `tokenize $current "_" $tokened`;	
+			string $mirrName = $tokened[0];
+			for ($i = 1; $i < $numTok; $i++)
+				{
+				if(`gmatch $tokened[$i] $LfRt[0]`)
+					$mirrName = ($mirrName+"_"+$LfRt[1]);
+				else
+					$mirrName = ($mirrName+"_"+$tokened[$i]);
+				}
+			$targets[size($targets)] = $mirrName;
+			}
+		break;
+		
+	default:
+		break;
+	}
+	
+//then add the target objects to the selection
+select -r $targets;
+
+}

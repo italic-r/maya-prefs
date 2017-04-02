@@ -1,0 +1,91 @@
+//bh_atomInfo 1.0 a simple interface that allows the user to browse a folder of Atom files and get the start, end and length of each animation by highlighting
+
+bh_atomInfo;
+
+    global proc bh_atomInfo ()
+    {
+    
+    if (`window -exists bh_atomInfo`)
+        deleteUI bh_atomInfo;
+        
+         window  -toolbox 1 -menuBar 1  -mxb 0 -mnb 0 bh_atomInfo;
+         columnLayout -adj 1 mainCol;
+         iconTextStaticLabel -st "textOnly"  -l "Animation Files";
+         textScrollList -h 150 -w 150 -allowMultiSelection 0 -selectCommand "bh_displayAtomInfo" atomTSL;
+         rowColumnLayout -numberOfColumns 2;
+         text -label "Start";  textField   -editable false -width 130 startField;         
+         text -label "End";    textField   -editable false -width 130 endField;
+         text -label "Length"; textField   -editable false -width 130 lengthField;
+         text -label "Folder Path"; textField   -editable false -width 130 pathField;
+         setParent mainCol;   
+         button -label "Select Folder" -command "bh_selFolder()"but;
+         showWindow bh_atomInfo;
+   	}
+    	
+	
+    global proc bh_selFolder() 
+    {
+    textScrollList -e -removeAll atomTSL;
+      $folderBrowse = `fileDialog2 -cap "Choose Atom Files Folder" -fileMode 3 -okc "Set" -dialogStyle 2`; 
+      string $folderPath = ($folderBrowse[0]+"/");
+      textField -edit -text $folderPath pathField;
+    
+      
+     string $files[] = `getFileList -folder $folderPath -filespec "*.atom"`; // find all the atom files in that folder
+     
+     for ($each in $files)
+     {
+         string $cleanName[];
+     	 tokenize $each "." $cleanName;    
+         string $animName = ($cleanName[0]);
+         textScrollList -e -a  $animName atomTSL;
+         string $atomFile = ($folderPath+$each);
+     }
+     }
+ 
+ global proc getTimesAtom(string $atomFile)
+ {
+ 		$file = `fopen $atomFile "r"`;
+ 		while( !feof($file) )
+ 		{
+ 		string $curWord =`fgetword $file` ;
+ 			if ($curWord =="startTime")
+ 			{
+ 			string $curWord =`fgetword $file` ;
+ 		
+ 			// need to return a numerical value so lets remove the ';' from the 'word' and convert it to an int
+ 			string $frameSpace[];
+ 			tokenize $curWord ";" $frameSpace;
+ 			string $frameNum = ($frameSpace[0]);
+ 			int $frameVal =$frameNum;
+ 			textField -edit -text $frameVal startField;
+ 			}
+ 			
+ 			if ($curWord =="endTime")
+ 			{			  
+ 			   string $curWord =`fgetword $file` ;
+ 			// need to return a numerical value ....
+ 			string $frameSpace[];
+ 			tokenize $curWord ";" $frameSpace;
+ 			string $frameNum = ($frameSpace[0]);
+ 			int $frameVal =$frameNum;
+ 		 	textField -edit -text $frameVal endField;
+ 			break;// no need to look further through the file for now
+ 			}
+ 			
+ 		}
+ 		fclose $file;
+ 		
+ }
+ 
+     global proc bh_displayAtomInfo()
+     {
+         string $highlighted[] =`textScrollList -q -selectItem atomTSL`;
+         string $path  = `textField   -q  -text pathField`;
+         string $fullPath =($path+$highlighted[0]+".atom");
+         getTimesAtom ($fullPath);
+         float $endFrame  = `textField   -q  -text endField`;
+         float $startFrame  = `textField   -q  -text startField`;
+         float $lengthFrames = ($endFrame-$startFrame);
+         textField -edit -text $lengthFrames lengthField;
+      }

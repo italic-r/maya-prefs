@@ -1,0 +1,104 @@
+/*
+//////////////////////////////////////////////////////////
+
+ackSpreadSqueezeTiming 1.0
+8/9/07					
+Aaron Koressel				
+www.aaronkoressel.com
+
+Inserts or removes one inbetween before every keyframe selected.
+Similar effect to scaling keys in time, except you are guaranteed 
+to have even scaling and keys on whole frames.
+
+SYNTAX:
+ackSpreadSqueezeTiming "spread";
+ackSpreadSqueezeTiming "squeeze";
+
+EXAMPLE:
+Assign this commnad to "Ctrl Alt +":  ackSpreadSqueezeTiming "spread";
+Assign this commnad to "Ctrl Alt -":  ackSpreadSqueezeTiming "squeeze";
+
+//////////////////////////////////////////////////////////
+*/
+
+global proc ackSpreadSqueezeTiming (string $cmd){
+	int $confirmThresh = 500;
+	
+	//only run if at least one key is selected
+	$keyCount = `keyframe -an keys -q -keyframeCount`;
+	if ($keyCount != 0) {
+		//chk for large dataset
+		string $confirm = "OK";
+		if (size(`keyframe -selected -q -indexValue`) > $confirmThresh){
+			$confirm = `confirmDialog -title "ackSpreadSqueezeTiming"
+				-message "About to operate on a large number of keys.  Proceed?"
+ 				-button "OK" -button "Cancel" -defaultButton "OK"
+ 				-cancelButton "Cancel" -dismissString "Cancel"`;
+		}
+		
+		//estimate time
+		string $sc[] = `keyframe -selected -q -name`;
+		int $max = size($sc);
+		for ($x = 0; $x < size($sc); $x++){
+			$max += size(`keyframe -q -indexValue $sc[$x]`);
+		}
+		
+		if ($confirm == "OK"){
+			//progess window
+			progressWindow
+				-title "ackSpreadSqueezeTiming"
+				-maxValue $max
+				-status ""
+				-isInterruptable true;
+		
+
+			//loop over selected curves and process independently
+			string $selectedCurves[] = `keyframe -selected -q -name`;
+			for ($c = 0; $c < size($selectedCurves); $c++){
+				//channel to use for this pass
+				$channel = $selectedCurves[$c];	
+				
+				//progress update
+				if ( `progressWindow -query -isCancelled` ){break;}
+				progressWindow -e -step 1;
+				
+
+				//get array of selected indices
+				$timeArray = `keyframe -selected -q -indexValue $channel`;
+
+				for ($i = 0; $i < size($timeArray); $i++){
+					//progress update
+					if ( `progressWindow -query -isCancelled` ){break;}
+					progressWindow -e -step 1;
+				
+					string $str = "keyframe -option over -relative";
+
+					//get selected indices - remove first element each time around
+					string $indices = "";
+					for ($j = size($timeArray)-1; $j >= $i; $j--){
+						$indices += " -index "+$timeArray[$j];
+					}
+
+					$str += $indices;
+					if  ($cmd == "spread"){
+						$str += " -timeChange 1 "+$channel;
+					} else if ($cmd == "squeeze"){
+						$str += " -timeChange -1 "+$channel;
+					}
+
+					eval ($str);
+
+					//snap keys back to whole values
+					snapKey -tm 1.0 $channel;
+				}
+
+
+			}	//loop curves			
+		}	//chk confirm
+		
+		//kill window
+		progressWindow -endProgress;
+		print "here";
+		
+	}	//chk key selection
+}

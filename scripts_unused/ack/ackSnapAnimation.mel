@@ -1,0 +1,88 @@
+/*
+/////////////////////////////////////////////////////////////////////////////
+
+ackSnapAnimation 1.1			
+10/19/07
+Aaron Koressel	
+www.aaronkoressel.com
+				
+Takes current selection of keys and offsets it's
+values so that it lines up with the neighboring key.
+Very useful for pasting/rearranging animation and
+keeping your animation relative to it's neighbor.
+Or snap a key into a hold and have the 
+neighboring animation offset appropriately.
+
+Operates on each curve separately, so offset amount
+won't necessarily be the same across multiple curves.
+By default it looks to the left for the neighboring key,
+or use ackSetup to switch between left or right.
+
+CHANGELOG:
+1.1 - 10/19/07
+ackSetup compliant
+
+1.0 - 2/07/07
+First version
+
+////////////////////////////////////////////////////////////////////////////
+*/
+
+global proc ackSnapAnimation() {
+	global string $ackSetup_pivot;
+	
+	//set default value if variable doesn't exist
+	if ($ackSetup_pivot == ""){
+		$ackSetup_pivot = "left";
+	}
+
+	//only run if at least one key is selected
+	$keyCount = `keyframe -an keys -q -keyframeCount`;
+	if ($keyCount != 0){	
+		//loop over selected curves and process independently
+		string $selectedCurves[] = `keyframe -selected -q -name`;
+		for ($c = 0; $c < size($selectedCurves); $c++){
+			//channel to use for this pass
+			$channel = $selectedCurves[$c];
+		
+			//get array of key times in selection (to find closest match key)
+			$timeArray = `keyframe -selected -q -timeChange $channel`;
+			
+			//find first frame time
+			$lastkey = `keyframe -q -lastSelected $channel`;
+			$firstKey = $lastkey[0];
+			for ($j = 0; $j < size($timeArray); $j++){
+				if ($timeArray[$j] < $firstKey){
+					$firstKey = $timeArray[$j];
+				}
+			}		
+			
+					
+			//find closest key
+			switch ($ackSetup_pivot){
+				case "left":
+				case "last":
+					$endKey = $timeArray[0];
+					$matchKey = `findKeyframe -time $endKey -which previous $channel`;
+					break;
+				case "right":
+					$endKey = $timeArray[size($timeArray)-1];
+					$matchKey = `findKeyframe -time $endKey -which next $channel`;
+					break;		
+			}
+
+			//get difference in values between firstKey and matchKey
+			$matchKey_val = `keyframe -time $matchKey -q -valueChange $channel`;
+			$endKey_val = `keyframe -time $endKey -q -valueChange $channel`;
+			$delta = $matchKey_val[0] - $endKey_val[0];
+			
+
+								
+			//offset values with delta
+			$selected = `keyframe -selected -q -indexValue $channel`;
+			for ($i = 0; $i < size($selected); $i++){
+				keyframe -relative -index $selected[$i] -valueChange $delta $channel;
+			}
+		}
+	}
+}

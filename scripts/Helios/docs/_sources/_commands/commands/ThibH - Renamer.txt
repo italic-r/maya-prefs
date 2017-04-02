@@ -1,0 +1,5 @@
+ThibH - Renamer
+===============
+
+ThibH Renamer is an advanced renamer for Maya, which make it easier for you to rename multiple objects
+using padding, suffixes and prefixes.

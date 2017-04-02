@@ -1,0 +1,146 @@
+
+    menuItem
+        -label "Local" 
+        -divider 0
+        -subMenu 0
+        -tearOff 0
+        -command "manipMoveContext -edit -mode 1 Move;" 
+        -altModifier 0
+        -optionModifier 0
+        -commandModifier 0
+        -ctrlModifier 0
+        -shiftModifier 0
+        -optionBox 0
+        -enable 1
+        -data 0
+        -radialPosition "E" 
+        -allowOptionBoxes 1
+        -postMenuCommandOnce 0
+        -enableCommandRepeat 1
+        -echoCommand 0
+        -italicized 0
+        -boldFont 1
+        -sourceType "mel" 
+        menuEditorMenuItem1;
+
+    menuItem
+        -label "World" 
+        -divider 0
+        -subMenu 0
+        -tearOff 0
+        -command "manipMoveContext -edit -mode 2 Move;" 
+        -altModifier 0
+        -optionModifier 0
+        -commandModifier 0
+        -ctrlModifier 0
+        -shiftModifier 0
+        -optionBox 0
+        -enable 1
+        -data 0
+        -radialPosition "W" 
+        -allowOptionBoxes 1
+        -postMenuCommandOnce 0
+        -enableCommandRepeat 1
+        -echoCommand 0
+        -italicized 0
+        -boldFont 1
+        -sourceType "mel" 
+        menuEditorMenuItem2;
+
+    menuItem
+        -label "Object" 
+        -divider 0
+        -subMenu 0
+        -tearOff 0
+        -command "manipMoveContext -edit -mode 0 Move;" 
+        -altModifier 0
+        -optionModifier 0
+        -commandModifier 0
+        -ctrlModifier 0
+        -shiftModifier 0
+        -optionBox 0
+        -enable 1
+        -data 0
+        -radialPosition "N" 
+        -allowOptionBoxes 1
+        -postMenuCommandOnce 0
+        -enableCommandRepeat 1
+        -echoCommand 0
+        -italicized 0
+        -boldFont 1
+        -sourceType "mel" 
+        menuEditorMenuItem3;
+
+    menuItem
+        -label "Normals" 
+        -divider 0
+        -subMenu 1
+        -tearOff 0
+        -altModifier 0
+        -optionModifier 0
+        -commandModifier 0
+        -ctrlModifier 0
+        -shiftModifier 0
+        -optionBox 0
+        -enable 1
+        -data 0
+        -radialPosition "S" 
+        -allowOptionBoxes 1
+        -enableCommandRepeat 1
+        -italicized 0
+        -boldFont 1
+        -sourceType "mel" 
+        menuEditorMenuItem5;
+
+        menuItem
+            -label "Normal" 
+            -divider 0
+            -subMenu 0
+            -tearOff 0
+            -command "manipMoveContext -edit -mode 3 Move;" 
+            -altModifier 0
+            -optionModifier 0
+            -commandModifier 0
+            -ctrlModifier 0
+            -shiftModifier 0
+            -optionBox 0
+            -enable 1
+            -data 0
+            -radialPosition "W" 
+            -allowOptionBoxes 1
+            -postMenuCommandOnce 0
+            -enableCommandRepeat 1
+            -echoCommand 0
+            -italicized 0
+            -boldFont 1
+            -sourceType "mel" 
+            menuEditorMenuItem1;
+
+        menuItem
+            -label "Normal Average" 
+            -divider 0
+            -subMenu 0
+            -tearOff 0
+            -command "manipMoveContext -edit -mode 9 Move;" 
+            -altModifier 0
+            -optionModifier 0
+            -commandModifier 0
+            -ctrlModifier 0
+            -shiftModifier 0
+            -optionBox 0
+            -enable 1
+            -data 0
+            -radialPosition "E" 
+            -allowOptionBoxes 1
+            -postMenuCommandOnce 0
+            -enableCommandRepeat 1
+            -echoCommand 0
+            -italicized 0
+            -boldFont 1
+            -sourceType "mel" 
+            menuEditorMenuItem2;
+
+    setParent -m ..;
+
+setParent -m ..;
+

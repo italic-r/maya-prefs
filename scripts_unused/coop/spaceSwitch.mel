@@ -1,0 +1,339 @@
+///////////////////////////////////////////////////////////////////////////////////////
+// spaceSwitch.mel
+//
+// Description:
+// The script will convert parent keys from one space to another. For instance
+// world space keys to local space keys.
+// This could work on any rig but a few things need to be in place to make this work:
+//
+// 		1. There needs to be main mover control that all the controls are parented under.
+//		2. There needs to be an attribute named "parent" in the controls that will converted.
+//		3. Each control added to the list MUST have the same element names in the attribute list
+//			otherwise it will be skipped and not converted. 
+//		4. Just make sure the first control you select as the same paretn element that you want to 
+//			covert to as the others selected.
+///////////////////////////////////////////////////////////////////////////////////////
+global proc spaceSwitch()
+{
+	string $win = "keySpaceConvetWIN";
+	if(`window -exists $win`) deleteUI $win;
+	
+	int $w = 300;
+	int $h = 435;
+	
+	window -t "Space Switch (over time)" -wh $w $h $win;
+	
+	columnLayout -adj 1;
+		frameLayout -bs "etchedOut" -lv 0;
+			rowColumnLayout -nc 3 -cw 1 60 -cw 2 180 -cw 3 160;
+				text -l "";text -l "";text -l "";
+				text -l "";
+				optionMenu -l "Convert To:" optConvertTo;
+				text -l "";text -l "";text -l "";text -l "";
+		setParent..;
+	setParent..;
+	//---------------------------------------------------------------------//
+	columnLayout -adj 1;
+		text -l "";
+		frameLayout -bs "etchedOut" -lv 0;
+			rowColumnLayout -nc 2 -cw 1 148 -cw 2 140;
+				textField txtsubMover;
+				button -bgc 0.8 0.8 0.8 -l "Load subMover" -c "string $subMover[] = `ls -sl`; textField -e -tx $subMover[0] txtsubMover";
+			setParent..;
+		setParent..;
+	//---------------------------------------------------------------------//	
+	columnLayout -adj 1;
+		text -l "";	
+		frameLayout -bs "etchedOut" -l "Add Controls - only Parent Attributes will be added";
+			columnLayout -adj 1;
+				textScrollList -h 100 tslConList;
+					popupMenu;
+						menuItem -l "Clear List" -c "textScrollList -e -ra tslConList";
+				button -l "Add Controls to list" -c "kscAddControls";
+		setParent..;
+	setParent..;
+	//---------------------------------------------------------------------//
+	columnLayout -adj 1;
+	text -l "";	
+	frameLayout -bs "etchedOut" -l "Frame Range";
+		rowColumnLayout -nc 5 -cw 1 85 -cw 2 50 -cw 3 35 -cw 4 50 -cw 5 55 -co 1 "left" 50 -co 3 "both" 10 -co 4 "both" 5 -co 5 "left" 5;
+			text -l "From:";
+			intField -v (`playbackOptions -q -min`) -dc "kscUpdateTimeLine start" -cc "kscUpdateTimeLine start" rangeStart;
+			text -l "To:";
+			intField -v (`playbackOptions -q -max`) -dc "kscUpdateTimeLine end" -cc "kscUpdateTimeLine end" rangeEnd;
+			button -l "Reset" -command "kscUpdateFrameRanges";
+		setParent..;
+	setParent..;
+	//---------------------------------------------------------------------//
+	frameLayout -bs "etchedOut" -l "Conversion progress" frmProgress;
+		string $progressControl = `progressBar -maxValue 100 pgBar`;
+		setParent..;
+	setParent..;
+	
+	rowColumnLayout -nc 2 -cw 1 146 -cw 2 146;
+		text -l "";	text -l "";	
+		button -h 30 -bgc 0.8 0.8 0.967 -l "Convert" -c "kscConvertSpaceKeys";
+		button -h 30 -bgc 0.776 0.938 0.771 -l "Close" -c ("deleteUI " + $win);
+	
+	window -e -wh $w $h $win;
+	showWindow $win;
+	
+}
+global proc kscAddControls()
+{
+	string $sel[] = `ls -sl`;
+	//GET THE OPTION MENU CONTENTS
+	string $menu[] = `optionMenu -q -ils optConvertTo`;
+	int $i;
+	
+	//CLEAR OUT THE LIST FIRST
+	for($i = 0; $i < `size($menu)`; $i++)
+		deleteUI $menu[$i];
+	
+	//LOOP THROUGH THE SELECTION AND ADD TO THE LIST AND PULL THE ENUM LIST FROM THE ATTRIBUTE
+	for($i = 0; $i < `size($sel)`; $i++)
+	{
+		if(`attributeExists "follow" $sel[$i]`) 
+		{
+			textScrollList -e -a $sel[$i] tslConList;
+			//GET THE ENUM STRING LIST
+			if($i == 0)
+			{
+				string $enum = `addAttr -query -en ($sel[0] + ".follow")`;
+				string $array[];
+				//PARSE IT OUT INTO AN ARRAY
+				$array = stringToStringArray($enum, ":");
+				int $j;
+				
+				//RE-BUILD THE LIST
+				for($j = 0; $j < `size($array)`; $j++)
+					menuItem -l $array[$j] -p optConvertTo;
+				
+			}//END IF
+		}//END IF
+	}//END LOOP
+	
+
+	
+}
+
+//THIS THE MAIN PROC FOR THE COVERSION OF SPACE SWITCHING BETWEEN PARENT SPACES
+global proc kscConvertSpaceKeys()
+{
+	//GET ALL THE UI INFO
+	string $subMover = `textField -q -tx txtsubMover`;
+	string $convertTo = `optionMenu -q -v optConvertTo`;
+	string $controls[] = `textScrollList -q -ai tslConList`;
+	int $rangeStart = `intField -q -v rangeStart`;
+	int $rangeEnd = `intField -q -v rangeEnd`;
+	int $stepBy = 1;
+	
+	//ERROR HANDLING FOR THE IDIOTS
+	if($subMover == "") error "Load the subMover please.";
+	if($controls[0] == "") error "You do know what you are doing? Come on, give me some controls to do this.";
+	if($rangeStart == $rangeEnd) error "Give me 2 frames to work with here. Your start and end frame is the same";
+	
+	//OK, GOT PAST ALL THE ERRORS. LETS GET BUSY
+	
+	//CREATE THE DUPLICATE OBJECTS
+	int $i;
+	string $constDup[];
+	string $keyedDup[];
+	string $pConst[];
+	for($i = 0; $i < `size($controls)`; $i++)
+	{
+		//MAKE SOME TEMP GROUPS 
+		
+		//THIS GROUP WILL BE CONSTRAINED TO THE CONTROL
+		string $constGrp = `group -em -n ($controls[$i] + "_const")`;
+		//THIS ONE WILL GET TEMP KEYS TO BE USED LATER
+		string $keyGrp = `group -em -n ($controls[$i] + "_key")`;
+		$constDup[$i] = $constGrp;
+		$keyedDup[$i] = $keyGrp;
+		
+		if($convertTo == "subMover")
+		{
+			//PARENT IT TO THE SUBMOVER
+			parent $keyedDup[$i] $subMover;
+			parent $constDup[$i] $subMover;
+		}
+	
+		//CONSTRAIN THE DUPLICATE TO THE CONTROL
+		parentConstraint $controls[$i] $constDup[$i];
+	}
+	
+	//MAKE THE PROGRESS BAR
+	int $counter = (($rangeStart + $rangeEnd) - 1) + (($rangeStart + $rangeEnd) - 1);
+	progressBar -edit
+ 		-beginProgress
+ 		-isInterruptable true 
+ 		-maxValue $counter
+ 		pgBar;
+		
+	//START WITH THE TIME LINE LOOP
+	for ($increment = $rangeStart; $increment <= $rangeEnd; $increment = $increment + $stepBy)
+	{
+		
+		
+		progressBar -edit -step $stepBy pgBar;
+		
+		currentTime -e $increment;
+		//WE'RE ON A FRAME. GRAB AN OBJECT AND DO THE MAGIC
+		for($i = 0; $i < `size($controls)`; $i++)
+		{
+			
+			//IS THERE A KEY ON THE OBJECT?			
+			if(kscKeyedFrame($controls[$i]) == 1)
+			{						
+				
+				//GET THE NEW SPACE INFO FROM THE CONSTRAINED DUP OBJECT
+				float $dupPos[] = `getAttr ($constDup[$i] + ".translate")`;
+				float $dupRot[] = `getAttr ($constDup[$i] + ".rotate")`;
+				
+				
+								
+				//TRANSFER THAT LOCATION IFO TO THE TEMP KEYED OBJECT 
+				setAttr ($keyedDup[$i] + ".tx") $dupPos[0];
+				setAttr ($keyedDup[$i] + ".ty") $dupPos[1];
+				setAttr ($keyedDup[$i] + ".tz") $dupPos[2];
+				setAttr ($keyedDup[$i] + ".rx") $dupRot[0];
+				setAttr ($keyedDup[$i] + ".ry") $dupRot[1];
+				setAttr ($keyedDup[$i] + ".rz") $dupRot[2];
+			
+				//SET THE NEW KEYS
+				//IF THERE IS A KEY ON AN ATTRIBUTE THEN KEY IT ON THE TEMP KEYED OBJECT
+				if(kscIsAttrKeyed($controls[$i],"tx") == 1)	setKeyframe ($keyedDup[$i] + ".tx");
+				if(kscIsAttrKeyed($controls[$i],"ty") == 1)	setKeyframe ($keyedDup[$i] + ".ty");
+				if(kscIsAttrKeyed($controls[$i],"tz") == 1)	setKeyframe ($keyedDup[$i] + ".tz");
+				if(kscIsAttrKeyed($controls[$i],"rx") == 1)	setKeyframe ($keyedDup[$i] + ".rx");
+				if(kscIsAttrKeyed($controls[$i],"ry") == 1)	setKeyframe ($keyedDup[$i] + ".ry");
+				if(kscIsAttrKeyed($controls[$i],"rz") == 1)	setKeyframe ($keyedDup[$i] + ".rz");
+				
+			}//END IF
+		}//END CONTROL LOOP	
+	}//END TIME LOOP
+	
+	//NOW WE NEED TO TRANSFER THE TEMP KEYS BACK OVER TO THE ORIGINAL CONTROL
+	for ($increment = $rangeStart; $increment <= $rangeEnd; $increment = $increment + $stepBy)
+	{	
+		progressBar -edit -step $stepBy pgBar;
+		currentTime -e $increment;
+		//WERE ON A FRAME. GRAB AN OBJECT AND DO THE MAGIC
+		for($i = 0; $i < `size($controls)`; $i++)
+		{
+			
+			//IS THERE A KEY?			
+			if(kscKeyedFrame($controls[$i]) == 1)
+			{
+				//GET THE ENUM STRING LIST
+				string $enum = `addAttr -query -en ($controls[$i] + ".follow")`;
+				string $array[];
+			
+				//PARSE IT OUT THE ENUM LIST INTO AN ARRAY
+				$array = stringToStringArray($enum, ":");
+				int $parentIndex;
+				int $j;
+				for($j = 0; $j < `size($array)`; $j++)
+				{
+					if($array[$j] == $convertTo)
+						$parentIndex = $j;
+				
+				}
+				
+					//CHANGE THE PARENT TO WHAT IS FROM THE OPTION MENU
+					setAttr ($controls[$i] + ".follow") $parentIndex;
+					
+					//TEMPORARILY CONSTRAIN THE CONTROL TO THE KEYED OBJECT
+					string $pConstraint[] = `parentConstraint $keyedDup[$i] $controls[$i]`;
+					
+					//GET THE NEW SPACE INFO FROM THE CONTROL OBJECT
+					float $conPos[] = `getAttr ($controls[$i] + ".translate")`;
+					float $conRot[] = `getAttr ($controls[$i] + ".rotate")`;
+					
+					//DELETE THE CONSTRAINT
+					delete $pConstraint;
+					
+					//TRANSFER THE NEW TRANSFORMS BACK TO THE CONTROL OBJECT
+					setAttr ($controls[$i] + ".tx") $conPos[0];
+					setAttr ($controls[$i] + ".ty") $conPos[1];
+					setAttr ($controls[$i] + ".tz") $conPos[2];
+					setAttr ($controls[$i] + ".rx") $conRot[0];
+					setAttr ($controls[$i] + ".ry") $conRot[1];
+					setAttr ($controls[$i] + ".rz") $conRot[2];
+					
+					//SET THE NEW KEYS
+					//CHECK IF THESE ATTRIBUTES HAVE KEYS AND ONLY KEY IF THIS IS TRUE
+					if(kscIsAttrKeyed($keyedDup[$i],"tx") == 1)	setKeyframe ($controls[$i] + ".tx");
+					if(kscIsAttrKeyed($keyedDup[$i],"ty") == 1)	setKeyframe ($controls[$i] + ".ty");
+					if(kscIsAttrKeyed($keyedDup[$i],"tz") == 1)	setKeyframe ($controls[$i] + ".tz");
+					if(kscIsAttrKeyed($keyedDup[$i],"rx") == 1)	setKeyframe ($controls[$i] + ".rx");
+					if(kscIsAttrKeyed($keyedDup[$i],"ry") == 1)	setKeyframe ($controls[$i] + ".ry");
+					if(kscIsAttrKeyed($keyedDup[$i],"rz") == 1)	setKeyframe ($controls[$i] + ".rz");
+					setKeyframe ($controls[$i] + ".follow");
+				//SEE, THAT WASN'T TOO BAD...WHATEVER.
+			}
+		}
+	}
+
+	progressBar -edit -endProgress pgBar;
+ 
+	//GET RID OF TEMP OBJECTS
+	delete $constDup;
+	delete $keyedDup;
+}
+
+//DRAG COMMAND FOR THE INT FIELDS
+global proc kscUpdateTimeLine(string $range)
+{
+	int $rangeStart = `intField -q -v rangeStart`;
+	int $rangeEnd = `intField -q -v rangeEnd`;
+	if($range == "start")
+	{
+		playbackOptions -min $rangeStart;
+		playbackOptions -ast $rangeStart;
+		currentTime -e $rangeStart;
+	}
+	if($range == "end")
+	{
+		playbackOptions -max $rangeEnd;
+		playbackOptions -aet $rangeEnd;
+	}
+	
+}
+
+//RESETS THE FRAME RANGES IN THE UI BASED ON THE TIMELINE
+global proc kscUpdateFrameRanges()
+{
+		int $min = `playbackOptions -q -min`;
+		int $max = `playbackOptions -q -max`;
+		intField -e -v $min rangeStart;	
+		intField -e -v $max rangeEnd;	
+}
+
+//RETURN THE STATE OF KEYFRAMES FOR AN OBJECT
+global proc int kscKeyedFrame( string $objName )
+{
+	
+	$curFrame = `currentTime -q`;
+	$prevFrame = $curFrame - 1;
+	$key = `findKeyframe -time $prevFrame -which next $objName`;
+	if( $key == $curFrame )
+		return 1;
+
+	return 0;
+}
+
+//RETURN THE STATE OF AN ATTRIBUTE OF AN OBJECT IF ITS KEYED OR NOT
+global proc int kscIsAttrKeyed( string $objName, string $attr )
+{
+	// we get the current time.
+	$curFrame = `currentTime -q`;
+	$prevFrame = $curFrame - 1;
+	$nextKey = `findKeyframe -time $prevFrame -attribute $attr -which next $objName`;
+	if( $nextKey == $curFrame )
+		return 1;
+
+	return 0;
+}
+
+//END SCRIPT. EXIT STAGE RIGHT

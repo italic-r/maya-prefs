@@ -1,0 +1,31 @@
+// rig101locknHide
+//
+//////////////////////////
+//
+// AUTHOR :		Javier "Goosh" Solsona
+//				(jsolsona@digital-dreams.net)
+//
+// Copyright (C) 2003 Rigging 101 - Javier Solsona, Lluis Llobera
+//
+// CREATION DATE :	23/05/2002
+//
+// VERSION :		1.0
+//
+// DESCRIPTION :	This scripts let's you select multiple influence objects and add them to your 
+//				smooth skin instead of doing them one by one.
+//
+// HOW TO USE :		Select the skin first and then all your influence objects.
+//
+//////////////////////////
+
+global proc rig101multipleInfluence()
+{
+string $mainObject[] = `ls -sl`;
+string $skinObject = $mainObject[0];
+
+for($x=1; $x<size($mainObject); $x++)
+{
+	skinCluster -e -ai $mainObject[$x] $skinObject;
+}
+
+}

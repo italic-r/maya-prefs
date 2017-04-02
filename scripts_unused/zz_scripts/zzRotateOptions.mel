@@ -1,0 +1,66 @@
+//
+// rotate tool options
+//
+// Created by Hamish McKenzie www.emissionpossible.com
+// Created : 03 November 2001
+//
+// Description:
+// This is basically byran ewert's script for the move tool options
+// beefed up slightly, and adapted to the rotate tool.  you can now
+// assign it to the e key, so that when you hit e, it changes
+// to the rotate tool, and when you hold it down, it brings up your
+// rotate tool options.  just creates a better workflow, and saves
+// having to waste a shortcut key on yet another marking menu.
+//
+// Now displays the current context in bold.
+//
+// Usage:
+//  assign this function to a key press:
+//	zzRotateOptions
+//
+//  assign this function to the release;
+//	if( `popupMenu -exists tempMM` ) { deleteUI tempMM; }
+//
+// NOTE: if the hotkey you want to assign this script to contains
+// either ctrl, alt or shift, then modify the "popupMenu" line below
+// to reflect which key is used (ie if you're using alt-w then
+// change it to -alt 1).
+//
+// Hamish McKenzie ©2007...
+
+
+global proc zzRotateOptions() {
+	if( `popupMenu -ex tempMM` ) deleteUI tempMM;
+	global string $gRotate;
+	setToolTo $gRotate;
+
+	popupMenu -ctl 0 -alt 0 -sh 0 -mm 1 -b 1 -aob 1 -p( `getPanel -up` ) -pmc zzDisplayRotateOptions tempMM;
+	}
+
+
+global proc zzDisplayRotateOptions() {
+	if( `popupMenu -ex tempMM` ) menu -e -dai tempMM;
+	float $snap = `manipRotateContext -q -snapValue Rotate`;
+	int $isSnapOn = `manipRotateContext -q -snap Rotate`;
+	int $isRelativeOn = `manipRotateContext -q -snapRelative Rotate`;
+	int $ctxMode = `manipRotateContext -q -mode Rotate`;
+
+	menuItem -rp "N" -l "Rotate -> Local" -c "manipRotateContext -e -mode 0 Rotate;" -bld ( $ctxMode == 0 );
+	menuItem -rp "S" -l "Rotate -> World" -c "manipRotateContext -e -mode 1 Rotate;" -bld ( $ctxMode == 1 );
+	menuItem -rp "W" -l "Rotate -> Gimbal" -c "manipRotateContext -e -mode 2 Rotate;" -bld ( $ctxMode == 2 );
+
+	menuItem -l "snap" -cb $isSnapOn -c ( "manipRotateContext -e -snap " + !$isSnapOn + " Rotate" );
+	menuItem -l "relative" -cb $isRelativeOn -c ( "manipRotateContext -e -snapRelative " + !$isRelativeOn + " Rotate" );
+	menuItem -d 1;
+	menuItem -l "snap amount" -subMenu 1;
+		int $rotVals[] = {5,10,15,45};
+		for( $v in $rotVals ) menuItem -l $v -cb( $snap==$v ) -c( "manipRotateContext -e -snapValue "+ $v +" Rotate; manipRotateContext -e -snap 1 Rotate;" );
+	setParent -m ..;
+	menuItem -d 1;
+	menuItem -l "mirror selection" -c( "zooMirrorSelection 0;" );
+	menuItem -l "additive mirror selection" -c( "zooMirrorSelection 1;" );
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007

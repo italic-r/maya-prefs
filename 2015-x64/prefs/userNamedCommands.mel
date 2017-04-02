@@ -1,0 +1,556 @@
+//Maya Preference 2016.5 (Release 1)
+//
+//
+
+nameCommand
+	-annotation "AckPushKeysNameCommand"
+	-sourceType "mel"
+	-command ("AckPushKeys")
+	AckPushKeysNameCommand;
+
+nameCommand
+	-annotation "AckPullKeysNameCommand"
+	-sourceType "mel"
+	-command ("AckPullKeys")
+	AckPullKeysNameCommand;
+
+nameCommand
+	-annotation "ClearTranslationNameCommand"
+	-sourceType "mel"
+	-command ("ClearTranslation")
+	ClearTranslationNameCommand;
+
+nameCommand
+	-annotation "ClearRotationNameCommand"
+	-sourceType "mel"
+	-command ("ClearRotation")
+	ClearRotationNameCommand;
+
+nameCommand
+	-annotation "ClearScaleNameCommand"
+	-sourceType "mel"
+	-command ("ClearScale")
+	ClearScaleNameCommand;
+
+nameCommand
+	-annotation "ClearKeysNameCommand"
+	-sourceType "mel"
+	-command ("ClearKeys")
+	ClearKeysNameCommand;
+
+nameCommand
+	-annotation "AckNegateNameCommand"
+	-sourceType "mel"
+	-command ("AckNegate")
+	AckNegateNameCommand;
+
+nameCommand
+	-annotation "HideNURBSCurvesNameCommand"
+	-sourceType "mel"
+	-command ("HideNURBSCurves")
+	HideNURBSCurvesNameCommand;
+
+nameCommand
+	-annotation "HideCurvesNameCommand"
+	-sourceType "mel"
+	-command ("HideCurves")
+	HideCurvesNameCommand;
+
+nameCommand
+	-annotation "PlayAnimNameCommand"
+	-sourceType "mel"
+	-command ("PlayAnim")
+	PlayAnimNameCommand;
+
+nameCommand
+	-annotation "FrameFirstNameCommand"
+	-sourceType "mel"
+	-command ("FrameFirst")
+	FrameFirstNameCommand;
+
+nameCommand
+	-annotation "FramePreviousNameCommand"
+	-sourceType "mel"
+	-command ("FramePrevious")
+	FramePreviousNameCommand;
+
+nameCommand
+	-annotation "FrameNextNameCommand"
+	-sourceType "mel"
+	-command ("FrameNext")
+	FrameNextNameCommand;
+
+nameCommand
+	-annotation "FrameEndNameCommand"
+	-sourceType "mel"
+	-command ("FrameEnd")
+	FrameEndNameCommand;
+
+nameCommand
+	-annotation "FramePlayForwardNameCommand"
+	-sourceType "mel"
+	-command ("FramePlayForward")
+	FramePlayForwardNameCommand;
+
+nameCommand
+	-annotation "NextFrameUserNameCommand"
+	-sourceType "mel"
+	-command ("NextFrameUser")
+	NextFrameUserNameCommand;
+
+nameCommand
+	-annotation "PreviousFrameUserNameCommand"
+	-sourceType "mel"
+	-command ("PreviousFrameUser")
+	PreviousFrameUserNameCommand;
+
+nameCommand
+	-annotation "NextKeyUserNameCommand"
+	-sourceType "mel"
+	-command ("NextKeyUser")
+	NextKeyUserNameCommand;
+
+nameCommand
+	-annotation "PreviousKeyUserNameCommand"
+	-sourceType "mel"
+	-command ("PreviousKeyUser")
+	PreviousKeyUserNameCommand;
+
+nameCommand
+	-annotation "ScrubNoUndoNameCommand"
+	-sourceType "mel"
+	-command ("ScrubNoUndo")
+	ScrubNoUndoNameCommand;
+
+nameCommand
+	-annotation "ScrubNoUndoOffNameCommand"
+	-sourceType "mel"
+	-command ("ScrubNoUndoOff")
+	ScrubNoUndoOffNameCommand;
+
+nameCommand
+	-annotation "RedoNameCommand"
+	-sourceType "mel"
+	-command ("Redo")
+	RedoNameCommand;
+
+nameCommand
+	-annotation "ToggleCamsNameCommand"
+	-sourceType "mel"
+	-command ("ToggleCams")
+	ToggleCamsNameCommand;
+
+nameCommand
+	-annotation "ToggleCams_setupNameCommand"
+	-sourceType "mel"
+	-command ("ToggleCams_setup")
+	ToggleCams_setupNameCommand;
+
+nameCommand
+	-annotation "CenterTimeNameCommand"
+	-sourceType "mel"
+	-command ("CenterTime")
+	CenterTimeNameCommand;
+
+nameCommand
+	-annotation "HideJntsNameCommand"
+	-sourceType "mel"
+	-command ("HideJnts")
+	HideJntsNameCommand;
+
+nameCommand
+	-annotation "HidePolysNameCommand"
+	-sourceType "mel"
+	-command ("HidePolys")
+	HidePolysNameCommand;
+
+nameCommand
+	-annotation "SetKeyXNameCommand"
+	-sourceType "mel"
+	-command ("SetKeyX")
+	SetKeyXNameCommand;
+
+nameCommand
+	-annotation "SetKeyYNameCommand"
+	-sourceType "mel"
+	-command ("SetKeyY")
+	SetKeyYNameCommand;
+
+nameCommand
+	-annotation "SetKeyZNameCommand"
+	-sourceType "mel"
+	-command ("SetKeyZ")
+	SetKeyZNameCommand;
+
+nameCommand
+	-annotation "TimelineMinNameCommand"
+	-sourceType "mel"
+	-command ("TimelineMin")
+	TimelineMinNameCommand;
+
+nameCommand
+	-annotation "TimelineMaxNameCommand"
+	-sourceType "mel"
+	-command ("TimelineMax")
+	TimelineMaxNameCommand;
+
+nameCommand
+	-annotation "TimelineMaxExpandNameCommand"
+	-sourceType "mel"
+	-command ("TimelineMaxExpand")
+	TimelineMaxExpandNameCommand;
+
+nameCommand
+	-annotation "TimelineMinExpandNameCommand"
+	-sourceType "mel"
+	-command ("TimelineMinExpand")
+	TimelineMinExpandNameCommand;
+
+nameCommand
+	-annotation "SmoothKeysNameCommand"
+	-sourceType "mel"
+	-command ("SmoothKeys")
+	SmoothKeysNameCommand;
+
+nameCommand
+	-annotation "ClearAttrNameCommand"
+	-sourceType "mel"
+	-command ("ClearAttr")
+	ClearAttrNameCommand;
+
+nameCommand
+	-annotation "TimeFramePlaybackRangeNameCommand"
+	-sourceType "mel"
+	-command ("TimeFramePlaybackRange")
+	TimeFramePlaybackRangeNameCommand;
+
+nameCommand
+	-annotation "PlayblastNameCommand"
+	-sourceType "mel"
+	-command ("Playblast")
+	PlayblastNameCommand;
+
+nameCommand
+	-annotation "TimeCenterDUMMYNameCommand"
+	-sourceType "mel"
+	-command ("TimeCenterDUMMY")
+	TimeCenterDUMMYNameCommand;
+
+nameCommand
+	-annotation "TimeCenterNameCommand"
+	-sourceType "mel"
+	-command ("TimeCenter")
+	TimeCenterNameCommand;
+
+nameCommand
+	-annotation "AckMoveKeysForwardNameCommand"
+	-sourceType "mel"
+	-command ("AckMoveKeysForward")
+	AckMoveKeysForwardNameCommand;
+
+nameCommand
+	-annotation "AckMoveKeysBackwardNameCommand"
+	-sourceType "mel"
+	-command ("AckMoveKeysBackward")
+	AckMoveKeysBackwardNameCommand;
+
+nameCommand
+	-annotation "BreakTangentUserNameCommand"
+	-sourceType "mel"
+	-command ("BreakTangentUser")
+	BreakTangentUserNameCommand;
+
+nameCommand
+	-annotation "BreakTangentBreakNameCommand"
+	-sourceType "mel"
+	-command ("TangentBreakAndUnlock")
+	BreakTangentBreakNameCommand;
+
+nameCommand
+	-annotation "BreakTangentUnifyNameCommand"
+	-sourceType "mel"
+	-command ("TangentUnifyAndLock")
+	BreakTangentUnifyNameCommand;
+
+nameCommand
+	-annotation "dR_rotateReleaseNameCommand"
+	-sourceType "mel"
+	-command ("dR_rotateRelease")
+	dR_rotateReleaseNameCommand;
+
+nameCommand
+	-annotation "Rotate_PressNameCommand"
+	-sourceType "mel"
+	-command ("Rotate_Press")
+	Rotate_PressNameCommand;
+
+nameCommand
+	-annotation "Rotate_ReleaseNameCommand"
+	-sourceType "mel"
+	-command ("Rotate_Release")
+	Rotate_ReleaseNameCommand;
+
+nameCommand
+	-annotation "Translate_PressNameCommand"
+	-sourceType "mel"
+	-command ("Translate_Press")
+	Translate_PressNameCommand;
+
+nameCommand
+	-annotation "Translate_ReleaseNameCommand"
+	-sourceType "mel"
+	-command ("Translate_Release")
+	Translate_ReleaseNameCommand;
+
+nameCommand
+	-annotation "Scale_PressNameCommand"
+	-sourceType "mel"
+	-command ("Scale_Press")
+	Scale_PressNameCommand;
+
+nameCommand
+	-annotation "Scale_ReleaseNameCommand"
+	-sourceType "mel"
+	-command ("Scale_Release")
+	Scale_ReleaseNameCommand;
+
+nameCommand
+	-annotation "SetProjectNameCommand"
+	-sourceType "mel"
+	-command ("SetProject")
+	SetProjectNameCommand;
+
+nameCommand
+	-annotation "OpenSceneNameCommand"
+	-sourceType "mel"
+	-command ("OpenScene")
+	OpenSceneNameCommand;
+
+nameCommand
+	-annotation "SaveSceneNameCommand"
+	-sourceType "mel"
+	-command ("SaveScene")
+	SaveSceneNameCommand;
+
+nameCommand
+	-annotation "SaveSceneAsNameCommand"
+	-sourceType "mel"
+	-command ("SaveSceneAs")
+	SaveSceneAsNameCommand;
+
+nameCommand
+	-annotation "SelectToggleModeNameCommand"
+	-sourceType "mel"
+	-command ("SelectToggleMode")
+	SelectToggleModeNameCommand;
+
+nameCommand
+	-annotation "UniversalManipNameCommand"
+	-sourceType "mel"
+	-command ("UniversalManip")
+	UniversalManipNameCommand;
+
+nameCommand
+	-annotation "PinChannelNameCommand"
+	-sourceType "mel"
+	-command ("ChannelPin")
+	PinChannelNameCommand;
+
+nameCommand
+	-annotation "ChannelGroupNameCommand"
+	-sourceType "mel"
+	-command ("ChannelGroup")
+	ChannelGroupNameCommand;
+
+nameCommand
+	-annotation "ChannelUnpinNameCommand"
+	-sourceType "mel"
+	-command ("ChannelUnpin")
+	ChannelUnpinNameCommand;
+
+nameCommand
+	-annotation "ShowAnimUINameCommand"
+	-sourceType "mel"
+	-command ("ShowAnimUI")
+	ShowAnimUINameCommand;
+
+nameCommand
+	-annotation "ShowAnimationUINameCommand"
+	-sourceType "mel"
+	-command ("ShowAnimationUI")
+	ShowAnimationUINameCommand;
+
+nameCommand
+	-annotation "ShowRiggingUINameCommand"
+	-sourceType "mel"
+	-command ("ShowRiggingUI")
+	ShowRiggingUINameCommand;
+
+nameCommand
+	-annotation "TangentBreakAndUnlockNameCommand"
+	-sourceType "mel"
+	-command ("TangentBreakAndUnlock")
+	TangentBreakAndUnlockNameCommand;
+
+nameCommand
+	-annotation "TangentUnifyAndLockNameCommand"
+	-sourceType "mel"
+	-command ("TangentUnifyAndLock")
+	TangentUnifyAndLockNameCommand;
+
+nameCommand
+	-annotation "PrefsNameCommand"
+	-sourceType "mel"
+	-command ("Prefs")
+	PrefsNameCommand;
+
+nameCommand
+	-annotation "PrefsHotkeysNameCommand"
+	-sourceType "mel"
+	-command ("PrefsHotkeys")
+	PrefsHotkeysNameCommand;
+
+nameCommand
+	-annotation "EulerFilterNameCommand"
+	-sourceType "mel"
+	-command ("EulerFilter")
+	EulerFilterNameCommand;
+
+nameCommand
+	-annotation "HideStrokeNameCommand"
+	-sourceType "mel"
+	-command ("HideStroke")
+	HideStrokeNameCommand;
+
+nameCommand
+	-annotation "TangentWeightToggleNameCommand"
+	-sourceType "mel"
+	-command ("TangentWeightTogglePress")
+	TangentWeightToggleNameCommand;
+
+nameCommand
+	-annotation "TangentWeightToggleReleaseNameCommand"
+	-sourceType "mel"
+	-command ("TangentWeightToggleRelease")
+	TangentWeightToggleReleaseNameCommand;
+
+nameCommand
+	-annotation "InsertKeyToolActivateNameCommand"
+	-sourceType "mel"
+	-command ("InsertKeyToolActivate")
+	InsertKeyToolActivateNameCommand;
+
+nameCommand
+	-annotation "InsertKeyToolDeactivateNameCommand"
+	-sourceType "mel"
+	-command ("InsertKeyToolDeactivate")
+	InsertKeyToolDeactivateNameCommand;
+
+nameCommand
+	-annotation "TangentWeightTogglePressNameCommand"
+	-sourceType "mel"
+	-command ("TangentWeightTogglePress")
+	TangentWeightTogglePressNameCommand;
+
+nameCommand
+	-annotation "PanZoomReleaseNameCommand"
+	-sourceType "mel"
+	-command ("PanZoomRelease")
+	PanZoomReleaseNameCommand;
+
+nameCommand
+	-annotation "PanZoomPressNameCommand"
+	-sourceType "mel"
+	-command ("PanZoomPress")
+	PanZoomPressNameCommand;
+
+nameCommand
+	-annotation "HideLocatorsNameCommand"
+	-sourceType "mel"
+	-command ("HideLocators")
+	HideLocatorsNameCommand;
+
+nameCommand
+	-annotation "TangentTypeAutoNameCommand"
+	-sourceType "mel"
+	-command ("TangentTypeAuto")
+	TangentTypeAutoNameCommand;
+
+nameCommand
+	-annotation "TangentTypeFlatNameCommand"
+	-sourceType "mel"
+	-command ("TangentTypeFlat")
+	TangentTypeFlatNameCommand;
+
+nameCommand
+	-annotation "TangentTypeLinearNameCommand"
+	-sourceType "mel"
+	-command ("TangentTypeLinear")
+	TangentTypeLinearNameCommand;
+
+nameCommand
+	-annotation "aToolsTweenMachinePrevNameCommand"
+	-sourceType "mel"
+	-command ("aToolsTweenMachinePrev")
+	aToolsTweenMachinePrevNameCommand;
+
+nameCommand
+	-annotation "aToolsTweenMachineNextNameCommand"
+	-sourceType "mel"
+	-command ("aToolsTweenMachineNext")
+	aToolsTweenMachineNextNameCommand;
+
+nameCommand
+	-annotation "NextGreasePencilFrameNameCommand"
+	-sourceType "mel"
+	-command ("NextGreasePencilFrame")
+	NextGreasePencilFrameNameCommand;
+
+nameCommand
+	-annotation "PreviousGreasePencilFrameNameCommand"
+	-sourceType "mel"
+	-command ("PreviousGreasePencilFrame")
+	PreviousGreasePencilFrameNameCommand;
+
+nameCommand
+	-annotation "ackDeleteRedundantNameCommand"
+	-sourceType "mel"
+	-command ("ackDeleteRedundant")
+	ackDeleteRedundantNameCommand;
+
+nameCommand
+	-annotation "TangentTypeSteppedNameCommand"
+	-sourceType "mel"
+	-command ("TangentTypeStepped")
+	TangentTypeSteppedNameCommand;
+
+nameCommand
+	-annotation "HeliosNameCommand"
+	-sourceType "mel"
+	-command ("Helios")
+	HeliosNameCommand;
+
+nameCommand
+	-annotation "QuickLauncherNameCommand"
+	-sourceType "mel"
+	-command ("QuickLauncher")
+	QuickLauncherNameCommand;
+
+nameCommand
+	-annotation "PickWalkDownNameCommand"
+	-sourceType "mel"
+	-command ("PickWalkDown")
+	PickWalkDownNameCommand;
+
+nameCommand
+	-annotation "ModifyUpperRadiusPressNameCommand"
+	-sourceType "mel"
+	-command ("ModifyUpperRadiusPress")
+	ModifyUpperRadiusPressNameCommand;
+
+nameCommand
+	-annotation "ModifyUpperRadiusReleaseNameCommand"
+	-sourceType "mel"
+	-command ("ModifyUpperRadiusRelease")
+	ModifyUpperRadiusReleaseNameCommand;
+

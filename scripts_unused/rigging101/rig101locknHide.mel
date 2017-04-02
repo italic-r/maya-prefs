@@ -1,0 +1,433 @@
+// rig101locknHide
+//
+//////////////////////////
+//
+// AUTHOR :		Javier "Goosh" Solsona
+//				(jsolsona@digital-dreams.net)
+//
+// Copyright (C) 2003 Rigging 101 - Javier Solsona, Lluis Llobera
+//
+// CREATION DATE :	06/03/2002
+// UPDATED :		10/02/2003
+//
+// VERSION :		2.1
+//
+// DESCRIPTION :	This script locks, unlocks, hides and unhides a selected object's
+//				translate, rotate, scale and visibility attributes.
+//
+// HOW TO USE :		Select and object or number of objects, 
+//				select what you want to hide or lock and press the button
+//
+//////////////////////////
+
+//////////////////////////
+// Main Procedure
+//		This is the procedure that needs to be called
+//			in order for the script to work
+// //////////////////////////////////////////////
+
+global proc rig101locknHide()
+{
+
+// Creates the popup window
+string $rig101locknHide = "rig101locknHide";
+if (`window -exists $rig101locknHide`) deleteUI -window $rig101locknHide;
+window -title "Rig101 Lock 'n Hide" -menuBar true -minimizeButton true -maximizeButton false -rtf true -wh 330 100 $rig101locknHide;
+menu -label "File";
+	menuItem -label "New" -c "source rig101locknHide.mel";
+    	menuItem -label "Close" -c ("deleteUI rig101locknHide");
+menu -label "Help" -helpMenu true;
+    	menuItem -label "How to use" -c "gLocknHideHowtoUse();";
+	menuItem -divider true;
+	menuItem -label "Visit Website" -c "system(\"load http://www.rigging101.com\")";
+	menuItem -label "Feedback" -c "system(\"load mailto:jsolsona@digital-dreams.net\")";
+	menuItem -divider true;
+	menuItem -label "About Rig101 Lock 'n Hide..." -c "gLocknHideAbout();";
+	
+columnLayout -adjustableColumn true -cal "left" ColumnLayout;
+frameLayout -labelVisible false -marginWidth 10 -marginHeight 10 LockFrame;
+columnLayout;
+
+// Translate Checkboxes
+checkBox -label "Translate X" -cc "unCheck(\"trans\")" transX;
+checkBox -label "Translate Y" -cc "unCheck(\"trans\")" transY;
+checkBox -label "Translate Z" -cc "unCheck(\"trans\")" transZ;
+separator -height 2 -st none;
+checkBox -label "All Translations" -cc "SelectAllTrans()" allTrans;
+separator -height 20 -st none;
+
+// Rotate Checkboxes
+checkBox -label "Rotate X" -cc "unCheck(\"rot\")" rotX;
+checkBox -label "Rotate Y" -cc "unCheck(\"rot\")" rotY;
+checkBox -label "Rotate Z" -cc "unCheck(\"rot\")" rotZ;
+separator -height 2 -st none;
+checkBox -label "All Rotations" -cc "SelectAllRots()" allRots;
+separator -height 20 -st none;
+
+// Scale Checkboxes
+checkBox -label "Scale X" -cc "unCheck(\"sc\")" scX;
+checkBox -label "Scale Y" -cc "unCheck(\"sc\")" scY;
+checkBox -label "Scale Z" -cc "unCheck(\"sc\")" scZ;
+separator -height 2 -st none;
+checkBox -label "All Scales" -cc "SelectAllScs()" allScs;
+separator -height 20 -st none;
+
+// Visibility Checkbox
+checkBox -label "Visibility" -cc "unCheck(\"vis\")" vis;
+separator -height 20 -st none;
+
+// Select All / DeSelect All Checkbox
+checkBox -label "Select/DeSelect All" -cc "SelectDeselectAll()" SelectDeselect;
+separator -height 20 -st none;
+
+// Buttons
+button -label "Lock 'n Hide" -w 130 -c "lockAttributes(0, 1, 1, 0)";
+separator -height 6 -st none;
+
+gridLayout -numberOfColumns 2   -cellWidthHeight 65 22;
+	button -label "Lock" -w 65 -c "lockAttributes(0, 1, 0, 0)";
+	button -label "Unlock" -w 65 -c "lockAttributes(0, 0, 0, 1)";
+setParent..;
+
+separator -height 1 -st none;
+button -label "Unlock All" -w 130 -c "lockAttributes(1, 0, 0, 1)";
+separator -height 6 -st none;
+
+gridLayout -numberOfColumns 2   -cellWidthHeight 65 22;
+	button -label "Hide" -w 65 -c "HideAttributes(0, 0)";
+	button -label "UnHide" -w 65 -c "HideAttributes(0, 1)";
+setParent..;
+
+separator -height 1 -st none;
+button -label "UnHide All" -w 130 -c "HideAttributes(1, 1)";
+
+showWindow $rig101locknHide;
+}
+
+////////////////////
+// About
+// 
+//////////////////////////////////////////
+proc gLocknHideAbout()
+{
+string $win = "gLocknHideAbout";
+if (`window -exists $win`) deleteUI -window $win;
+window -title "About gLock 'n Hide" -minimizeButton false -maximizeButton false -rtf true -wh 200 10 $win;
+
+columnLayout -adjustableColumn true -columnAttach "both" 5;
+	separator -height 10 -st none;
+	text -label "About" -fn "boldLabelFont" -align "center";
+	separator -height 10 -w 100;
+	text -label "gLock 'n Hide Version 2.1" -align "center";
+	separator -height 5 -st none;
+	text -label "Javier \"Goosh\" Solsona" -align "center";
+    	text -label "jsolsona@digital-dreams.net" -align "center";
+	text -label "Copyright © 2003" -align "center";
+	text -label "All Rights Reserved" -align "center";
+	separator -height 15 -st none;
+	button -label "Ok" -w 50 -c ("deleteUI " + $win);
+showWindow $win;
+}
+
+////////////////////
+// How to Use
+// 
+//////////////////////////////////////////
+proc gLocknHideHowtoUse()
+{
+string $win = "gLocknHideHow";
+if (`window -exists $win`) deleteUI -window $win;
+window -title "How to Use gLock 'n Hide" -minimizeButton false -maximizeButton false -rtf true -wh 200 10 $win;
+columnLayout -adjustableColumn true -columnAttach "both" 5;
+	separator -height 10 -st none;
+    	text -label "How to use" -fn "boldLabelFont" -align "center";
+	separator -height 10 -w 100;
+	text -label "Select object(s)."  -align "center";
+	text -label "Select the checkboxes for the attributes that you want to modify." -align "center";
+	text -label "Press one of the buttons to Lock, Hide, UnHide, etc";
+	separator -height 15 -st none;
+	button -label "Ok" -w 50 -c ("deleteUI " + $win);
+showWindow $win;
+}
+
+////////////////////
+// Select All Translations
+// Turns the Select All Translations checkbox on or off
+//////////////////////////////////////////
+
+global proc SelectAllTrans()
+{
+string $selectAllTrans = `checkBox -q -value allTrans`;
+string $selectAllRots = `checkBox -q -value allRots`;
+string $selectAllScs = `checkBox -q -value allScs`;
+string $vis = `checkBox -q -value vis`;
+
+if ($selectAllTrans)
+{
+	checkBox -e -v true transX;
+	checkBox -e -v true transY;
+	checkBox -e -v true transZ;
+}
+if ($selectAllTrans == 0)
+{
+	checkBox -e -v false transX;
+	checkBox -e -v false transY;
+	checkBox -e -v false transZ;
+	checkBox -e -v false SelectDeselect;
+}
+
+// If everything is on, turn the SelectAll Checkbox on
+if (($selectAllTrans) && ($selectAllRots) && ($selectAllScs) && ($vis))
+	checkBox -e -v true SelectDeselect;
+}
+
+
+////////////////////
+// Select All Rotations
+// Turns the Select All Rotations checkbox on or off
+///////////////////////////
+
+global proc SelectAllRots()
+{
+string $selectAllTrans = `checkBox -q -value allTrans`;
+string $selectAllRots = `checkBox -q -value allRots`;
+string $selectAllScs = `checkBox -q -value allScs`;
+string $vis = `checkBox -q -value vis`;
+
+if ($selectAllRots)
+{
+	checkBox -e -v true rotX;
+	checkBox -e -v true rotY;
+	checkBox -e -v true rotZ;
+}
+else
+{
+	checkBox -e -v false rotX;
+	checkBox -e -v false rotY;
+	checkBox -e -v false rotZ;
+	checkBox -e -v false SelectDeselect;
+}
+
+// If everything is on, turn the SelectAll Checkbox on
+if (($selectAllTrans) && ($selectAllRots) && ($selectAllScs) && ($vis))
+	checkBox -e -v true SelectDeselect;
+}
+
+
+///////////////////
+// Select All Scales
+// Turns the Select All Scales checkbox on or off
+/////////////////////////////////////
+
+global proc SelectAllScs()
+{
+string $selectAllTrans = `checkBox -q -value allTrans`;
+string $selectAllRots = `checkBox -q -value allRots`;
+string $selectAllScs = `checkBox -q -value allScs`;
+string $vis = `checkBox -q -value vis`;
+
+if ($selectAllScs)
+{
+	checkBox -e -v true scX;
+	checkBox -e -v true scY;
+	checkBox -e -v true scZ;
+}
+else
+{
+	checkBox -e -v false scX;
+	checkBox -e -v false scY;
+	checkBox -e -v false scZ;
+	checkBox -e -v false SelectDeselect;
+}
+
+// If everything is on, turn the SelectAll Checkbox on
+if (($selectAllTrans) && ($selectAllRots) && ($selectAllScs) && ($vis))
+	checkBox -e -v true SelectDeselect;
+}
+
+
+////////////////////////
+// Select Deselect All
+// Turns all the checkboxes on or off
+//////////////////////////////////////////
+
+global proc SelectDeselectAll()
+{
+string $SelectDeselect = `checkBox -q -value SelectDeselect`;
+
+if ($SelectDeselect)
+{
+	checkBox -e -v true transX;
+	checkBox -e -v true transY;
+	checkBox -e -v true transZ;
+	checkBox -e -v true allTrans;
+	checkBox -e -v true rotX;
+	checkBox -e -v true rotY;
+	checkBox -e -v true rotZ;
+	checkBox -e -v true allRots;
+	checkBox -e -v true scX;
+	checkBox -e -v true scY;
+	checkBox -e -v true scZ;
+	checkBox -e -v true allScs;
+	checkBox -e -v true vis;
+}
+else
+{
+	checkBox -e -v false transX;
+	checkBox -e -v false transY;
+	checkBox -e -v false transZ;
+	checkBox -e -v false allTrans;
+	checkBox -e -v false rotX;
+	checkBox -e -v false rotY;
+	checkBox -e -v false rotZ;
+	checkBox -e -v false allRots;
+	checkBox -e -v false scX;
+	checkBox -e -v false scY;
+	checkBox -e -v false scZ;
+	checkBox -e -v false allScs;
+	checkBox -e -v false vis;
+}
+}
+
+
+///////////////////
+// UnLock Attributes
+// Locks or UnLocks Attributes depending on the status of the checkboxes
+//////////////////////////////
+
+// $all used for when the unlock all button is pressed
+// $trueFalse used for lock or unlock
+// $hideAttrs used to check if it's supposed to hide the attributes too. Used for Lock and Hide button
+// $unHide used so that it unhides the attributes when you unlock them.
+global proc lockAttributes(int $all, int $trueFalse, int $hideAttrs, int $unHide)
+{
+string $selectedObjects[] = `ls -sl`;
+string $transX = `checkBox -q -value transX`;
+string $transY = `checkBox -q -value transY`;
+string $transZ = `checkBox -q -value transZ`;
+string $rotX = `checkBox -q -value rotX`;
+string $rotY = `checkBox -q -value rotY`;
+string $rotZ = `checkBox -q -value rotZ`;
+string $scX = `checkBox -q -value scX`;
+string $scY = `checkBox -q -value scY`;
+string $scZ = `checkBox -q -value scZ`;
+string $vis = `checkBox -q -value vis`;
+string $attrs[]={".tx",".ty",".tz",".rx",".ry",".rz",".sx",".sy",".sz",".v"};
+string $attrs2[]={$transX,$transY,$transZ,$rotX,$rotY,$rotZ,$scX,$scY,$scZ,$vis}; 
+
+for ($obj in $selectedObjects)
+{
+	for ($x=0;$x<size($attrs);$x++)
+	{
+		if (($attrs2[$x]) || ($all))				// checks what attributes are selected or if the button for "all" has been pressed
+		{							
+			setAttr -lock $trueFalse ($obj+$attrs[$x]);	// sets the attribute to lock or unlock depending on $trueFalse
+			if ($unHide)					// checks if it's supposed to unhide the attribute too
+				setAttr -keyable true ($obj+$attrs[$x]);
+		}
+		if (($attrs2[$x]) && ($hideAttrs))			// checks if it's supposed to hide the attributes too. from Lock 'n Hide button
+			setAttr -keyable false ($obj+$attrs[$x]);
+	}
+}
+}
+
+
+////////////////////
+// Hide Selected
+// Hides the Attributes that are selected so that they cannot be keyed
+///////////////////////////////////////
+
+// $all used for when the unlock all button is pressed
+// $trueFalse used for lock or unlock
+global proc HideAttributes(int $all, int $trueFalse)
+{
+string $selectedObjects[] = `ls -sl`;
+string $transX = `checkBox -q -value transX`;
+string $transY = `checkBox -q -value transY`;
+string $transZ = `checkBox -q -value transZ`;
+string $rotX = `checkBox -q -value rotX`;
+string $rotY = `checkBox -q -value rotY`;
+string $rotZ = `checkBox -q -value rotZ`;
+string $scX = `checkBox -q -value scX`;
+string $scY = `checkBox -q -value scY`;
+string $scZ = `checkBox -q -value scZ`;
+string $vis = `checkBox -q -value vis`;
+string $attrs[]={".tx",".ty",".tz",".rx",".ry",".rz",".sx",".sy",".sz",".v"};
+string $attrs2[]={$transX,$transY,$transZ,$rotX,$rotY,$rotZ,$scX,$scY,$scZ,$vis}; 
+
+for ($obj in $selectedObjects)
+{
+	for ($x=0;$x<size($attrs);$x++)
+	{
+		if (($attrs2[$x]) || ($all))				// if the attribute is on or the all button was hit
+			setAttr -k $trueFalse ($obj+$attrs[$x]);	// set the attribute to true of false depending on $trueFalse
+	}
+}
+}
+
+
+//////////////////////
+// UnCheck 
+// Turns the AllTranslations checkbox on or off
+///////////////////////////////////
+
+global proc unCheck(string $checkBoxes)
+{
+string $transX = `checkBox -q -value transX`;
+string $transY = `checkBox -q -value transY`;
+string $transZ = `checkBox -q -value transZ`;
+string $rotX = `checkBox -q -value rotX`;
+string $rotY = `checkBox -q -value rotY`;
+string $rotZ = `checkBox -q -value rotZ`;
+string $scX = `checkBox -q -value scX`;
+string $scY = `checkBox -q -value scY`;
+string $scZ = `checkBox -q -value scZ`;
+string $vis = `checkBox -q -value vis`;
+
+switch ($checkBoxes)
+{
+	case "trans":
+		if (($transX == 0) || ($transY == 0) || ($transZ == 0))
+		{
+			checkBox -e -v false allTrans;
+			checkBox -e -v false SelectDeselect;
+		}
+		if ($transX && $transY && $transZ)
+			checkBox -e -v true allTrans;
+		if ($transX && $transY && $transZ && $rotX && $rotY && $rotZ && $scX && $scY && $scZ && $vis)
+			checkBox -e -v true SelectDeselect;
+	break;
+
+	case "rot":
+		if (($rotX == 0) || ($rotY == 0) || ($rotZ == 0))
+		{
+			checkBox -e -v false allRots;
+			checkBox -e -v false SelectDeselect;
+		}
+		if ($rotX && $rotY && $rotZ)
+			checkBox -e -v true allRots;
+		if ($transX && $transY && $transZ && $rotX && $rotY && $rotZ && $scX && $scY && $scZ && $vis)
+			checkBox -e -v true SelectDeselect;
+	break;
+
+	case "sc":
+		if (($scX == 0) || ($scY == 0) || ($scZ == 0))
+		{
+			checkBox -e -v false allScs;
+			checkBox -e -v false SelectDeselect;
+		}
+		if ($scX && $scY && $scZ)
+			checkBox -e -v true allScs;
+		if ($transX && $transY && $transZ && $rotX && $rotY && $rotZ && $scX && $scY && $scZ && $vis)
+			checkBox -e -v true SelectDeselect;
+
+	case "vis":
+	if ($vis == 0)
+	{
+		checkBox -e -v false SelectDeselect;
+	}
+	if ($transX && $transY && $transZ && $rotX && $rotY && $rotZ && $scX && $scY && $scZ && $vis)
+		checkBox -e -v true SelectDeselect;
+	break;
+}
+}

@@ -1,0 +1,100 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: SkinAs v1.0
+''    Author: Christophe Petit
+''    Last Updated: May 27, 2003
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=animation#2305
+''  
+''  History:
+''    SkinAs v0.0 on May 19, 2003 by Christophe Petit
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+
+
+/*//////////////////////////////////////////////////////////////////
+// MODIFY THIS AT YOUR OWN RISK
+//
+// Creation Date:  04/05/03
+//
+// Author:      Christophe Petit
+//
+//
+//  Procedure Name:
+//
+//      skinAs.mel v.1.1
+//
+//  Description:
+//      allow you to skin a geometry as an other (support influence objects)
+//	it skins the 1rst geometry on the same skeleton as the second with same influence Objects.
+//
+//	usefull to reskin a geometry with more split or high res model, or change the position of joints without detach Skin....etc
+//
+//	0.copy this script in your script directory. 
+//	1.select the geometry to skin.
+//	2.select the geometry used as referenc skinning.
+// 	3.type : skinAs
+//
+//	P.S.:
+//		Thx to Nicolas Combecave 
+//		for debugging "skinCluster history" 
+////////////////////////////////////////////////////////////////////	
+*/
+global proc skinAs()
+{
+	string $sel[] = `ls -sl`;
+	if (size ($sel)>2)
+		error ("select ONE Source and ONE Destination");
+
+	string $tmp[] = `listRelatives -s -ad -ni $sel[0]`;
+	string $dest = $tmp[0];
+	$tmp = `listRelatives -s -ad -ni $sel[1]`;
+	string $source = $tmp[0];
+
+//	Apparemment ne retourne pas les skinClusters !
+//	$tmp = `listConnections -c true $source`;
+//	ListHistory semble lui retourner les skinClusters...
+
+	string $skinClstr = `findRelatedSkinCluster $tmp[0]`;
+
+	if ($skinClstr != "") 
+	{
+		$skinClusterName = $skinClstr;
+		string $InfList[] = `skinCluster -q -inf $skinClusterName`;
+		string $joints[] = `ls -typ "joint" $InfList`;
+		string $transforms[] = `ls -typ "transform" $InfList`;
+		$transforms = stringArrayRemove ($joints,$transforms);
+		string $name[] = `skinCluster -dr 4.5 -mi 3 -ibp -tsb -n ($dest + "_skinCluster") $joints $dest`;
+		string $skinClusterAttr[] = `listAttr -k $skinClusterName`;
+		$skinClusterAttr = stringArrayRemove ({"weightList.weights"},$skinClusterAttr);
+		for ($attr in $skinClusterAttr)
+		{
+			setAttr ($name[0] + "." + $attr) (`getAttr ($skinClusterName + "." + $attr)`);
+		}
+
+		for ($obj in $transforms)
+		{
+			string $shape[] = `listRelatives -s $obj`;
+			string $geometry[] =`ls -ni -typ "nurbsSurface" -typ "mesh" -typ "nurbsCurve" $shape`;
+			if(size($geometry)!=0)
+			{
+				skinCluster -e -ug -dr 4.5 -ai $obj $name[0];
+			}else{ 
+				skinCluster -e -dr 4.5 -ai $obj $name[0];
+			}
+		}
+
+		copySkinWeights -ss $skinClusterName -ds $name[0] -noMirror;
+		
+
+	}else{
+		warning ("I can't do the Job...Sorry  :) ");
+	}
+	
+}

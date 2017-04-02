@@ -1,0 +1,165 @@
+/*  This file downloaded from Highend3d.com
+''
+''  Highend3d.com File Information:
+''
+''    Script Name: zzMakeUVDistortion v1.1
+''    Author: Hamish McKenzie
+''    Last Updated: May 21, 2003
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=rendering#2231
+''
+''  History:
+''    zzMakeUVDistortion v1.1 on May 20, 2003 by Hamish McKenzie
+''    Distort UVs v1.0 on March 25, 2003 by Hamish McKenzie
+''
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+
+
+
+
+//
+// Distort UVs
+//
+// Created by Hamish McKenzie zootoolbox@googlegroups.com
+// Created : 25 March 2003
+//
+// Description:
+// The script sets up a simple network to allow you to distort any
+// uv mapped texture, based on another texture.  Select the texture
+// you want to distort, and then select the texture you want to use
+// as a "distortion map", and run the script.  A network will be
+// created, comprising of 2 ramps, a 2d placement node, and a
+// layered texture node.
+//
+// Basically UV mapping is done by connecting any 0-1 ranged value
+// to the uCoord and vCoord attributes of a texture node.  So the
+// layered texture has ramp going from 0-1 in both the U and V
+// direction.  These values are then altered by the "distortion map"
+// by multiplying it over the 0-1 uv values.  This is all done in
+// a layered texture.
+//
+// Initially I tried to make it a little more user friendly by
+// a distortion map attribute on the texture node, but when mapped
+// "through" this attribute, I think the uv information was lost,
+// and the effect didn't work.  So to change distortion maps, you
+// have to go into the layered texture thats created, and plug a
+// new texture into the top most layer in the layered texture.
+//
+// You can also achieve some interesting effects by playing with
+// blend mode of the distortion map.
+//
+// Usage:
+//  select the texture to be distorted, and then the map used as a
+//  "distortion map" and type the command:
+//	zzMakeUVDistortion;
+//
+//  Attributes are setup up on the original texture to control the
+//  effect.
+//
+// Hamish McKenzie ©2007...
+
+
+global proc zzMakeUVDistortion () {
+	string $selObjs[] = `ls -sl`;
+	string $function = "ramp"; //this can be changed to a function parameter, so it can be changed externally.  at the moment, the graph mode doesn't work however
+	string $layer = `shadingNode -asTexture layeredTexture`;
+	string $uvPlacementNode = `shadingNode -asUtility place2dTexture`;
+	string $repeatMultiplier = `shadingNode -asUtility multiplyDivide`;
+	string $texture = $selObjs[0];
+	string $distortionMap = $selObjs[1];
+	string $uRamp, $uOutAttr;
+	string $vRamp, $vOutAttr;
+
+	if ( $function == "graph" ) {
+		$uRamp = `createNode animCurveUU`;
+		$vRamp = `createNode animCurveUU`;
+		$uOutAttr = "output";
+		$vOutAttr = "output";
+
+		//setup the graphs
+		setKeyframe -itt "linear" -ott "linear" -v 0 - f 0 $uRamp;
+		setKeyframe -itt "linear" -ott "linear" -v 1 - f 1 $uRamp;
+		setKeyframe -itt "linear" -ott "linear" -v 0 - f 0 $vRamp;
+		setKeyframe -itt "linear" -ott "linear" -v 1 - f 1 $vRamp;
+		}
+	else {
+		$uRamp = `createNode ramp`;
+		$vRamp = `createNode ramp`;
+		$uOutAttr = "outColorR";
+		$vOutAttr = "outColorG";
+
+		//setup the ramps
+		setAttr ( $uRamp + ".type" ) 1;  //change ramp direction to U
+		removeMultiInstance -break true ( $uRamp + ".colorEntryList[1]" );
+		setAttr ( $uRamp + ".colorEntryList[0].color" ) -type double3 0 0 0 ;
+		setAttr ( $uRamp + ".colorEntryList[2].color" ) -type double3 1 0 0 ;
+		setAttr ( $uRamp + ".colorEntryList[2].position" ) 1;
+
+		removeMultiInstance -break true ( $vRamp + ".colorEntryList[1]" );
+		setAttr ( $vRamp + ".colorEntryList[0].color" ) -type double3 0 0 0 ;
+		setAttr ( $vRamp + ".colorEntryList[2].color" ) -type double3 0 1 0 ;
+		setAttr ( $vRamp + ".colorEntryList[2].position" ) 1;
+		}
+
+	//rename the important nodes
+	$uvPlacementNode = `rename $uvPlacementNode ( $texture + "_UVRampPlacement" )`;
+	$uRamp = `rename $uRamp ( $texture + "_URampControl" )`;
+	$vRamp = `rename $vRamp ( $texture + "_VRampControl" )`;
+	$layer = `rename $layer ( $texture + "_DistortedUVs" )`;
+
+	//now add the control attributes to the place2d texture control node
+	if ( `objExists ( $texture + ".warpAmount" )` ) {
+		deleteAttr -at warpAmount $texture;
+		deleteAttr -at uRepeats $texture;
+		deleteAttr -at vRepeats $texture;
+		deleteAttr -at uOffset $texture;
+		deleteAttr -at vOffset $texture;
+		}
+
+	addAttr -ln warpAmount -at double $texture;
+	addAttr -ln uRepeats -at double $texture;
+	addAttr -ln vRepeats -at double $texture;
+	addAttr -ln uOffset -at double $texture;
+	addAttr -ln vOffset -at double $texture;
+
+	setAttr -e -keyable 1 ( $texture + ".warpAmount" ) 1;
+	setAttr -e -keyable 1 ( $texture + ".uRepeats" ) 1;
+	setAttr -e -keyable 1 ( $texture + ".vRepeats" ) 1;
+	setAttr -e -keyable 1 ( $texture + ".uOffset" ) 0;
+	setAttr -e -keyable 1 ( $texture + ".vOffset" ) 0;
+
+	//connect the placement node to the u and v ramps - note only one placement node is needed to control both ramps
+	connectAttr -f ( $uvPlacementNode + ".outU" ) ( $uRamp + ".uCoord" );
+	connectAttr -f ( $uvPlacementNode + ".outV" ) ( $vRamp + ".vCoord" );
+	connectAttr -f ( $uvPlacementNode + ".outUvFilterSize" ) ( $uRamp + ".uvFilterSize" );
+	connectAttr -f ( $uvPlacementNode + ".outUvFilterSize" ) ( $vRamp + ".uvFilterSize" );
+
+	//connect the u/v tile attributes to the u/v ramp's placement nodes
+	connectAttr -f ( $uRamp + ".outColorR" ) ( $repeatMultiplier + ".input1X" );
+	connectAttr -f ( $vRamp + ".outColorG" ) ( $repeatMultiplier + ".input1Y" );
+	connectAttr -f ( $texture + ".uRepeats" ) ( $repeatMultiplier + ".input2X" );
+	connectAttr -f ( $texture + ".vRepeats" ) ( $repeatMultiplier + ".input2Y" );
+	connectAttr -f ( $repeatMultiplier + ".outputX" ) ( $layer + ".inputs[1].colorR" );
+	connectAttr -f ( $repeatMultiplier + ".outputY" ) ( $layer + ".inputs[2].colorG" );
+
+	//now connect the rest of the control node
+	connectAttr -f ( $texture + ".warpAmount" ) ( $layer + ".inputs[0].alpha" );
+	setAttr ( $layer + ".inputs[0].color" ) -type double3 1 1 1 ;  //set layer 0 to be white initially, so as to not affect the UVs
+	setAttr ( $layer + ".inputs[0].blendMode" ) 6;  //multiplicative blend
+	setAttr ( $layer + ".inputs[1].blendMode" ) 4;  //additive blend
+	setAttr ( $layer + ".inputs[2].blendMode" ) 0;  //no blending
+
+	//change the filter type to mipmap, as this doesn't work otherwise
+	if ( `objExists ( $texture + ".filterType" )` ) setAttr ( $texture + ".filterType" ) 1;
+
+ 	//was there a distortion map selected?  if so, connect it to the layered texture
+ 	if ( $distortionMap != "" ) connectAttr -f ( $distortionMap + ".outColor" ) ( $layer + ".inputs[0].color" );
+
+ 	//finally, connect the layered texture to the uv coordinate attributes of the texture we're warping
+	connectAttr -f ( $layer + ".outColorR" ) ( $texture + ".uCoord" );
+	connectAttr -f ( $layer + ".outColorG" ) ( $texture + ".vCoord" );
+	}

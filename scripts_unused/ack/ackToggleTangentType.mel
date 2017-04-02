@@ -1,0 +1,28 @@
+/////////////////////////////////////////////////////////
+//	ackToggleTangentType 1.0				
+//	9/9/05						
+//	Aaron Koressel				
+//								
+//	Toggles selected keys between broken+free tangents
+//	and unified+free tangents in the graph editor.
+/////////////////////////////////////////////////////////
+
+
+global proc ackToggleTangentType() {
+	// get graph outliner 
+	string $connection = `editor -q -mainListConnection graphEditor1GraphEd`;
+
+	// get selection from outliner
+	string $curveSel[] = `expandSelectionConnectionAsArray $connection`;
+
+	int $keyCount = 0;
+	$keyCount = `keyframe -an keys -q -kc`;
+
+	if ($keyCount == 0) {  							//no keys selected: do nothing
+
+	} else {	
+		int $cur[] = `keyTangent -q -lock`;
+		keyTangent -lock (! $cur[0]);
+		keyTangent -weightLock 0;
+	}
+}

@@ -1,0 +1,37 @@
+//Creates a correctly-named hierarchy for each selected joint (or object) consisting of, from bottom to top:
+//Selected Joint or Object > Zeroed Out Locator Matching Orientation > Group Preserving Child Transforms.
+
+
+proc locGRP () {
+
+
+//Find selection.
+string $selObjs[] = `ls -sl`;
+
+
+//Execute FOR loop.
+for ($objs in $selObjs) {
+
+
+    //Create locator and group it.  Create nurbs curve.
+    string $loc[] = `spaceLocator`;
+    string $grpLoc = `group`;
+
+    //Match transforms of group to selected joint or object.
+    parentConstraint $objs $grpLoc;
+    string $findConstraints[] = `listRelatives -type parentConstraint $grpLoc`;
+    select $findConstraints[0];
+    doDelete;
+    
+    //Parent joint or object to locator.
+    parent $objs $loc;
+    makeIdentity -apply true -t 1 -r 1 -s 1 -n 0 $objs;
+        
+    //Rename locator, group, and curve.
+    string $renameGrp = `rename $grpLoc ($objs + "_GRP")`;
+    string $renameLoc = `rename $loc ($objs + "_LOC")`;
+    }
+}
+
+
+locGRP () ;

@@ -1,0 +1,41 @@
+// stringTogether
+global proc stringTogether() {
+	string $selectedObj[] = `ls -sl`;
+	int $i=0;
+	
+	float $objPos[] = `xform -ws -a -q -piv $selectedObj[0]`;
+	string $newCurve = `curve -d 1 -ws -point $objPos[0] $objPos[1] $objPos[2] -point $objPos[0] $objPos[1] $objPos[2] `;
+	
+		string $newPOSNode = `createNode pointOnCurveInfo`;
+		//string $newLoc = `createNode locator`;
+		string $shapeName[] = `listRelatives -s $newCurve`;
+		connectAttr ($shapeName[0]+".worldSpace") ($newPOSNode+".inputCurve") ;
+		setAttr ($newPOSNode+".pr") 1;
+		
+		$newLoc = `createNode transform`;
+		connectAttr ($newPOSNode+".px") ($newLoc+".tx");
+		connectAttr ($newPOSNode+".py") ($newLoc+".ty");
+		connectAttr ($newPOSNode+".pz") ($newLoc+".tz");
+		
+		pointConstraint -mo $newLoc $selectedObj[0];
+	
+	for ($i=1;$i<size($selectedObj);$i++) {
+		
+		$objPos = `xform -ws -a -q -piv $selectedObj[$i]`;
+		// add current point to curve
+		curve -append -ws -point $objPos[0] $objPos[1] $objPos[2] $newCurve;
+		// constrain the object to the new curve point
+		$newPOSNode = `createNode pointOnCurveInfo`;
+		$shapeName = `listRelatives -s $newCurve`;
+		connectAttr ($shapeName[0]+".worldSpace") ($newPOSNode+".inputCurve") ;
+		setAttr ($newPOSNode+".pr") ($i+1);
+		
+		$newLoc = `createNode transform`;
+		connectAttr ($newPOSNode+".px") ($newLoc+".tx");
+		connectAttr ($newPOSNode+".py") ($newLoc+".ty");
+		connectAttr ($newPOSNode+".pz") ($newLoc+".tz");
+		
+		pointConstraint -mo $newLoc $selectedObj[$i];
+	
+	}
+}

@@ -1,0 +1,25 @@
+[filterNode_settings]
+	metaRig = False
+	infoBlock = ""
+	searchAttrs = ,
+	hierarchy = True
+	searchPattern = ,
+	filterPriority = ,
+	transformClamp = True
+	nodeTypes = ,
+	incRoots = True
+	[[rigData]]
+		snapPriority = False
+[AnimationUI]
+	poseSubPath = ""
+	posePath = ""
+	posePathLocal = ""
+	poseMode = thumb
+	posePathProject = Project Pose Path not yet set
+	posePathMode = localPoseMode
+	ui_docked = True
+	[[checkboxes]]
+		uicbMirrorHierarchy = True
+		uicbSnapHierarchy = False
+		uicbSnapRange = False
+		uicbPoseRelative = False

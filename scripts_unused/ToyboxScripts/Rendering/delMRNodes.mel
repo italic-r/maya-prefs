@@ -1,0 +1,23 @@
+// delMRNodes
+global proc delMRNodes(){
+	$result = `confirmDialog -title "delete Mental Ray Nodes" -message "This command will flush the UNDO history"
+	 		-button "OK" -button "Cancel" -defaultButton "OK"
+	 		-cancelButton "Cancel" -dismissString "Cancel"`;
+	
+	if ($result != "Cancel"){
+		string $selectMRNodeType[] = `ls -type mentalrayFramebuffer`;
+		for ($itemToDel in $selectMRNodeType)
+		delete $itemToDel;
+		$selectMRNodeType = `ls -type mentalrayOptions`;
+		for ($itemToDel in $selectMRNodeType)
+		delete $itemToDel;
+		$selectMRNodeType = `ls -type mentalrayGlobals`;
+		for ($itemToDel in $selectMRNodeType)
+		delete $itemToDel;
+		$selectMRNodeType = `ls -type mentalrayItemsList`;
+		for ($itemToDel in $selectMRNodeType)
+		delete $itemToDel;
+		flushUndo;
+		unloadPlugin "Mayatomr";
+	}
+}

@@ -1,0 +1,166 @@
+////////////////////////////////////////
+//
+// HotKey Manager 1.0
+// Coded by Giuseppe Improta, '03
+// Personal Web Site: http://www.3dluvr.com/knower
+// Use this at your own risk !
+// Enjoy this cool MEL !!
+// 
+// For the instruction see HotKeyMan_Readme.txt
+//
+//
+////////////////////////////////////////
+
+
+global proc HotKeyManUI(string $setsList[])
+
+{
+string $windowTitle = "HotKey Manager 1.0";
+	if (`window -exists windowTitle`)
+		{
+		deleteUI -window windowTitle;
+		}
+	GetSetsList;
+	string $HotKeyManUI = `window -s true -title "HotKey Manager 1.0" 
+	-menuBar true
+    	-iconName "HotKeyMan"
+    	-widthHeight 60 80 windowTitle`;
+	menu -label "Hotkeys Sets" SetSaveMenu;
+	menuItem -label "Save current Set on a file" -command "SaveSetOnFile" menuItem1;
+	menuItem -label "Load Set from a file" -command "LoadSetFromFile" menuItem2;
+	columnLayout -adj true;
+	string $SetTextList = `textField -ed false -en true -h 25 -tx "Welcome to Hotkey Manager 1.0 !!" SetWhat`;
+	text -fn "smallBoldLabelFont" -label "Available hotkeys sets";
+	string $SetList = `textScrollList -h 100 -numberOfRows 8 -allowMultiSelection false setsListView`;
+	for ($i=0; $i<size($setsList); $i++)
+		{
+		textScrollList -e -append $setsList[$i] setsListView;
+		}
+	button -label "Apply selected Set" -command "applySet";
+	button -label "Upgrade selected Set" -command "upgradeSet";	
+	button -label "Rename selected Set" -command "renameSet"; 
+	button -label "Delete selected Set" -command "deleteSet";
+	button -label "Close Window" -command "closeHotKeyMan";
+	setParent ..;
+	showWindow $HotKeyManUI;
+}
+
+global proc string[] GetSetsList()
+
+{
+string $prefDir = `internalVar -upd`;
+string $setsList[] = `getFileList -folder $prefDir -filespec "hotkeyman_*.mel"`; 
+return $setsList;
+}
+
+global proc SaveSetOnFile()
+
+{
+string $prefDir = `internalVar -upd`;
+string $setsList[] = `getFileList -folder $prefDir -filespec "hotkeyman_*.mel"`; 
+string $fileNamePrompt = `promptDialog -title "Create New Hotkey Set" -message "HotkeySet Name"
+			-text "????" -button "OK" -button "Cancel" -defaultButton "OK"
+			-cancelButton "Cancel" -dismissString "Cancel"`;
+if ($fileNamePrompt == "OK") 
+	{
+	$fileName = `promptDialog -q -tx`; 
+	string $finalName =  $prefDir + "hotkeyman_" + $fileName + ".mel";
+	string $scrollSetName = "hotkeyman_" + $fileName + ".mel";
+	for ($i=0; $i<size($setsList); $i++)
+		{
+		if ($scrollSetName == $setsList[$i])
+			{
+			error ("The file set already exists, use -upgrade set- button if you want to overwrite it...");			
+			}
+		}
+	sysFile -copy ($finalName) ($prefDir + "userHotkeys.mel" );
+	textScrollList -e -append ($scrollSetName) setsListView;		
+	textField -e -tx ("File saved as:" + $scrollSetName) SetWhat; 
+	}
+else
+	{
+	error ("No set name given: hotkey set not saved...");
+	}
+
+}
+
+global proc LoadSetFromFile()
+
+{
+string $prefDir = `internalVar -upd`;
+string $fileNameTemp = `fileDialog`;
+string $tokedFileName[];
+tokenize $fileNameTemp "/" $tokedFileName;
+int $fileNameIndex = size($tokedFileName)-1;
+$fileName = $tokedFileName[$fileNameIndex];
+if ($fileName == "")
+	{
+	textField -e -tx "No set loaded!!" SetWhat;
+	error ("No set loaded !!");
+	}
+textField -e -tx ("File loaded and added to the list...") SetWhat; 
+textScrollList -e -append $fileName setsListView;
+}
+
+global proc applySet()
+
+{
+string $fileName[] = `textScrollList -q -si setsListView`;
+string $prefDir = `internalVar -upd`;
+sysFile -copy ($prefDir + "userHotkeys.mel") ($prefDir + $fileName[0]);
+hotkey -suh;
+textField -e -tx ("Set loaded:"+$fileName[0]) SetWhat; 
+}
+
+global proc upgradeSet()
+
+{
+string $fileName[] = `textScrollList -q -si setsListView`;
+string $prefDir = `internalVar -upd`;
+sysFile -copy ($prefDir + $fileName[0]) ($prefDir + "userHotkeys.mel");
+textField -e -tx ("Set already saved:" + $fileName[0]) SetWhat; 
+}
+
+global proc renameSet()
+
+{
+string $fileNameScroll[] = `textScrollList -q -si setsListView`;
+string $prefDir = `internalVar -upd`;
+string $fileNamePrompt = `promptDialog -title "Rename Hotkey Set" -message "HotkeySet New Name:"
+			-text $fileNameScroll[0] -button "OK" -button "Cancel" -defaultButton "OK"
+			-cancelButton "Cancel" -dismissString "Cancel"`;
+if ($fileNamePrompt == "OK") 
+	{
+	$fileName = `promptDialog -q -tx`;
+	sysFile -ren ($prefDir + "hotkeyman_" + $fileName + ".mel") ($prefDir + $fileNameScroll[0]);
+	textScrollList -e -ri ($fileNameScroll[0]) setsListView;
+	textField -e -tx ("Set renamed:" + "hotkeyman_" + $fileName + ".mel") SetWhat; 
+	textScrollList -e -append ("hotkeyman_" + $fileName + ".mel") setsListView;
+	}
+else
+	{
+	error ("No name given, set not renamed...");
+	}
+}
+
+global proc deleteSet()
+
+{
+string $fileName[] = `textScrollList -q -si setsListView`;
+string $prefDir = `internalVar -upd`;
+string $completeName = $prefDir + $fileName[0];
+sysFile -delete $completeName;
+textField -e -tx ("Set deleted:" + $fileName[0]) SetWhat; 
+textScrollList -e -ri $fileName setsListView;
+}
+
+global proc hotkeyman()
+{
+string $setsList[] = `GetSetsList`;
+HotKeyManUI($setsList);
+}
+
+global proc closeHotKeyMan()
+{
+deleteUI -window windowTitle;
+}

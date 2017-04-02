@@ -1,0 +1,115 @@
+//---------------------------------------------------------------------------
+// cr_buildSpaceSwitchSetup.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:	
+//		build space switch setup
+//
+// REQUIRES:
+//		cr_charUtilsLib.mel
+//
+// AUTHOR:
+//		Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+cr_charUtilsLib;
+
+global proc cr_buildSpaceSwitchSetup(string $node, string $parent, string $parentSpace[], string $spaceName[], int $spaceType)
+{
+string $name = "";
+for($i=0;$i<size($spaceName);$i++)
+$name += ($spaceName[$i]+":");
+
+if($spaceType==1)
+	{
+	catchQuiet(`addAttr -ln "SpaceSwitch"  -at "enum" -en "---------" -keyable true $node`);
+	catchQuiet(`setAttr -keyable false -channelBox true ($node+".SpaceSwitch")`);
+
+	addAttr -ln "parent"  -at "enum" -en $name -keyable true $node;
+	cr_lockAndHide $parent unLock "trans rot";
+	
+	string $con[] = `parentConstraint -mo -w 1 $parentSpace $parent`;
+	cr_lockAndHide $parent lock "trans rot";
+	
+	for($i=0;$i<size($parentSpace);$i++)
+	{
+	string $cnd = `createNode condition -n($node+"SpaceSwitch_"+$i+"_cnd")`;
+	setAttr ($cnd + ".secondTerm") $i;
+	setAttr ($cnd + ".colorIfTrueR") 1;
+	setAttr ($cnd + ".colorIfFalseR") 0;
+	connectAttr ($node + ".parent") ($cnd + ".firstTerm"); 
+	connectAttr ($cnd + ".outColorR") ($con[0] + ".w" +$i);
+	}
+	}
+
+else if($spaceType==2)
+	{
+	catchQuiet(`addAttr -ln "SpaceSwitch"  -at "enum" -en "---------" -keyable true $node`);
+	catchQuiet(`setAttr -keyable false -channelBox true ($node+".SpaceSwitch")`);
+
+	addAttr -ln "rotateLock"  -at "enum" -en $name -keyable true $node;
+	cr_lockAndHide $parent unLock "trans rot";
+	
+	string $con[] = `parentConstraint -mo -st x -st y -st z -w 1 $parentSpace $parent`;
+	cr_lockAndHide $parent lock "trans rot";
+	
+	for($i=0;$i<size($parentSpace);$i++)
+	{
+	string $cnd = `createNode condition -n($node+"RotateSwitch_"+$i+"_cnd")`;
+	setAttr ($cnd + ".secondTerm") $i;
+	setAttr ($cnd + ".colorIfTrueR") 1;
+	setAttr ($cnd + ".colorIfFalseR") 0;
+	connectAttr ($node + ".rotateLock") ($cnd + ".firstTerm"); 
+	connectAttr ($cnd + ".outColorR") ($con[0] + ".w" +$i);
+	}
+	}
+
+else if($spaceType==3)
+	{
+	catchQuiet(`addAttr -ln "SpaceSwitch"  -at "enum" -en "---------" -keyable true $node`);
+	catchQuiet(`setAttr -keyable false -channelBox true ($node+".SpaceSwitch")`);
+
+	addAttr -ln "transLock"  -at "enum" -en $name -keyable true $node;
+	addAttr -ln "rotateLock"  -at "enum" -en $name -keyable true $node;
+	
+	cr_lockAndHide $parent unLock "trans rot";
+	
+	string $rotCon[] = `parentConstraint -mo -w 1 -st x -st y -st z $parentSpace $parent`;
+	string $posCon[] = `parentConstraint -mo -w 1 -sr x -sr y -sr z $parentSpace $parent`;
+	cr_lockAndHide $parent lock "trans rot";
+	
+	for($i=0;$i<size($parentSpace);$i++)
+	{
+	string $cnd1 = `createNode condition -n($node+"TransSwitch_"+$i+"_cnd")`;
+	setAttr ($cnd1 + ".secondTerm") $i;
+	setAttr ($cnd1 + ".colorIfTrueR") 1;
+	setAttr ($cnd1 + ".colorIfFalseR") 0;
+	connectAttr ($node + ".transLock") ($cnd1 + ".firstTerm");
+	string $cnd2 = `createNode condition -n($node+"RotateSwitch_"+$i+"_cnd")`;
+	setAttr ($cnd2 + ".secondTerm") $i;
+	setAttr ($cnd2 + ".colorIfTrueR") 1;
+	setAttr ($cnd2 + ".colorIfFalseR") 0;
+	connectAttr ($node + ".rotateLock") ($cnd2 + ".firstTerm"); 
+	connectAttr ($cnd1 + ".outColorR") ($posCon[0] + ".w" +$i); 
+	connectAttr ($cnd2 + ".outColorR") ($rotCon[0] + ".w" +$i);
+	}
+	}
+
+}

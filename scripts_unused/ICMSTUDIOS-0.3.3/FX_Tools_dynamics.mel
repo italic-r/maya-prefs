@@ -1,0 +1,469 @@
+//////////////////////////////////////////////////////////////////////////////
+// FX TOOLS DYNAMICS SCRIPT
+//////////////////////////////////////////////////////////////////////////////
+//
+//	Copyright ©2013 Iskander Cathal Mellakh Comet All Rights Reserved
+//
+//	website: http://www.icmstudios.co.uk/
+//
+//	LICENCE DETAILS:
+//	This tool is free to use on private and commercial projects. 
+//	If used on a commercial project please credit ICM Studios for the tool.
+//	
+//	Enjoy :) 
+//	Iskander Mellakh
+//
+//////////////////////////////////////////////////////////////////////////////
+
+source "ICMSTUDIOS-0.3.3/FX_Tools_ParticlesFns.mel";
+global proc FXDynamics(){
+			if (`window -exists mkDynamics`)
+            deleteUI mkDynamics;
+            string $brokenNm[];        
+            string $getName[]           = `ls "*_DYNAMICS_GRP"`;
+            string $dyna[] 				= `ls "*_DYNAMICS_GRP"`;
+            if (`window -exists mkDynamics`){
+    			string $selSys[]            = `textScrollList -q -si dynaTSL`;
+    			if ($selSys[0] != ""){
+    			    $numTokens                  = `tokenize $selSys[0] "_" $brokenNm`;
+    			}
+			}
+			else{
+			$numTokens                  = `tokenize $getName[0] "_" $brokenNm`; 
+			}
+			$size                       = `size($brokenNm)`;
+            string $test = ($brokenNm[$size]+"-%_DYNAMICS_GRP%-");
+			string $assetNm             =  $brokenNm[0]; 
+            $dynamicsExists             = `objExists ($assetNm+"_DYNAMICS_GRP")`;
+            string $RnDynamics          = ($dynamicsExists == false) ? ("*:"+$assetNm+"_DYNAMICS_GRP") : ($assetNm+"_DYNAMICS_GRP");
+            $particlesExists            = `objExists ($assetNm+"_FXDynamicsParticles")`;
+            string $RnParticles         = ($assetNm+"_FXDynamicsParticles");
+            $emitterExists	 			= `objExists ($assetNm+"_atDynamicsEmitter")`;
+            string $RnEmitter 			= ($assetNm+"_atDynamicsEmitter");
+            $controlExists	 			= `objExists($assetNm+"_Dynamics_ctrl")`;
+            string $RnControl 			= ($controlExists == false) ? ("*:"+$assetNm+"_Dynamics_ctrl") : ($assetNm+"_Dynamics_ctrl");
+            string $RnGoals             = ($assetNm+"_FXDynamicsParticlesShape");
+            $goal					    = `objExists ($RnGoals+".goalWeight")`;
+
+
+			
+// checks to see if the window exists
+if (`window -exists pixiesUI`) 
+	deleteUI pixiesUI; 
+	cycleCheck -e off;
+
+	window   				-title "FX Tools Dynamics Editor"
+							-wh 500 800
+							-mxb off
+							//-retain false
+							-resizeToFitChildren on
+							-sizeable on
+							
+							pixiesUI;
+	
+string $menuBarLayout = `menuBarLayout`;
+				menu 		-label "Help" 
+								-helpMenu true;
+							
+		menuItem 		-l "User Guide" 
+						-c ("showHelp-a \"http://icmstudios.blogspot.co.uk/2013/02/fx-tools-dynamics-tool-for-maya.html\"; ") 		 
+						-ann ("Watch Tutorial") ;
+				
+				menu 		-label "About" 
+							-helpMenu true;
+
+		menuItem 		-l "Current build > 0.3.3" 
+						-ann ("Version 0.3.3") ;					
+							
+					
+	scrollLayout			-horizontalScrollBarThickness 10
+								-verticalScrollBarThickness 10
+								-childResizable 1
+								-width 400
+								-height 600
+								mainScroll;
+		 
+columnLayout 			-adjustableColumn true
+								mainCol;
+
+frameLayout 		-collapsable true 
+					-label "Dynamic System" 
+					-borderStyle "etchedIn"
+					-width 300
+					-collapse false dynaSys; 
+
+textScrollList  	-allowMultiSelection true -h 150 dynaTSL;						
+for ($each in $dyna){
+	textScrollList -e -append $each dynaTSL;
+}
+	button 				-label "Set System" 
+						-ann "Set the required Dynamics System"
+						-c ("FXDynamics") BTNsetSystem;	
+								
+	frameLayout 		-collapsable true 
+								-label "Dynamic Options" 
+								-borderStyle "etchedIn"
+								-width 300
+								-collapse false pixieDust; 
+
+	columnLayout 			-adjustableColumn true 
+									pixieDustCol;				
+
+	attrFieldSliderGrp 	-attribute ($RnParticles+".startFrame")
+									SLDstartFrame;
+
+	attrFieldSliderGrp 	-attribute ($RnEmitter+".rate") 
+									SLDemittedParticles;
+
+	attrFieldSliderGrp	-attribute ($RnParticles+".maxCount") 
+									SLDmaxParticles;
+						
+	attrControlGrp 		-attribute ($RnEmitter+".emitterType")
+									CTLemitterType;
+
+	attrControlGrp 		-attribute	($RnEmitter+".volumeShape")
+									CTLvolumeShape;
+	
+	attrControlGrp 		-attribute	($RnParticles+".lifespanMode")
+									CTLlifeSpanMode;
+									
+	attrControlGrp 		-attribute	($RnParticles+".lifespan")
+									CTLlifeSpan;				
+									
+	attrFieldSliderGrp 	-attribute ($RnControl+".size") 
+									size;
+
+	/*attrFieldSliderGrp 	-attribute ($RnControl+".colourR") 
+									Red;
+
+	attrFieldSliderGrp 	-attribute ($RnControl+".colourG") 
+									Green;
+
+	attrFieldSliderGrp 	-attribute ($RnControl+".colourB") 
+									Blue;*/
+
+	attrFieldSliderGrp 	-attribute ($RnControl+".LifespanMin") 
+									SLDLifespanMin;
+
+	attrFieldSliderGrp 	-attribute ($RnControl+".LifespanMax") 
+									SLDLifespanMax;
+
+	attrFieldSliderGrp 	-attribute ($RnControl+".particleSizeMin") 
+									SLDparticleSizeMin;
+
+	attrFieldSliderGrp 	-attribute ($RnControl+".particleSizeMax") 
+									SLDparticleSizeMax;
+
+	attrFieldSliderGrp	-attribute ($RnControl+".imgSeqMin") 
+									SLDimgSeqMin;
+
+	attrFieldSliderGrp 	-attribute ($RnControl+".imgSeqMax") 
+									SLDimgSeqMax;
+
+	attrFieldSliderGrp 	-attribute ($RnControl+".twist") 
+									SLDpixieTwist;
+
+	attrFieldSliderGrp 	-attribute ($RnControl+".volumeScale") 
+									SLDscale;
+
+	checkBox 				-label "Visibility" 
+									-value 1 -onCommand ("visOn") 
+									-offCommand ("visOff") 
+									visibility;
+
+	checkBox 				-label "Override Display" 
+									-value 0 -onCommand ("overOn") 
+									-offCommand ("overOff") 
+									overrideDisp;
+
+	//attrControlGrp 		-attribute ("DYNAMICS_GRP.overrideLevelOfDetail") 
+	//								drwOverrides;
+
+setParent mainCol;
+
+//--------------------------------------------------------------------------------------------------------------
+// EXTRA ATTRS FRAME LAYOUT
+//--------------------------------------------------------------------------------------------------------------
+	
+	frameLayout 		-collapsable true 
+								-label "Extra Attributes" 
+								-borderStyle "etchedIn"
+								-width 300
+								-collapse true 
+								extraSet;
+
+
+	//button 				-label "Switch to Clouds" 
+	//					-c ("getCloud") BTNgetClouds;
+	
+	//button 				-label "Switch to Pixie Dust" 
+	//					-c ("getDust") BTNgetDust;
+	
+	button 				-label "Create Goals" 
+						-ann "Either select the desired object or just press the button to create a locator!!"
+						-c ("pixieGoals") BTNmkPixieGoals;	
+						
+	button 				-label "Make Selected Collide" 
+						-ann "Select the objects you want the particles to collide with."
+						-c ("mk_collide") BTNmkCollide;
+						
+	button 				-label "Make Instancer" 
+						-ann "Select the objects you want to instance"
+						-c ("mkInstance") BTNmkInstance;	
+	
+	button 				-label "Make Polygons" 
+						-ann "Select the objects you want to instance"
+						-c ("mkPoly") BTNmkPoly;					
+										
+	attrFieldSliderGrp 	-attribute	($RnEmitter+".alongAxis")
+									SLDalongAxis;
+	
+	attrFieldSliderGrp 	-attribute	($RnEmitter+".aroundAxis")
+									SLDaroundAxis;
+	
+	attrFieldSliderGrp 	-attribute	($RnEmitter+".randomDirection")
+									SLDrandomDirection;
+									
+	attrFieldSliderGrp 	-attribute	($RnEmitter+".awayFromAxis")
+									SLDawayFromAxis;
+	
+	attrFieldSliderGrp 	-attribute  ($RnEmitter+".minDistance")
+									SLDminDistance;	
+	
+	attrFieldSliderGrp 	-attribute	($RnEmitter+".maxDistance")
+									SLDmaxDistance;	
+									
+	attrFieldSliderGrp 	-attribute  ($RnEmitter+".normalSpeed")
+									SLDnormalSpeed;
+									
+	attrFieldSliderGrp 	-attribute  ($RnEmitter+".tangentSpeed")
+									SLDtangentSpeed;
+									
+	attrFieldSliderGrp 	-attribute	($RnEmitter+".speed")
+									SLDspeed;		
+	
+	attrFieldSliderGrp 	-attribute	($RnEmitter+".speedRandom")
+									SLDspeedRandom;	
+						
+
+setParent mainCol;
+
+//--------------------------------------------------------------------------------------------------------------
+// GOAL SETTINGS FRAME LAYOUT
+//--------------------------------------------------------------------------------------------------------------
+	
+/*	if ($goal == true){
+	string $getGoal = ("getAttr \""+$RnGoals+".goalWeight[*]\"");
+	float $getGoald[] = `eval($getGoal)`;
+	$total = `size($getGoald)`;
+	frameLayout 		-collapsable true 
+								-label "Goal Settings" 
+								-borderStyle "etchedIn"
+								-width 300
+								-collapse true 
+								goalSet;
+	
+	columnLayout 		-adjustableColumn true 
+								colourSetCol;
+	
+	attrFieldSliderGrp 	-attribute ($RnGoals+".goalSmoothness") 
+									SLDgoalSmoothness;
+	
+	for ($i = 0;$i < $total; $i++){
+	attrFieldSliderGrp 	-attribute ($RnGoals+".goalWeight["+$i+"]") 
+									("SLDgoalWieightMin"+$i);
+									
+						}
+
+setParent mainCol;
+}*/
+	
+							
+
+//--------------------------------------------------------------------------------------------------------------
+// COLOUR SETTINGS FRAME LAYOUT
+//--------------------------------------------------------------------------------------------------------------
+	frameLayout 	-collapsable true 
+							-label "Colour Settings" 
+							-borderStyle "etchedIn"
+							-width 300
+							-collapse true 
+							colSet;
+
+columnLayout 		-adjustableColumn true 
+							colourSetCol;
+
+string $colorControl = `attrColorSliderGrp -label "Select Color"`;
+
+string $rampcolour = ($assetNm+"_rgbRamp");
+
+rampColorPort 		-selectedColorControl $colorControl 
+								-node $rampcolour;
+
+					
+attrControlGrp 		-attribute ($assetNm+"_rgbRamp.noise") 
+								transNoise;
+attrControlGrp 		-attribute ($assetNm+"_rgbRamp.noiseFreq") 
+								transNoiseFreq;
+
+setParent mainCol;
+
+//--------------------------------------------------------------------------------------------------------------
+// TRANSPARENCY SETTINGS FRAME LAYOUT
+//--------------------------------------------------------------------------------------------------------------
+	frameLayout 	-collapsable true 
+					-label "Transparency Settings" 
+					-borderStyle "etchedIn"
+					-width 300
+					-collapse true 
+					transSet;
+
+	columnLayout 		-adjustableColumn true 
+						transSetCol;
+
+	string $transControl = `attrColorSliderGrp -label "Select Color"`;
+
+	string $rampTransparency = ($assetNm+"_opacityRamp");
+	rampColorPort 		-selectedColorControl $transControl 
+									-node $rampTransparency ;
+
+	attrControlGrp 		-attribute ($assetNm+"_opacityRamp.noise") 
+									transNoise;
+	attrControlGrp 		-attribute ($assetNm+"_opacityRamp.noiseFreq") 
+									transNoiseFreq;
+setParent mainCol;
+
+//--------------------------------------------------------------------------------------------------------------
+// DYNAMICS SETTINGS FRAME LAYOUT
+//--------------------------------------------------------------------------------------------------------------
+/*	frameLayout 	-collapsable true 
+					-label "Dynamics Settings" 
+					-borderStyle "etchedIn"
+					-width 300
+					-collapse true 
+					turbSet;
+
+	columnLayout 		-adjustableColumn true 
+	transSetCol;
+
+
+//attrControlGrp -attribute ($RnDynamics+"Dynamics_ctrl.Turbulance") Turbulance;
+
+
+	checkBox 			-label "Turbulance On" 
+						-value 1 
+						-onCommand ("turbOn") 
+						-offCommand ("turbOff") 
+						turbDyn;
+
+	attrControlGrp -attribute ($RnDynamics+"pixieTurbulance.magnitude") turbMag;
+
+	attrControlGrp -attribute ($RnDynamics+"pixieTurbulance.attenuation") tubAtt;
+
+	attrControlGrp -attribute ($RnDynamics+"pixieTurbulance.frequency") tubFreq;
+
+	attrControlGrp -attribute ($RnDynamics+"pixieTurbulance.phaseX") tubPhaseX;
+
+	attrControlGrp -attribute ($RnDynamics+"pixieTurbulance.phaseY") tubPhaseY;
+
+	attrControlGrp -attribute ($RnDynamics+"pixieTurbulance.phaseZ") tubPhaseZ;
+
+setParent mainCol;*/
+
+//--------------------------------------------------------------------------------------------------------------
+// PARTICLE DISCK CACHE FRAME LAYOUT
+//--------------------------------------------------------------------------------------------------------------
+	frameLayout -collapsable true 
+						-label "Particle Disk Caching" 
+						-borderStyle "etchedIn"
+						-width 300
+						-collapse true pdcSet;
+
+	columnLayout 	-adjustableColumn true 
+							pdcCol;
+
+	intFieldGrp 		-label "Start time"
+							-value1 0
+							startTimeSlider;
+
+	intFieldGrp 		-label "End time"
+							-value1 0
+							endTimeSlider;
+				
+	checkBox 		-label "Create and Use PDC" 
+							-value 0 
+							-onCommand ("pdcOn") 
+							-offCommand ("pdcOff") 
+							pdc;
+			
+setParent mainCol;
+
+//--------------------------------------------------------------------------------------------------------------
+// HARDWARE RENDER SETTINGS FRAME LAYOUT
+//--------------------------------------------------------------------------------------------------------------
+	frameLayout -collapsable true 
+						-label "Render Settings" 
+						-borderStyle "etchedIn"
+						-width 300
+						-collapse false RndSet;
+					
+	columnLayout 	-adjustableColumn true renderSetCol;
+
+
+//--------------------------------------------------------------------------------------------------------------
+// Hardware Renderer Attributes
+//--------------------------------------------------------------------------------------------------------------
+
+	button 			-label "hardware Render Buffer" 
+						-c ("hrb") hrenderbuffer;
+
+	checkBox 	-label "Geometry Mask" 
+						-value 0 -onCommand ("geoMaskOn") 
+						-offCommand ("geoMaskOff") mask;
+
+	checkBox 	-label "Full Image Resolution" 
+						-value 0 
+						-onCommand ("fullResOn") 
+						-offCommand ("fullResOff") fullResImg;
+
+	//attrFieldSliderGrp 	-attribute ($RnDynamics+"pixieDustTexture.alphaGain") alphaGain;
+	attrControlGrp 		-attribute defaultHardwareRenderGlobals.filename  fileName;
+	attrControlGrp 		-attribute defaultHardwareRenderGlobals.extension ext;
+	attrFieldSliderGrp 	-attribute defaultHardwareRenderGlobals.startFrame startFrame;
+	attrFieldSliderGrp 	-attribute defaultHardwareRenderGlobals.endFrame endFrame;
+	attrFieldSliderGrp 	-attribute defaultHardwareRenderGlobals.byFrame byFrame;
+	attrControlGrp 		-attribute defaultHardwareRenderGlobals.imageFormat imgFormat;
+	attrControlGrp 		-attribute defaultHardwareRenderGlobals.alphaSource alpha;
+	attrControlGrp 		-attribute defaultHardwareRenderGlobals.resolution res;
+	attrControlGrp 		-attribute defaultHardwareRenderGlobals.backgroundColor bgCol;
+
+	button 			-label "Select Resolution" 
+						-c ("glImageSizeWin;") resSelect;
+
+	button 			-label "Render Sequence" 
+						-c ("renderSeq") render;
+
+
+//--------------------------------------------------------------------------------------------------------------
+// HARDWARE RENDER MULTI PASS SETTINGS FRAME LAYOUT
+//--------------------------------------------------------------------------------------------------------------
+	frameLayout -collapsable true 
+						-label "Multipass Options" 
+						-borderStyle "etchedIn"
+						-width 300
+						-collapse true RndSet;
+	columnLayout 	-adjustableColumn true multiPassSetCol;
+
+//--------------------------------------------------------------------------------------------------------------
+// Hardware Renderer MultiPasss Settings
+//--------------------------------------------------------------------------------------------------------------
+		attrControlGrp -attribute defaultHardwareRenderGlobals.multiPassRendering mtPass;
+		attrControlGrp -attribute defaultHardwareRenderGlobals.renderPasses rndPass;
+		attrControlGrp -attribute defaultHardwareRenderGlobals.antiAliasPolygons antiAlias;
+		attrControlGrp -attribute defaultHardwareRenderGlobals.edgeSmoothing edge;
+		attrControlGrp -attribute defaultHardwareRenderGlobals.motionBlur mBlur;
+		setParent mainCol;
+			
+		showWindow pixiesUI;
+}
+

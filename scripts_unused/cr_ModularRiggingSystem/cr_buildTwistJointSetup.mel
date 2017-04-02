@@ -1,0 +1,435 @@
+//---------------------------------------------------------------------------
+// cr_buildTwistJointSetup.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION: 
+//      build twist setup 
+//
+// REQUIRES:
+//      cr_jointStretchNetworkLib.mel
+//      cr_curveUtilitiesLib.mel
+//      cr_charUtilsLib.mel
+//      libString.mel
+//      snaps.mel
+//
+// AUTHOR:
+//      Wasim Khan - wasim.cg@gmail.com
+//		"cr_splitSelJoint" is based of Jason Schleifer's code 
+//----------------------------------------------------------------------------
+
+source "snaps.mel";
+cr_charUtilsLib;
+cr_curveUtilitiesLib;
+cr_jointStretchNetworkLib;
+libString;
+
+global proc cr_buildTwistJointSetup(string $name, string $side, string $joint, string $stretchType, string $ikFkType, string $rotConnect, string $wristJoint, string $controller, int $stretch, int $volume, float $scale)
+{
+	string $transNode[];
+	string $transNodePath;
+	string $rotNode[];
+	string $rotNodePath;
+	string $childJoint;
+	string $transConnection[];
+	string $rotConnection[];
+	int $jointCount;
+	string $newJoints[];
+	string $twistAxis[];
+	string $stretchAxis[];
+	string $tempJoint[];
+	string $axis;
+	string $color;
+	string $rotAdd;
+	string $jointRotAdd;
+	string $fullchain[];
+	string $transMd;
+			
+if (`attributeExists "twistJoints" $joint`)
+{
+	$jointCount = (`getAttr ($joint + ".twistJoints")`+1);
+	$stretchAxis = `cr_getStretchAxis $joint $stretchType`;
+	$twistAxis = `cr_getTwistAxis $joint`;
+		//determine twist axis for further info distribution
+		if($twistAxis[0] == "rx") {$axis = "X"; $color = "R";}
+		else if($twistAxis[0] == "ry") {$axis = "Y"; $color = "G";}
+		else if($twistAxis[0] == "rz") {$axis = "Z"; $color = "B";}
+	
+	select -r $joint;
+	cr_removeTwistJointsAttr("twistJoints");
+	select -cl;
+	if ($jointCount > 0)
+	{
+	$childJoint = `cr_getChildJoint $joint`;
+
+  if (!`attributeExists "twistFixVis" $controller`)
+  addAttr -ln "twistFixVis"  -at bool -keyable true $controller;
+    setAttr ($controller + ".twistFixVis") 1;
+
+	if($stretch)
+	{
+	$transMd = `createNode multiplyDivide -n($name + $side + $joint +  "_posSplit_md")`;
+	setAttr ($transMd + ".operation") 2;
+
+		if($stretchType == "translate")
+		{
+		$transConnection =`listConnections -d off -s on -plugs on -skipConversionNodes on ($childJoint + "." + $stretchAxis[0])`;
+		$transNodePath = $transConnection[0];
+		$transNode[0] = `match "[^.]*" $transNodePath`;
+
+		setAttr ($transMd + ".input2X") $jointCount;
+		setAttr ($transMd + ".input2Y") $jointCount;
+		setAttr ($transMd + ".input2Z") $jointCount;
+		}
+		else if($stretchType == "scale")
+		{
+		$transConnection =`listConnections -d off -s on -plugs on -skipConversionNodes on ($joint + "." + $stretchAxis[0])`;
+		$transNodePath = $transConnection[0];
+		$transNode[0] = `match "[^.]*" $transNodePath`;
+		}
+		
+		connectAttr ($transNode[0] + ".outputR") ($transMd + ".input1X");
+		connectAttr ($transNode[0] + ".outputG") ($transMd + ".input1Y");
+		connectAttr ($transNode[0] + ".outputB") ($transMd + ".input1Z");
+	}
+	string $rotMd = `createNode multiplyDivide -n($name + $side + $joint +  "_rotSplit_md")`;
+	setAttr ($rotMd + ".operation") 2;
+
+		if($rotConnect == "parent")
+		{
+		$rotConnection =`listConnections -d off -s on -plugs on -skipConversionNodes on ($joint + "." + $twistAxis[0])`;
+		$rotNodePath = $rotConnection[0];
+		$rotNode[0] = `match "[^.]*" $rotNodePath`;
+
+			if($ikFkType == "utilNode")
+			{
+			setAttr ($rotMd + ".input2X") $jointCount;
+			setAttr ($rotMd + ".input2Y") $jointCount;
+			setAttr ($rotMd + ".input2Z") $jointCount;
+			connectAttr ($rotNode[0] + ".outputR") ($rotMd + ".input1X");
+			connectAttr ($rotNode[0] + ".outputG") ($rotMd + ".input1Y");
+			connectAttr ($rotNode[0] + ".outputB") ($rotMd + ".input1Z");
+			}
+			else if ($ikFkType == "constrain")
+			{
+			setAttr ($rotMd + ".input2X") $jointCount;
+			setAttr ($rotMd + ".input2Y") $jointCount;
+			setAttr ($rotMd + ".input2Z") $jointCount;
+			connectAttr ($rotNode[0] + ".constraintRotate.constraintRotateX") ($rotMd + ".input1X");
+			connectAttr ($rotNode[0] + ".constraintRotate.constraintRotateY") ($rotMd + ".input1Y");
+			connectAttr ($rotNode[0] + ".constraintRotate.constraintRotateZ") ($rotMd + ".input1Z");
+			}
+			select -cl;
+			string $twistCtrl[0] = `cr_curveControl plus curve`;
+			cr_resizeCurves {} 1 1 1 $scale;
+			$twistCtrl[0] = `rename ($name + $side + $joint + "_twist_ctrl")`;
+			snap $joint $twistCtrl[0];
+			string $zeroGrp[] = `cr_quickZeroOut $twistCtrl[0]`;
+			parentConstraint -weight 1 $joint $zeroGrp[0];
+			string $partGrp[] = `listRelatives -parent $controller`;
+			parent $zeroGrp[0] $partGrp[0];
+			connectAttr ($controller + ".twistFixVis") ($twistCtrl[0] + ".visibility");
+			cr_lockAndHide $twistCtrl[0] cr_locknHide "trans scale vis";
+			setAttr -lock true -keyable false ($twistCtrl[0] + "." + $twistAxis[1]);
+			setAttr -lock true -keyable false ($twistCtrl[0] + "." + $twistAxis[2]);
+			
+			
+			string $rotMulti = `createNode multiplyDivide -n ($name + $side + $joint + "_addTwist_md")`;
+			setAttr ($rotMulti + ".operation") 2;
+			setAttr ($rotMulti + ".input2X") $jointCount;
+			setAttr ($rotMulti + ".input2Y") $jointCount;
+			setAttr ($rotMulti + ".input2Z") $jointCount;
+			
+			string $rotMultiDouble = `createNode multDoubleLinear -n ($name + $side + $joint + "_addTwist_mdl")`;
+			$rotAdd = `createNode addDoubleLinear -n ($name + $side + $joint + "_addTwist_adl")`;
+			string $rotBlend = `createNode blendTwoAttr -n ($name + $side + $joint + "_addTwist_bta")`;
+			$jointRotAdd = `createNode addDoubleLinear -n ($name + $side + $joint + "_addRot_adl")`;
+			string $jointRotBlend = `createNode blendTwoAttr -n ($name + $side + $joint + "_addRot_bta")`;
+			
+			addAttr -ln "nullifyTwist"  -at double  -min 0 -max 1 -keyable true $twistCtrl[0];
+			connectAttr ($twistCtrl[0] + "." + $twistAxis[0]) ($rotMulti + ".input1X");
+			connectAttr ($rotMulti + ".outputX") ($rotMultiDouble + ".input1");
+			setAttr ($rotMultiDouble + ".input2") -1;
+			connectAttr ($twistCtrl[0] + ".nullifyTwist") ($rotBlend + ".attributesBlender");
+			connectAttr ($rotMd + ".output" + $axis) ($rotBlend + ".input[0]");
+			setAttr ($rotBlend + ".input[1]") 0;
+			connectAttr ($rotBlend + ".output") ($rotAdd + ".input1");
+			connectAttr ($rotMultiDouble + ".output") ($rotAdd + ".input2");
+			
+			connectAttr ($twistCtrl[0] + ".nullifyTwist") ($jointRotBlend + ".attributesBlender");
+			connectAttr ($rotMd + ".output" + $axis) ($jointRotBlend + ".input[0]");
+			
+			if($ikFkType == "utilNode")
+			connectAttr ($rotNode[0] + ".output" + $color) ($jointRotBlend + ".input[1]");
+			else if($ikFkType == "constraint")
+			connectAttr ($rotNode[0] + ".constraintRotate.constraintRotate" + $axis) ($jointRotBlend + ".input[1]");
+			
+			connectAttr ($jointRotBlend + ".output") ($jointRotAdd + ".input1");
+			connectAttr ($twistCtrl[0] + "." + $twistAxis[0]) ($jointRotAdd + ".input2");
+			}
+		else if($rotConnect == "child")
+		{
+		// create new joint same position as wrist joint and constraint to the ikfk joints
+		select -cl;
+		$tempJoint = `cr_curveControl joint curve`;
+		$tempJoint[0] = `rename ($name + $side + $joint + "Rot_jnt")`;
+		snap $wristJoint $tempJoint[0];
+		float $rad = `getAttr ($wristJoint + ".radius")`;
+		setAttr ($tempJoint[0] + ".radius") $rad;
+		select -cl;
+		makeIdentity -apply true -t 0 -r 1 -s 0 -n 0 $tempJoint[0];
+
+		$ikFkCon = `parentConstraint -skipTranslate x -skipTranslate y -skipTranslate z -weight 1 ("fk_" + $wristJoint) ("ik_" + $wristJoint) $tempJoint[0]`;
+		$rev = `createNode reverse -n ($tempJoint[0] + "_rot_rev")`;
+		connectAttr -f ($controller + ".FK_IK") ($rev +".ix");
+		connectAttr -f ($rev +".ox") ($ikFkCon[0] + ".w0");
+		connectAttr -f ($controller + ".FK_IK") ($ikFkCon[0] + ".w1");
+		
+		setAttr ($rotMd + ".input2X") $jointCount;
+		setAttr ($rotMd + ".input2Y") $jointCount;
+		setAttr ($rotMd + ".input2Z") $jointCount;
+		connectAttr ($tempJoint[0] + ".rotateX") ($rotMd + ".input1X");
+		connectAttr ($tempJoint[0] + ".rotateY") ($rotMd + ".input1Y");
+		connectAttr ($tempJoint[0] + ".rotateZ") ($rotMd + ".input1Z");
+
+			select -cl;
+			string $twistCtrl[0] = `cr_curveControl plus curve`;
+			cr_resizeCurves {} 1 1 1 $scale;
+			$twistCtrl[0] = `rename ($name + $side + $childJoint + "_twist_ctrl")`;
+			snap $childJoint $twistCtrl[0];
+			string $zeroGrp[] = `cr_quickZeroOut $twistCtrl[0]`;
+			parentConstraint -weight 1 $childJoint $zeroGrp[0];
+			string $partGrp[] = `listRelatives -parent $controller`;
+			parent $zeroGrp[0] $partGrp[0];
+			connectAttr ($controller + ".twistFixVis") ($twistCtrl[0] + ".visibility");
+			cr_lockAndHide $twistCtrl[0] cr_locknHide "trans scale vis";
+			setAttr -lock true -keyable false ($twistCtrl[0] + "." + $twistAxis[1]);
+			setAttr -lock true -keyable false ($twistCtrl[0] + "." + $twistAxis[2]);
+
+			string $rotMulti = `createNode multiplyDivide -n ($name + $side + $joint + "_addTwist_mdl")`;
+			setAttr ($rotMulti + ".operation") 2;
+			setAttr ($rotMulti + ".input2X") $jointCount;
+			setAttr ($rotMulti + ".input2Y") $jointCount;
+			setAttr ($rotMulti + ".input2Z") $jointCount;
+
+			$rotAdd = `createNode addDoubleLinear -n ($name + $side + $joint + "_addTwist_adl")`;
+			string $rotBlend = `createNode blendTwoAttr -n ($name + $side + $joint + "_addTwist_bta")`;
+			
+			addAttr -ln "nullifyTwist"  -at double  -min 0 -max 1 -keyable true $twistCtrl[0];
+			connectAttr ($twistCtrl[0] + ".nullifyTwist") ($rotBlend + ".attributesBlender");
+			connectAttr ($rotMd + ".output" + $axis) ($rotBlend + ".input[0]");
+			setAttr ($rotBlend + ".input[1]") 0;
+			connectAttr ($twistCtrl[0]+ "." + $twistAxis[0]) ($rotMulti + ".input1X");
+			connectAttr ($rotBlend + ".output") ($rotAdd + ".input1");
+			connectAttr ($rotMulti + ".outputX") ($rotAdd + ".input2");
+		}
+
+	select -r $joint;
+	$newJoints = `cr_splitSelJoint ($jointCount)`;
+		for($j=0;$j<size($newJoints);$j++)
+		{
+		if($stretch)
+		{
+		if($stretchType == "translate")
+			{
+			connectAttr ($transMd + ".outputX") ($newJoints[$j] + ".translateX");
+			connectAttr ($transMd + ".outputY") ($newJoints[$j] + ".translateY");
+			connectAttr ($transMd + ".outputZ") ($newJoints[$j] + ".translateZ");
+			}
+		else if($stretchType == "scale"){
+		connectAttr ($transMd + ".output" + $axis) ($newJoints[$j] + ".scale" + $axis);}
+		}	
+		connectAttr ($rotAdd + ".output") ($newJoints[$j] + "." + $twistAxis[0]);
+		}
+		
+		if($rotConnect == "parent")
+		{
+		if($stretch)
+		{
+		if($stretchType == "translate")
+		{
+		connectAttr -f ($transMd + ".outputX") ($childJoint + ".translateX");
+		connectAttr -f ($transMd + ".outputY") ($childJoint + ".translateY");
+		connectAttr -f ($transMd + ".outputZ") ($childJoint + ".translateZ");
+		}
+		}
+		connectAttr -f ($jointRotAdd + ".output") ($joint + "." + $twistAxis[0]);
+		}
+		else if($rotConnect == "child")
+		{
+		if($stretch)
+		{	
+		if($stretchType == "translate")
+		{
+		connectAttr -f ($transMd + ".outputX") ($childJoint + ".translateX");
+		connectAttr -f ($transMd + ".outputY") ($childJoint + ".translateY");
+		connectAttr -f ($transMd + ".outputZ") ($childJoint + ".translateZ");
+		//connecting temp joint translate
+		connectAttr ($transNode[0] + ".outputR") ($tempJoint[0] + ".translateX");
+		connectAttr ($transNode[0] + ".outputG") ($tempJoint[0] + ".translateY");
+		connectAttr ($transNode[0] + ".outputB") ($tempJoint[0] + ".translateZ");
+		}
+		}
+		//parent new twist help joint to elbow
+		parent $tempJoint[0] $joint;
+		}
+	//insert $joint into split joint array
+	if ($volume)
+		{
+		stringArrayInsertAtIndex(0, $newJoints, $joint);
+		refresh;
+		cr_makeJointVolumeSetup ($name, $side, $controller, $stretchType, $newJoints);
+		}
+	}
+}
+}
+
+//based of Jason Schleifer's code 
+global proc string[] cr_splitSelJoint(int $numSegments)
+{
+    if ($numSegments < 2)
+        error ("The number of segments has to be greater than 1.. ");
+
+    string $joints[0];
+    string $joint;
+    string $newJoints[];
+    string $newChildJoints[0];
+    int $count = 0;
+    $joints = `ls -sl -type joint`;
+    for ($joint in $joints)
+        {
+        string $child;
+
+        $child = `cr_getFirstChildJoint $joint`;
+
+        if (size($child) == "")
+            {
+            error ("Joint: " + $joint + " has no children joints.\n");
+            }
+        else
+            {
+            string $axis;
+            string $rotationOrder;
+            string $firstChar;
+            float $radius = `getAttr ($joint + ".radius")`;
+            $axis = `cr_getJointAxis $child`;
+            int $rotOrderIndex = `getAttr ($joint + ".rotateOrder")`;
+            $rotationOrder = `cr_getRotOrder $joint`;
+            float $childT = 0.0;
+            float $tVal = 0.0;
+            string $attr;
+            $attr = ("t"+$axis);
+            $childT = `getAttr ($child + "." + $attr)`;
+            float $space = $childT/$numSegments; 
+            string $locators[0];
+            for ($x = 0; $x < ($numSegments-1); $x++)
+                {
+                $tmp = `spaceLocator`; 
+                $locators[$x] = $tmp[0];
+                parent $locators[$x] $joint;
+                setAttr ($locators[$x] + ".t") 0 0 0;
+                setAttr ($locators[$x] + "." + $attr) ($space * ($x+1));
+                }
+
+            string $prevJoint = $joint;
+            for ($x = 0; $x < size($locators); $x++)
+                {
+                $newJoint = `insertJoint $prevJoint`;
+                $pos = `xform -q -ws -rp $locators[$x]`;
+                move -a -ws $pos[0] $pos[1] $pos[2] ($newJoint + ".scalePivot") ($newJoint + ".rotatePivot");
+                $newJoint = `rename ($newJoint) ($joint + "_seg_"+($x+1)+"_joint")`;
+                setAttr ($newJoint + ".radius") $radius;
+                setAttr ($newJoint + ".rotateOrder") $rotOrderIndex;
+                $prevJoint = $newJoint;
+                $newJoints[size($newJoints)] = $newJoint ;
+                }
+                delete $locators;
+            }
+    }
+
+return $newJoints;
+}
+
+global proc string cr_getRotOrder(string $joint)
+{
+    string $return;
+    int $ro;
+    $ro = `getAttr ($joint + ".ro")`;
+
+    switch ($ro)
+    {
+        case 0:
+            $return = "xyz";
+            break;
+        case 1:
+            $return = "yzx";
+            break;
+        case 2:
+            $return = "zxy";
+            break;
+        case 3:
+            $return = "xzy";
+            break;
+        case 4:
+            $return = "yxz";
+            break;
+        case 5:
+            $return = "zyx";
+            break;
+    }
+    return $return;
+}
+
+global proc string cr_getJointAxis(string $child)
+    {
+    string $axis;
+    float $t[0];
+    $t = `getAttr ($child + ".t")`;
+    float $tol = 0.0001;
+    for ($x = 0; $x <= 2; $x++)
+        {
+        if (($t[$x] > $tol) || ($t[$x] < (-1 *$tol)))
+            {
+            switch ($x)
+                {
+                case 0:
+                    $axis = "x";
+                    break;
+                case 1:
+                    $axis = "y";
+                    break;
+                case 2:
+                    $axis = "z";
+                    break;
+                }
+            }
+        }
+
+    if ($axis == "")
+        error ("The child joint is too close to the parent joint. Cannot determine the proper axis to segment.");
+    return $axis;
+    }
+
+global proc string cr_getFirstChildJoint(string $joint)
+{
+    string $tmp[0];
+    $tmp = `listRelatives -f -c -type joint $joint`;
+    return ($tmp[0]);
+}

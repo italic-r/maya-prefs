@@ -1,0 +1,96 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: Key Shifter v1.1
+''    Author: Rick May
+''    Last Updated: June 10, 2005
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=animation#3568
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+//
+//  Key Shifter
+//
+//  Another almost useless Mel Script from Rick May
+//  v1.1    --   May 2005
+//  
+//  
+//  This script is mostly useful on large scene files that make shifting and
+//  re-timing difficult because of the timeline being so crowded.  It has been
+//  tested on scenes with more than 8,000 frames in them.  Simply select the
+//  objects you want to affect, then shift.  
+//
+//  You can either type in frame numbers or click the button to have it load
+//  the current time.  'Bump' simply moves one keyframe in either direction.
+//
+//
+//
+//
+//
+//  June 10th, 2005:: Fixed stupid bug.  Sorry!
+
+
+
+global proc keyShifter()
+{
+   window -widthHeight 210 125 -s 0 -t " Key Shifter ::: Rick May "  ksWin;
+   
+   rowColumnLayout -w 300 -nc 2 -cw 2 100 input;
+
+		button -w 15 -h 25 -l " Enter Start Frame " -c ("ks_loadStart();") ;
+		textField -w 25 -h 25  ks_start;
+
+   	button -w 15 -h 25 -l " Enter End Frame " -c ("ks_loadEnd();") ; 
+		textField -w 25 -h 25 ks_end;
+
+		text -l " Frames to shift >>"; textField -w 25 -h 25 ks_shift;
+   	text -l ""; button -w 250 -h 25 -l " :: doit :: " -c "ks_doit";
+		button -w 250 -h 25 -l " << Bump " -c "ks_bumpBack"; button -w 250 -h 25 -l " Bump >> " -c "ks_bumpForward";
+   showWindow ksWin;
+}
+
+global proc ks_loadStart()
+{
+	string $ks_temp = `currentTime -query`;
+	textField -e -tx $ks_temp ks_start ;	
+}
+
+global proc ks_loadEnd()
+{
+	string $ks_temp = `currentTime -query`;
+	textField -e -tx $ks_temp ks_end ;	
+}
+
+global proc ks_bumpBack()
+{
+	timeSliderEditKeys removeInbetween;
+}
+
+global proc ks_bumpForward()
+{
+	timeSliderEditKeys addInbetween;
+}
+
+global proc ks_doit()
+{
+	int $startKey = `textField -q -tx ks_start`;
+	int $endKey = `textField -q -tx ks_end`;
+	int $shiftKey = `textField -q -tx ks_shift`;
+
+	if ($startKey == 0) { warning ("no start frame specified" + "\n");  }
+	if ($endKey == 0) { warning ("no end frame specified" + "\n"); }
+	if ($shiftKey == 0) { warning ("no shift frame specified" + "\n"); }
+
+	string $sel[] = `ls -sl`;
+	for ($current in $sel)
+
+		{
+			keyframe -edit -relative -timeChange $shiftKey -time ($startKey + ":" + $endKey) $current;
+		}
+}
+

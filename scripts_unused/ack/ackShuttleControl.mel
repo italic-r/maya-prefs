@@ -1,0 +1,102 @@
+/*
+//////////////////////////////////////////////////////////
+
+ackShuttleControl 1.2
+9/23/06				
+Aaron Koressel				
+
+A replacement of the basic shuttle controls, except
+they don't clog up your undo history when you run them.
+
+SYNTAX:
+ackShuttleControl "nextFrame";
+ackShuttleControl "prevFrame";
+ackShuttleControl "nextKey";
+ackShuttleControl "prevKey";
+ackShuttleControl "firstFrame";
+ackShuttleControl "lastFrame";
+ackShuttleControl "timeDraggerActivate";
+ackShuttleControl "timeDraggerDeactivate";
+
+Notes: There are two TimeDragger commands to be assigned
+to a key's Press and Release function respectively.
+
+nextKey and prevKey operate on the selection of keys
+in the graph editor.  If there are no keys selected, 
+considers all keys in the current object selection.
+
+EXAMPLE:
+Assign this commnad to Ctrl Right:  ackShuttleControl "nextKey";
+
+CHANGELOG:
+1.2 - 4/27/07	
+Fixed time dragger to correctly retrive the last tool
+you were working with.
+
+1.1 - 3/5/07
+Renamed.  Added firstFrame, lastFrame, and
+TimeDragger tool.  firstKey and prevKey operates on
+the selection of keys if there is a selection.
+
+1.0 - 9/23/06
+First Version
+Named ackFrameStep and just did prev and 
+next frames and keys.
+
+//////////////////////////////////////////////////////////
+*/
+
+global proc ackShuttleControl(string $cmd) {
+	//do command
+	switch ($cmd) {
+		case "nextFrame":
+			undoInfo -swf 0;
+			currentTime ( `currentTime -q` + 1 );
+			undoInfo -swf 1;
+			break;
+			
+		case "prevFrame":
+			undoInfo -swf 0;
+			currentTime ( `currentTime -q` - 1 );
+			undoInfo -swf 1;
+			break;		
+	
+		case "nextKey":
+			undoInfo -swf 0;
+			currentTime -edit `findKeyframe -which next`;
+			undoInfo -swf 1;
+			break;
+			
+		case "prevKey":
+			undoInfo -swf 0;
+			currentTime -edit `findKeyframe -which previous`;
+			undoInfo -swf 1;
+			break;
+			
+		case "firstFrame":
+			undoInfo -swf 0;
+			currentTime -e `playbackOptions -query -min`;
+			undoInfo -swf 1;
+			break;
+			
+		case "lastFrame":
+			undoInfo -swf 0;
+			currentTime -e `playbackOptions -query -max`;
+			undoInfo -swf 1;
+			break;
+		
+		case "timeDraggerActivate":
+			global string $ackShuttleControl_lastTool;
+			$ackShuttleControl_lastTool = `currentCtx`;
+			undoInfo -swf 0;
+			setToolTo TimeDragger;
+			break;
+			
+		case "timeDraggerDeactivate":
+			global string $ackShuttleControl_lastTool;
+			//invokeLastAction;
+			setToolTo $ackShuttleControl_lastTool;
+			undoInfo -swf 1;
+			break;
+	}
+}

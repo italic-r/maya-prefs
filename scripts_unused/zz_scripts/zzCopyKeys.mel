@@ -1,0 +1,148 @@
+/*  This file downloaded from Highend3d.com
+''
+''  Highend3d.com File Information:
+''
+''    Script Name: zzCopyKeys v1.0
+''    Author: Hamish McKenzie
+''    Last Updated: October 10, 2002
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=interface#1950
+''
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+
+//
+// copy keys
+//
+// Created by Hamish McKenzie zootoolbox@googlegroups.com
+// Created : 27 September 2002
+//
+// Description:
+// maya's default copy keys function is hopelessly limited
+// almost to the point of being useless...  and the mel
+// commands are poor as well.  However, this script tries
+// to make life a little easier, even if not completely.  The
+// maya copyKey command doesn't allow for one to be able to
+// copy keys from different channels, at different times, it
+// only really allows one to copy time segments, when dealing
+// with multiple objects.
+//
+// Thus, the main limitation of zzCopyKeys is that if two
+// keys are selected, with a third in between them that is
+// not selected, it will also be copied.  This is not a huge
+// drama, but it is a limitation, and is slightly
+// inconvenient.  You have been warned.  :)
+//
+// Usage:
+//  assign this function to a key press:
+//	zzCopyKeys none;
+//	zzCopyKeys config - opens the config window
+//
+// Hamish McKenzie ©2007...
+// Macaroni Kazoo Productions ©2007...
+
+
+global proc zzCopyKeys ( string $function ) {
+	if ( $function == "config" ) { zzCopyKeysConfig; }
+	else {
+		string $selObjs[] = `ls -sl`;
+		string $operateOn = `zzCopyKeysSubset`;
+		string $copyOptions = "curve";
+		float $currentTime = `currentTime -q`;
+		global string $gPlayBackSlider;
+
+		if ( `optionVar -exists zzCopyKeysCopyOptions` ) { $copyOptions = `optionVar -q zzCopyKeysCopyOptions`; }
+		else { optionVar -sv zzCopyKeysCopyOptions curve; }
+
+		switch ( $operateOn ) {
+			case "selection":
+			float $keyTimes[] = `keyframe -query -selected -timeChange`;
+			float $startTime = $keyTimes[0];
+			float $endTime = $keyTimes[0];
+			int $keyTimesSize = `size $keyTimes`;
+
+			//determine the highest and lowest key values
+			for ( $key in $keyTimes) {
+				if ( $startTime < $key ) { $startTime = $key; }
+				if ( $endTime > $key ) { $endTime = $key; }
+				}
+
+			copyKey -time ( $startTime + ":" + $endTime ) -option $copyOptions `ls -sl`;
+			print ( $copyOptions + " at times: " + $startTime + ":" + $endTime + "\n" );
+			break;
+
+
+			case "range":
+			float $keyTimes[] = `timeControl -q -rangeArray $gPlayBackSlider`;
+			copyKey -time ( $keyTimes[0] + ":" + $keyTimes[1] ) -option $copyOptions `ls -sl`;
+			print ( $copyOptions + " at times: " + $keyTimes[0] + ":" + $keyTimes[1] + "\n" );
+			break;
+
+
+			case "current":
+			copyKey -time $currentTime -option $copyOptions `ls -sl`;
+			print ( $copyOptions + " at time: " + $currentTime + "\n" );
+			break;
+			}
+		}
+	}
+
+
+global proc string zzCopyKeysSubset () {
+	global string  $gPlayBackSlider;
+	float $selectedTimeRange[] = `timeControl -q -rangeArray $gPlayBackSlider`;
+	int $numKeysSelected = `keyframe -q -selected -keyframeCount`;
+
+	if ( $selectedTimeRange[0] != ( $selectedTimeRange[1] - 1 ) ) { return "range"; }
+	else if ( $numKeysSelected != 0 ) { return "selection"; }
+	else { return "current"; }
+	}
+
+
+global proc zzCopyKeysConfig () {
+	string $windowName = "zzKeyMenuConfigWindow";
+	string $windowTitle = "Copy Keys Config";
+	string $copyType = "curve";
+	int $checkBoxValue = 0;
+
+	if ( `optionVar -exists zzCopyKeysCopyOptions` ) {
+		$copyType = `optionVar -q zzCopyKeysCopyOptions`;
+		}
+
+	if ( `window -exists $windowName` ) {
+		deleteUI $windowName;
+		}
+
+	$checkBoxValue = $copyType == "curve" ? 0:1;
+
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0
+		-sizeable 1 -width 300 $windowName;
+
+		columnLayout -adjustableColumn true -rowSpacing 5 zzCopyKeysLeftColumn;
+			checkBox -align "left" -label "keys only?" -v $checkBoxValue -p zzCopyKeysLeftColumn zzCopyKeysCheckDefault;
+			rowLayout -numberOfColumns 2 -p zzCopyKeysLeftColumn
+				-columnAttach 1 "both" 	0
+				-columnAttach 2 "both" 	5;
+			button -label "Save Config" -c ( "zzCopyKeysConfigDoIt saveConfig " + $windowName );
+			button -label "Cancel" -c ( "zzCopyKeysConfigDoIt cancel " + $windowName );
+
+	showWindow $windowName;
+	}
+
+
+global proc zzCopyKeysConfigDoIt ( string $function, string $windowName ) {
+	switch ( $function ) {
+		case "saveConfig":
+		if ( `checkBox -q -v zzCopyKeysCheckDefault` ) { optionVar -stringValue zzCopyKeysCopyOptions "keys"; }
+		else { optionVar -stringValue zzCopyKeysCopyOptions "curve"; }
+		deleteUI $windowName;
+		break;
+
+		case "cancel":
+		deleteUI $windowName;
+		break;
+		}
+	}

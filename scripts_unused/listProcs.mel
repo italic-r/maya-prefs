@@ -1,0 +1,18 @@
+//lists all procedures in a given script
+
+zooUtils;
+
+
+global proc string[] listProcs( string $script ) {
+	string $path = `zooGetScriptLocation $script` + $script +".mel";
+	string $scriptContents[] = `zooReadFile $path "-strip 1"`;
+	string $procs[] = {};
+	int $num = `size $scriptContents`;
+
+	for( $n=0; $n<$num; $n++ )
+		if( `match "^[ \t]*global[ \t]+proc[ \t]+" $scriptContents[$n]` != "" )
+			$procs[`size $procs`] = $scriptContents[$n];
+
+	return $procs;
+	}
+

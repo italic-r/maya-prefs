@@ -1,0 +1,16 @@
+//////////////////////////////////////////////////////////
+//	ackSnapKeyValues 1.0					
+//	5/9/05					
+//	Aaron Koressel						
+//							
+//  Snap all the values of the selected keys to the
+//  value of the last selected key.
+//////////////////////////////////////////////////////////
+
+
+global proc ackSnapKeyValues() {
+
+	float $snapTo[] = `keyframe -q -lastSelected -valueChange`;
+	keyframe -valueChange $snapTo[0];
+
+}

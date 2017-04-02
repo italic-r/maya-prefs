@@ -1,0 +1,71 @@
+global proc zzToggleIsolated () {
+	global int $zzIsClicked;
+
+	$zzIsClicked = 0;
+	if( `popupMenu -exists tempMM` ) { deleteUI tempMM; }
+	popupMenu -ctl 0 -alt 0 -sh 1 -mm 0 -b 1 -aob 0 -p viewPanes -pmc zzToggleIsolatedBuildUI tempMM;
+	}
+
+
+global proc zzToggleIsolatedBuildUI (){
+	global int $zzIsClicked;
+
+	$zzIsClicked = 1;
+	menu -e -dai tempMM;
+	menuItem -label "toggle isolated" -c ( "zzToggleIsolatedWorker toggle" ) -rp "N";
+	menuItem -label "remove from isolated" -c ( "zzToggleIsolatedWorker remove" ) -rp "E";
+	menuItem -label "add to isolated" -c ( "zzToggleIsolatedWorker add" ) -rp "W";
+	}
+
+
+global proc zzToggleIsolatedWorker ( string $function ) {
+	string $currentPanel = `getPanel -withFocus`;
+
+	switch ( $function ) {
+		case "add":
+		string $hiliteList[] = `ls -hl`;
+		string $selObjs[] = `ls -sl`;
+		string $setName = `isolateSelect -q -vo $currentPanel`;
+
+		if ( `size $hiliteList` == 0 ) { sets -e -add $setName $selObjs; }
+		else { sets -e -add $setName $hiliteList; }
+
+		isolateSelect -update $currentPanel;
+		break;
+
+
+		case "toggle":
+		if ( `isolateSelect -q -state $currentPanel` ) { isolateSelect -state 0 $currentPanel; }
+		else{
+			isolateSelect -state 1 $currentPanel;
+			doReload $currentPanel;
+			}
+		break;
+
+
+		case "remove":
+		string $hiliteList[] = `ls -hl`;
+		string $selObjs[] = `ls -sl`;
+		string $setName = `isolateSelect -q -vo $currentPanel`;
+
+		if ( `size $hiliteList` == 0 ) { sets -e -rm $setName $selObjs; }
+		else { sets -e -rm $setName $hiliteList; }
+
+		isolateSelect -update $currentPanel;
+		break;
+		}
+	}
+
+
+global proc zzToggleIsolatedKillUI () {
+	global int $zzIsClicked;
+
+	if( `popupMenu -exists tempMM` ) {
+		deleteUI tempMM;
+		if ( $zzIsClicked ) { $zzIsClicked = 0; }
+		else {
+			zzToggleIsolatedWorker toggle;
+			$zzIsClicked = 0;
+			}
+		}
+	}

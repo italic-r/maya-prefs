@@ -1,0 +1,1791 @@
+/*
+animSaver
+a.k.a. charSelect
+Eric's not so super simple animation saving tool
+Use at your own risk!!!
+
+version: 2.0
+date modified: 10/11/04
+author: Eric Carney
+info: www.sporksalot.com/mel/index.html
+to run: type "animSaver;" into the MEL command line or script editor
+
+description:
+
+*/
+
+
+global proc animSaver (){
+	
+	// go source the poseSaver mel which has procedures that we'll need
+	//source "\\\\Greed\\data\\melDB\\ShabaMenu\\Animation\\poseSaver.mel";
+	//source "\\\\Greed\\data\\melDB\\ShabaMenu\\Animation\\selectionSaver.mel";
+	//source selectionSaver.mel;
+
+	int $alreadyrun = `optionVar -exists charNamesOption`;
+	if ($alreadyrun == 0){
+			optionVar -stringValue charNamesOption " ";
+	}
+	
+	//TEST IF THE FOLDER AND FILE EXISTS
+	$animFileName = ( `internalVar -userScriptDir` + "animSaver/animindex.txt" );
+	$selectFileName = ( `internalVar -userScriptDir` + "animSaver/selectindex.txt" );
+	$poseFileName =  (`internalVar -userScriptDir` + "animSaver/poseindex.txt" );
+	$filePath = ( `internalVar -userScriptDir` + "animSaver/" );
+    //IF NOT THEN CREATE IT
+	if(!`file -q -ex $animFileName`)
+	{
+		sysFile -makeDir $filePath; 
+		$fileId=`fopen $animFileName "w"`;
+		fwrite $fileId "";
+ 		fclose $fileId;
+	}
+	
+	if(!`file -q -ex $selectFileName`)
+	{
+		sysFile -makeDir $filePath ; 
+		$fileId=`fopen $selectFileName "w"`;
+		fwrite $fileId "";
+ 		fclose $fileId;
+	}
+	
+	if(!`file -q -ex $poseFileName`)
+	{
+		sysFile -makeDir $filePath ; 
+		$fileId=`fopen $poseFileName "w"`;
+		fwrite $fileId "";
+ 		fclose $fileId;
+	}
+	
+	// go launch the main UI
+	asMainAnimControlWindow();
+
+	global float $timeOffSet = 0;
+	global int $loopNumber = 0;
+	
+
+}
+
+// 
+global proc asSetKeyframe (string $attrname, float $keyframe, float $value, string $inTan, string $outTan) {
+	global float $timeOffSet;	
+	string $newattrname = $attrname;
+	string $prefixName = "";
+
+	
+	if ( `optionVar -exists charNamesOption` ) {
+		$prefixName = `optionVar -q charNamesOption`;
+	}
+		
+	$newattrname = $prefixName + $attrname;
+	
+	if ($inTan == "fixed"){
+		$inTan = "linear";
+	}
+	if ($outTan == "fixed"){
+		$outTan = "linear";
+	}
+
+	$keyframe += $timeOffSet;	
+	
+	setKeyframe -value $value -time $keyframe -inTangentType $inTan -outTangentType $outTan $newattrname;	
+}
+
+
+global proc asKeyTangent (string $attrname, float $keyframe, float $angle, float $weight, string $direction) {
+	global float $timeOffSet;	
+	string $newattrname = $attrname;
+	string $prefixName = "";
+
+	
+	$keyframe += $timeOffSet;
+
+	if ( `optionVar -exists charNamesOption` ) {
+		$prefixName = `optionVar -q charNamesOption`;
+	}
+		
+	$newattrname = $prefixName + $attrname;
+	if ($direction == "in"){
+		keyTangent -time $keyframe -edit -lock 0 -weightLock 0 -inAngle $angle -inWeight $weight $newattrname;	
+	} else {
+		keyTangent -time $keyframe -edit -lock 0 -weightLock 0  -outAngle $angle -outWeight $weight $newattrname;
+	}
+}
+
+
+// creates a window so the user can specify a name for the animation file that's to be created
+global proc asAnimSave(string $poseName) {
+	string $windowCommand = ("asSaveAnimToFile( `textField -q -tx _poseName`,`textField -q -tx psSaveCharPrefix` );");
+	string $userSelection[] = `textScrollList -q -si asAnimListItem`;
+	string $animFileName = $userSelection[0];
+	string $prefixName = "";
+	if ( `optionVar -exists charNamesOption` ) {
+		$prefixName = `optionVar -q charNamesOption`;
+	}
+	
+	string $selected[] = `ls -sl`;
+	if ( !`size($selected)` ){
+		warning "Nothing is currently selected. No shelf button created, or action taken.";	
+	}
+	
+	if (($poseName == "") || ($poseName == "prompt" )){
+
+ 		string $windowName = "asAnimNameWin";
+ 	
+ 		if(`window -ex $windowName`){ deleteUI $windowName; }
+ 		else if(`windowPref -ex $windowName`){ windowPref -r $windowName; }
+ 		window 
+ 			-w 200
+ 			-title ("Animation Name:") 
+ 			-s 0 $windowName;
+ 		columnLayout; 
+ 
+ 		text "Animation Name:";
+ 		textField 
+ 		-w 190
+ 		-ann "the name of this animation"
+		-text $animFileName
+ 		-enterCommand $windowCommand
+ 		"_poseName";
+ 		
+ 		text "Character Prefix to be removed";
+  		textField -w 190 
+  		-ann "leave blank to not remove a character name prefix"
+  		-text $prefixName
+  		-enterCommand $windowCommand
+  		psSaveCharPrefix ;
+ 
+ 		button 
+ 		-h 35
+ 		-w 190
+ 		-ann "Save the selected object's animation"
+ 		-label "save animation"
+ 		-c $windowCommand;
+ 
+ 		showWindow;
+	} else {
+		asSaveAnimToFile($poseName, $prefixName);
+	}
+}
+
+// reads all the key data from the objects selected and saves it as one big string so it can be save out in a new file
+global proc asSaveAnimToFile(string $label, string $charPrefix) {
+	global string $listofanims[];
+	float $lowkey = 10000;
+	float $highkey = -10000;	
+	float $percent = 0.0;
+	int $progressAmount = 0;
+	int $progressCount = 0;
+
+	progressWindow
+				-title "Saving File..."
+				-progress $progressAmount
+				-status "Saving: 0%"
+				-isInterruptable true;
+
+	if ($label == ""){
+		warning "Please supply a pose name.";
+		//return "things are good";	
+	}
+	deleteUI asAnimNameWin;	
+	print ("character Prefix to remove is: " + $charPrefix + "\n");		
+	string $selected[] = `ls -sl`;
+	if ( !`size($selected)` ){
+		warning "Nothing is currently selected. No pose was saved, or action taken.";
+		//return "Nothing is currently selected. No pose was saved, or action taken.";	
+	}
+	string $safeShelfCommand;
+	//waitCursor -state on; 
+
+	for ($node in $selected)
+	{
+		
+		$percent = (((float)$progressCount)/(`size $selected`));
+		$progressAmount = ($percent * 100);
+
+		//update progress window
+		if(`progressWindow -query -isCancelled`)
+			{//warning
+				warning("Not all items were saved! \(user cancelled\)\n");
+				break;
+			}//warning
+		if ( `progressWindow -query -progress` >= 100 ) break;
+		progressWindow
+			-edit
+			-progress $progressAmount
+			-status ("Saving: " + $progressAmount + "%");
+		
+		  
+		string $newNodeName = `substitute $charPrefix $node ""`;
+		string $keyableAttrs[] = `listAttr -r -w -k -u -v -m -s $node`;
+		if ( !`size($keyableAttrs)`){
+			continue;	
+		} 
+		for ($attr in $keyableAttrs) {
+		
+			// see if this attribute has a key on it
+			if (`keyframe -attribute $attr -query -keyframeCount $node` > 0){
+			
+				// get a list of all frames on which a key is set
+				float $listOfKeyFrames[] = `keyframe -attribute $attr  -query -timeChange $node`;
+				for ($key in $listOfKeyFrames) {
+					
+					
+			
+					// get the value of the give attribute at the given key
+					float $value[] = `keyframe -attribute $attr -time $key -query -eval $node`;
+					string $tanTypes[] = `keyTangent -attribute $attr -time $key -query -inTangentType -outTangentType $node`;
+					$safeShelfCommand = $safeShelfCommand+("catch (`asSetKeyframe \""+$newNodeName +"."+$attr+"\" "+$key+" "+$value[0]+" \""+$tanTypes[0]+"\" \""+$tanTypes[1]+"\"`);\n");
+					
+					//if there are custom tangents then get their values as well
+					if ($tanTypes[0] == "fixed") {
+					float $inTanValues[] = `keyTangent -attribute $attr -time $key -query -inAngle -inWeight $node`;
+					$safeShelfCommand = $safeShelfCommand+("catch (`asKeyTangent \""+$newNodeName +"."+$attr+"\" "+$key+" \""+$inTanValues[0]+"\" \""+$inTanValues[1]+"\" \"in\"`);\n");
+					}
+					if ($tanTypes[1] == "fixed") {
+					float $outTanValues[] = `keyTangent -attribute $attr -time $key -query  -outAngle -outWeight $node`;
+					$safeShelfCommand = $safeShelfCommand+("catch (`asKeyTangent \""+$newNodeName +"."+$attr+"\" "+$key+" \""+$outTanValues[0]+"\" \""+$outTanValues[1]+"\" \"out\"`);\n");
+					}
+					//see if this key is our new low or high range
+					if ($key < $lowkey ) { $lowkey = $key;}
+					if ($key > $highkey) { $highkey = $key;}
+					
+					
+				} // end of $key for loop
+			} else {
+			// if the attribute has no keys, just get the attributes value
+			string $value = string ( `getAttr ($node+"."+$attr)` );
+			$safeShelfCommand = $safeShelfCommand+("catch (`charSelSetAttr \""+$newNodeName +"."+$attr+"\" "+$value+"`);\n");
+			}
+		
+		} //end of $attr for loop
+	$progressCount++;	
+	}//end of $node for loop
+	progressWindow -endProgress;	
+	// add our lowkey and highkey info to the front of our anim data file
+	$safeShelfCommand = ("asSetKeyRange(" + $lowkey + "," + $highkey + ");\n")+$safeShelfCommand;
+
+	string $poseFileName = $label + ".anim.mel";
+	writePoseFile($safeShelfCommand, $poseFileName);
+	arrayPopEntry($listofanims, $poseFileName);
+	$listofanims[size($listofanims)] = $poseFileName;
+	writeAnimIndexFile();
+	asRefreshAnimList();	
+	
+	//return $node;
+	//waitCursor -state off; 
+
+}
+
+
+
+global proc asApplyAnim	 (){
+	global float $timeOffSet;
+	global int $loopNumber;
+	string    $userSelection[] = `textScrollList -q -si asAnimListItem`;
+	
+	
+	//check to make sure the user selected an animation
+	if ($userSelection[0] == ""){
+		error "Please select a pose first";
+	}
+	
+	string $animFileName = $userSelection[0] + ".anim.mel";
+	print ("//trying to source:" + $animFileName + "\n");
+
+	string $selectedRangeType = `radioCollection -query -select rangeTypeRadio`; 
+	if ($selectedRangeType == "rangeRadioCurrent"){
+		$timeOffSet = `currentTime -query`;
+	} 
+	if ($selectedRangeType == "rangeRadioStart") {
+		$timeOffSet = `floatFieldGrp -query -value1 fieldStartframe`; 
+	}
+	if ($selectedRangeType == "rangeRadioOriginal") {
+		$timeOffSet = -99999;	
+	}
+	
+	int $looping = `intFieldGrp -query -value1 fieldLoopTimes`; 
+
+	int $i;	
+	for ($i = 0; $i <= $looping; $i++){
+		
+		$loopNumber = $i;
+		rehash;
+		readPoseFile($animFileName);
+		
+	} //end of for loop
+	
+
+
+}
+
+
+
+
+global proc asSetKeyRange (float $lowkey, float $highkey) {
+	global float $timeOffSet;
+	global int $loopNumber;
+	
+	if ($timeOffSet == -99999){
+		$timeOffSet = $lowkey;
+	}
+	
+	if ($loopNumber > 0) {
+		$timeOffSet = $highkey + $timeOffSet - $lowkey; 
+	} else {
+		$timeOffSet = $timeOffSet - $lowkey; 
+	}
+
+}
+		
+
+global proc asRefreshAnimList (){
+	global string $listofanims[];
+	readAnimIndexFile;
+	textScrollList -edit -removeAll asAnimListItem;
+	for ( $anim in $listofanims ) {
+		string $animname = stringFirstWord($anim, ".");
+		textScrollList -edit -append $animname asAnimListItem;
+	}
+}
+
+
+global proc asDeleteAnim (){
+	global string $listofanims[];
+	
+	string $userSelection[] = `textScrollList -q -si asAnimListItem`;
+	string $animFileNamearray = $userSelection[0] + ".anim.mel";
+	print ("//removing anim:" + $animFileNamearray + "\n");
+	arrayPopEntry($listofanims, $animFileNamearray);
+	writeAnimIndexFile();
+	asRefreshAnimList();	
+}
+
+
+
+global proc writeAnimIndexFile() {
+    // Print our list of anims to the anim index file
+    //
+    global string $listofanims[];
+	string $exampleFileName = `frameLayout -q -l Folder`;
+    $exampleFileName = $exampleFileName + "animindex.txt";
+    //$exampleFileName = ( `internalVar -userScriptDir` + "animsaver/animindex.txt" );
+    //print $exampleFileName;
+    $fileId=`fopen $exampleFileName "w"`;
+    for ( $anim in $listofanims ) {
+    	$anim = $anim + "\n";
+    	fprint $fileId $anim;
+    }
+    fclose $fileId;
+
+}
+
+global proc readAnimIndexFile (){	
+    // read the pose index file one line at a time
+    // and put the pose names into the $listofposes array
+    //
+	
+    global string $listofanims[];
+    clear($listofanims);
+    int $i = 0;
+	string $poseIndexFileName = `frameLayout -q -l Folder`;
+    $poseIndexFileName = $poseIndexFileName + "animindex.txt";
+    print $poseIndexFileName;
+    $fileId=`fopen $poseIndexFileName "r"`;
+    string $nextLine = `fgetline $fileId`;
+    while ( size( $nextLine ) > 0 ) {
+    	print ("// Loaded anim: " + $nextLine);
+    	$listofanims[$i] = stringFirstWord($nextLine, "\n");
+    	$i++;
+    	$nextLine = `fgetline $fileId`;
+    }
+    fclose $fileId;
+}
+
+
+/*
+......................................................................
+
+Main Window UI
+
+.....................................................................
+*/
+
+global proc asMainAnimControlWindow () {
+	global string $listofanims[];
+	
+	string $windowName = "MainAnimSaverWindow";
+	string $windowTitle = "Anim Saver";
+	string $currentDefault = "";
+
+	if ( `window -exists $windowName` ) { deleteUI $windowName; }
+
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0
+		-sizeable 1 -widthHeight 250 300 $windowName;
+
+
+	asMakeASTabLayout ("animWinLayout");	
+
+ 	
+	showWindow $windowName;	
+
+    //csRefreshCharNames;
+
+}
+
+
+// .................................
+//       animation save tab
+// ................................
+global proc asMakeAnimLayout (string $layoutName) {
+	global string $listofanims[];
+	
+formLayout -numberOfDivisions 100 $layoutName;
+ 
+textScrollList
+        -h     50 
+        -nr    4
+        -ams   true
+       // -dkc   "upDeletePose"
+      //  -dcc   "upApplyPose"
+      //  -sc    "upUpdateSelection"
+        -ann   "A list of poses"                        
+        asAnimListItem;
+	/*	popupMenu upPoseListPopup;
+			menuItem -l "Rename..." -c "upRenamePoseItem";
+			menuItem -l "Update Pose" -c "upUpdatePose";
+        		menuItem -divider true;
+        		menuItem -l "Move Up" -c "upMovePoseItem 1;";
+        		menuItem -l "Move Down" -c "upMovePoseItem 0;";
+        		menuItem -l "Move to Top" -c "upMovePoseItem 2;";
+        		menuItem -l "Move to Bottom" -c "upMovePoseItem 3;";
+        		menuItem -divider true;
+        		menuItem -l "Sort Ascending" -c "upSortPoseList 1;";
+        		menuItem -l "Sort Descending" -c "upSortPoseList 0;";
+        */
+       
+       readAnimIndexFile();
+ 
+        for ( $anim in $listofanims ) {
+        	string $posename = stringFirstWord($anim, ".");
+		textScrollList -edit -append $posename asAnimListItem;
+	}
+        
+        
+        
+    //...function controls            
+rowLayout -numberOfColumns 3 -ct3 both both both -ad3 3 -cw3 80 80 50 asColumn;        //pose section
+   button
+        -l         "Apply Anim"
+        -c         "asApplyAnim"
+        -ann     "Apply the selected animation"     asApplyPoseBut;
+    button 
+        -l         "Save Anim..."
+        -c         ("asAnimSave prompt; ")
+        -ann     "Save a new animation"        asNewPoseBut;
+    button 
+        -l         "Delete Anim"
+        -c         "asDeleteAnim"
+        -ann     "Delete the selected animation"    asDeletePoseBut;  	
+setParent ..;
+
+
+asMakeASSettingsLayout("asSettingsItem"); 
+
+    //...form layout
+    formLayout -edit
+        -attachForm        asAnimListItem        "top"    3
+        -attachForm        asAnimListItem        "left"   0
+        -attachControl    asAnimListItem        "bottom" 5 asColumn
+        -attachForm   asAnimListItem        "right"  0 
+
+        -attachNone      asColumn            "top"   
+        -attachForm    asColumn            "left"   0
+        -attachControl   asColumn            "bottom" 5 asSettingsItem
+        -attachForm      asColumn            "right"  0 
+         
+        -attachNone    asSettingsItem            "top"   
+        -attachForm    asSettingsItem            "left"   0
+        -attachForm    asSettingsItem           "bottom" 0
+        -attachForm    asSettingsItem            "right"  0  
+        
+    $layoutName;
+
+    
+setParent ..;	
+	
+}
+
+
+// .................................
+//       keyframe settings layout
+// ................................
+global proc asMakeASSettingsLayout (string $layoutName) {
+	global float $timeOffSet;	
+	string $startOn = "floatFieldGrp -edit -enable 1 fieldStartframe; ";
+	string $startOff = "floatFieldGrp -edit -enable 0 fieldStartframe;";
+	frameLayout -w 240 -label "Apply Frame Range" -collapse true -cll true -labelAlign "top" -borderStyle "etchedIn" $layoutName;	
+		 columnLayout;
+		 	rowColumnLayout -numberOfColumns 3 -cw 1 80 -cw 2 80 -cw 3 80 ;
+				radioCollection rangeTypeRadio;
+				radioButton -label "Current"   -align "left" -select -enable 1 rangeRadioCurrent;
+				radioButton -label "Start"   -align "left" -enable 1 -onCommand $startOn -offCommand $startOff  rangeRadioStart;
+				radioButton -label "Original"   -align "left" -enable 1 rangeRadioOriginal;
+			setParent ..;
+			columnLayout;
+				floatFieldGrp -enable 0 -numberOfFields 1 -columnAttach2 "left" "left" -columnWidth2 65 160
+    				  -label "Start Frame:"
+    				  -value1 1
+				fieldStartframe;
+    				intFieldGrp -enable 1 -numberOfFields 1 -columnAttach2 "left" "left" -columnWidth2 65 160
+    				  -label "Loop:"
+    				  -value1 0
+				fieldLoopTimes;
+			setParent ..;
+		setParent ..;
+	setParent ..;
+
+}
+
+global proc asChangeFolder()
+{
+	string $framePath = `frameLayout -q -l Folder`;
+	string $rootFilePath =  ( `internalVar -userScriptDir` + "animSaver/" );
+	string $folderSelection[] = `textScrollList -q -si folderScrollList`;
+	string $newFilePath = ($framePath + $folderSelection[0] + "/");
+	textScrollList -e -ra folderScrollList;
+	
+	
+	chdir $newFilePath;
+	asBuildFolderList($newFilePath);
+	frameLayout -e -l $newFilePath Folder;
+	readAnimIndexFile();
+	asRefreshAnimList();
+	ssRefreshSelectList();
+	csRefreshPoseList();
+	
+}
+
+global proc asBuildFolderList(string $filePath)
+{
+	
+	string $fileList[] = `getFileList -fld $filePath`;
+	string $dirLists[];
+	
+	//folder list
+	//------------------------------
+	for ($folders in $fileList)
+	{
+		if (`filetest -d ($filePath + $folders )`)
+		{
+			int $isFile = `filetest -f ($filePath + $folders )`;
+			
+			if ($isFile == false)
+			{
+				$dirLists[`size($dirLists)`] = $folders ;
+				 textScrollList -e -append $folders folderScrollList;
+			}
+		}
+	}
+	
+}
+
+global proc addDir()
+{
+	string $filePath = `frameLayout -q -l Folder`;
+	//TEST IF THE FOLDER AND FILE EXISTS
+	
+	
+	
+	
+	string $newFolder;
+	string $newPath;
+ 	string $result = `promptDialog 
+ 		-title "Add Folder"
+ 		-message "Enter Folder Name:"
+ 		-button "OK" -button "Cancel"
+ 		-defaultButton "OK" -cancelButton "Cancel"
+ 		-dismissString "Cancel"`;
+ 
+ 	if ($result == "OK") {
+ 		$newFolder = `promptDialog -query -text`;
+		sysFile -makeDir ($filePath + $newFolder + "/");
+		$newPath = ($filePath + $newFolder + "/");
+ 	}
+	textScrollList -e -ra folderScrollList;
+	asBuildFolderList($filePath);
+	
+	$animFileName = $newPath + "animindex.txt";
+	$selectFileName = $newPath + "selectindex.txt";
+	$poseFileName = $newPath + "poseindex.txt";
+
+    //IF NOT THEN CREATE IT
+	if(!`file -q -ex $animFileName`)
+	{
+		sysFile -makeDir $newPath; 
+		$fileId=`fopen $animFileName "w"`;
+		fwrite $fileId "";
+ 		fclose $fileId;
+	}
+	
+	if(!`file -q -ex $selectFileName`)
+	{
+		sysFile -makeDir $newPath ; 
+		$fileId=`fopen $selectFileName "w"`;
+		fwrite $fileId "";
+ 		fclose $fileId;
+	}
+	
+	if(!`file -q -ex $poseFileName`)
+	{
+		sysFile -makeDir $newPath ; 
+		$fileId=`fopen $poseFileName "w"`;
+		fwrite $fileId "";
+ 		fclose $fileId;
+	}
+	
+}
+
+global proc upDir()
+{
+	
+	string $currentPath = `frameLayout -q -l Folder`;
+	string $dir = `substitute "/*[^/\\]*$" "" $currentPath`;
+	$dir = `substitute "/*[^/\\]*$" $dir ""`;
+	$dir = `substitute "/*[^/\\]*$" $dir ""`;
+	$dir = $dir + "/";
+	
+	frameLayout -e -l $dir Folder;
+	textScrollList -e -ra folderScrollList;
+	asBuildFolderList($dir);
+	
+	asRefreshAnimList();
+	ssRefreshSelectList();
+	csRefreshPoseList();
+	
+	
+}
+//..............................
+//         TAB layout
+//............................
+global proc asMakeASTabLayout (string $layoutName) {
+	
+	string $mainFilePath =  ( `internalVar -userScriptDir` + "animSaver/" );
+    string $form = `formLayout $layoutName`;
+	
+    string $tabs = `tabLayout -innerMarginWidth 0 -innerMarginHeight 0`;
+	
+	frameLayout -w 400 -l $mainFilePath Folder;
+	
+	textScrollList -ams false -dcc "asChangeFolder" folderScrollList;
+	popupMenu -p folderScrollList;
+		menuItem -l "Up to Parent Directory" -command "upDir";
+		menuItem -l "Add folder" -command "addDir";
+		
+		
+		
+	asBuildFolderList($mainFilePath);
+    formLayout -edit
+    	-attachForm $tabs "top"    0
+ 		-attachForm $tabs "left"   0
+ 		-attachForm $tabs "bottom" 0
+ 		-attachForm $tabs "right"  0
+    $form;
+setParent..;
+ssMakeSelectLayout ("selectTabLayout",0);
+psMakePoseLayout ("poseTabLayout",0);
+asMakeAnimLayout ("animTabLayout");	
+csMakeCSSettingsLayout("asSettingTabLayout");
+
+
+	 tabLayout -edit
+	 	-tabLabel selectTabLayout "Selection"
+	  	-tabLabel animTabLayout "Animation"
+ 		-tabLabel poseTabLayout "Pose"
+ 		-tabLabel asSettingTabLayout "Settings"
+ 	$tabs;
+csInitCharNames;
+csRefreshCharNames;
+}
+
+
+// .................................
+//       Pose save tab
+// ................................
+global proc psMakePoseLayout (string $layoutName, int $settings) {
+	global string $listofposes[];
+	
+formLayout -numberOfDivisions 100 $layoutName;
+ 
+textScrollList
+        -h     50 
+        -nr    4
+        -ams   true
+       // -dkc   "upDeletePose"
+      //  -dcc   "upApplyPose"
+      //  -sc    "upUpdateSelection"
+        -ann   "A list of poses"                        
+        csPoseListItem;
+	/*	popupMenu upPoseListPopup;
+			menuItem -l "Rename..." -c "upRenamePoseItem";
+			menuItem -l "Update Pose" -c "upUpdatePose";
+        		menuItem -divider true;
+        		menuItem -l "Move Up" -c "upMovePoseItem 1;";
+        		menuItem -l "Move Down" -c "upMovePoseItem 0;";
+        		menuItem -l "Move to Top" -c "upMovePoseItem 2;";
+        		menuItem -l "Move to Bottom" -c "upMovePoseItem 3;";
+        		menuItem -divider true;
+        		menuItem -l "Sort Ascending" -c "upSortPoseList 1;";
+        		menuItem -l "Sort Descending" -c "upSortPoseList 0;";
+        */
+       
+       readPoseIndexFile();
+ 
+        for ( $pose in $listofposes ) {
+        	string $posename = stringFirstWord($pose, ".");
+		textScrollList -edit -append $posename csPoseListItem;
+	}
+        
+        
+        
+    //...function controls            
+rowLayout -numberOfColumns 3 -ct3 both both both -ad3 3 -cw3 80 80 50 csColumn;        //pose section
+   button
+        -l         "Apply Pose"
+        -c         "csApplyPose"
+        -ann     "Apply the selected pose"     csApplyPoseBut;
+    button 
+        -l         "Save Pose..."
+        -c         ("charSelPoseSave prompt; ")
+        -ann     "Save a new pose"        csNewPoseBut;
+    button 
+        -l         "Delete Pose"
+        -c         "csDeletePose"
+        -ann     "Delete the selected pose"     csDeletePoseBut;
+
+             	
+setParent ..;
+
+
+
+if ($settings) {
+	csMakeCSSettingsLayout("csCharPreFixItem");
+	 //...form layout
+    formLayout -edit
+        -attachForm        csPoseListItem        "top"    3
+        -attachForm        csPoseListItem        "left"   0
+        -attachControl    csPoseListItem        "bottom" 5 csColumn
+        -attachForm   csPoseListItem        "right"  0 
+
+        -attachNone      csColumn            "top"   
+        -attachForm    csColumn            "left"   0
+        -attachControl    csColumn            "bottom" 5  csCharPreFixItem
+        -attachForm      csColumn            "right"  0
+        
+       	-attachNone	csCharPreFixItem  	   "top" 
+       	-attachForm	csCharPreFixItem           "left"   0
+        -attachForm	csCharPreFixItem           "bottom" 5 
+        -attachForm	csCharPreFixItem           "right"  0
+    
+    $layoutName;	
+		
+} else {
+
+
+
+    //...form layout
+    formLayout -edit
+        -attachForm        csPoseListItem        "top"    3
+        -attachForm        csPoseListItem        "left"   0
+        -attachControl    csPoseListItem        "bottom" 5 csColumn
+        -attachForm   csPoseListItem        "right"  0 
+
+        -attachNone      csColumn            "top"   
+        -attachForm    csColumn            "left"   0
+        -attachForm    csColumn            "bottom" 5 
+        -attachForm      csColumn            "right"  0
+    
+    $layoutName;
+}
+    
+ 	setParent ..;	
+	
+}
+
+
+
+// .................................
+//       Settings layout
+// ................................
+global proc csMakeCSSettingsLayout (string $layoutName) {
+	global string $charNames[];
+
+frameLayout -w 244 -label "Character Prefix" -collapse true -cll true -labelAlign "top" -borderStyle "etchedIn" $layoutName;
+  			
+	rowColumnLayout -numberOfColumns 2 -columnWidth 1 120
+    	-columnWidth 2 120
+    	-columnAlign 2 right
+    	-columnAttach 1 "both" 0
+    	-columnAttach 2 "both"  0;
+
+		text -l "Custom character:" -h 20 -al "left";
+    		text -l "Predefind characters:" -h 20;
+    	
+    		textField -w 500 -ec ( "csSetCharName (`textField -q -tx csCustomCharName`);" ) csCustomCharName;
+    		optionMenu -w 200 -label "" -cc ( "csSetCharName (`optionMenu -q -value cscharNamesOption`);" ) cscharNamesOption;
+    					
+    		button  -w 100 -label "Set Name" -c ( "csSetCharName (`textField -q -tx csCustomCharName`);" );
+    		button  -w 70 -label "Edit Name" -c ( "csEditCharNameWindow (`optionMenu -q -select cscharNamesOption`);" );
+    	setParent ..;
+setParent ..;
+
+
+}
+global proc ssSelectSave(string $poseName) {
+	string $windowCommand = ("saveSelectToFile( `textField -q -tx _poseName`,`textField -q -tx psSaveCharPrefix` );");
+	string $userSelection[] = `textScrollList -q -si ssSelectListItem`;
+	string $selectFileName = $userSelection[0];
+	string $prefixName = "";
+	if ( `optionVar -exists charNamesOption` ) {
+		$prefixName = `optionVar -q charNamesOption`;
+	}
+/*
+	string $selected[] = `ls -sl`;
+	if ( !`size($selected)` ){
+		warning "Nothing is currently selected. No shelf button created, or action taken.";	
+	}
+*/
+	
+	if (($poseName == "") || ($poseName == "prompt" )){
+
+ 		string $windowName = "charSelPoseNameWin";
+ 	
+ 		if(`window -ex $windowName`){ deleteUI $windowName; }
+ 		else if(`windowPref -ex $windowName`){ windowPref -r $windowName; }
+ 		window 
+ 			-w 200
+ 			-title ("Selection Name:") 
+ 			-s 0 $windowName;
+ 		columnLayout; 
+ 
+ 		text "Selection Name:";
+ 		textField 
+ 		-w 190
+ 		-ann "the name of this selection"
+ 		-text $selectFileName
+ 		-enterCommand $windowCommand
+ 		"_poseName";
+ 		
+ 		text "Character Prefix to be removed";
+  		textField -w 190 
+  		-ann "leave blank to not remove a character name prefix"
+  		-text $prefixName
+  		-enterCommand $windowCommand
+  		psSaveCharPrefix ;
+ 
+ 		button 
+ 		-h 35
+ 		-w 190
+ 		-ann "Save Selected Node's \"setAttr\" Commands to a Shelf Button."
+ 		-label "save Selection"
+ 		-c $windowCommand;
+ 
+ 		showWindow;
+	} else {
+		saveSelectionToFile($poseName, $prefixName);
+	}
+}	
+	
+			
+	
+global proc string saveSelectToFile(string $label, string $charPrefix)
+{
+	global string $listofselects[];
+	
+	if ($label == ""){
+		warning "Please supply a selection name.";
+		return "things are good";	
+	}
+	deleteUI charSelPoseNameWin;	
+	print ("character Prefix to remove is: " + $charPrefix + "\n");		
+	string $selected[] = `ls -sl`;
+	if ( !`size($selected)` ){
+		warning "Nothing is currently selected. No selection was saved, or action taken.";
+		return "Nothing is currently selected. No pose was saved, or action taken.";	
+	}
+	string $safeShelfCommand;
+	for ($node in $selected)
+	{
+		string $newNodeName = `substitute $charPrefix $node ""`;
+		$safeShelfCommand = $safeShelfCommand+("catch (`ssSelect  \""+$newNodeName+"\"`);\n");
+	}
+	
+	string $poseFileName = $label + ".select.mel";
+	writePoseFile($safeShelfCommand, $poseFileName);
+	arrayPopEntry($listofselects, $poseFileName);
+	$listofselects[size($listofselects)] = $poseFileName;
+	writeSelectIndexFile();
+	ssRefreshSelectList();	
+	
+	return $safeShelfCommand;
+}
+
+
+
+global proc ssSelect(string $nodename) {
+	string $newNodeName = $nodename;
+	string $prefixName = "";
+	
+	if ( `optionVar -exists charNamesOption` ) {
+		$prefixName = `optionVar -q charNamesOption`;
+	}
+		
+	$newattrname = $prefixName + $newNodeName;
+	select -add $newattrname;	
+}
+
+
+
+
+global proc ssApplySelect	 (){
+	string    $userSelection[] = `textScrollList -q -si ssSelectListItem`;
+	
+	//make sure the user selected a pose
+	if ($userSelection[0] == ""){
+		error "Please select a selection first";
+	}
+	
+	string $poseFileName = $userSelection[0] + ".select.mel";
+	print ("//trying to source:" + $poseFileName + "\n");
+	readPoseFile($poseFileName) ;
+}
+		
+
+global proc ssRefreshSelectList (){
+	global string $listofselects[];
+	readSelectIndexFile;
+	textScrollList -edit -removeAll ssSelectListItem;
+	for ( $pose in $listofselects ) {
+		string $posename = stringFirstWord($pose, ".");
+		textScrollList -edit -append $posename ssSelectListItem;
+	}
+}
+
+
+global proc ssDeleteSelect (){
+	global string $listofselects[];
+	
+	string $userSelection[] = `textScrollList -q -si ssSelectListItem`;
+	string $poseFileNamearray = $userSelection[0] + ".select.mel";
+	print ("//removing Selection:" + $poseFileNamearray + "\n");
+	arrayPopEntry($listofselects, $poseFileNamearray);
+	writeSelectIndexFile();
+	ssRefreshSelectList();	
+}
+
+
+global proc writeSelectIndexFile() {
+    // Print our list of poses to the pose index file
+    //
+    global string $listofselects[];
+	string $exampleFileName = `frameLayout -q -l Folder`;
+    $exampleFileName = $exampleFileName + "selectindex.txt";
+    //$exampleFileName = ( `internalVar -userScriptDir` + "animSaver/selectindex.txt" );
+    //print $exampleFileName;
+    $fileId=`fopen $exampleFileName "w"`;
+    for ( $pose in $listofselects ) {
+    	$pose = $pose + "\n";
+    	fprint $fileId $pose;
+    }
+    fclose $fileId;
+
+}
+
+global proc readSelectIndexFile (){	
+    // read the Selection index file one line at a time
+    // and put the selection names into the $listofselects array
+    //
+    global string $listofselects[];
+    clear($listofselects);
+    int $i = 0;
+	string $selectIndexFileName = `frameLayout -q -l Folder`;
+    $selectIndexFileName = $selectIndexFileName + "selectindex.txt";
+    //$selectIndexFileName = ( `internalVar -userScriptDir` + "animSaver/selectindex.txt" );
+    
+    $fileId=`fopen $selectIndexFileName "r"`;
+    string $nextLine = `fgetline $fileId`;
+    while ( size( $nextLine ) > 0 ) {
+    	print ("// Loaded selection: " + $nextLine);
+    	$listofselects[$i] = stringFirstWord($nextLine, "\n");
+    	$i++;
+    	$nextLine = `fgetline $fileId`;
+    }
+    fclose $fileId;
+}
+
+
+/*
+......................................................................
+
+Main Window UI
+
+.....................................................................
+*/
+
+global proc ssMainSelectControlWindow () {
+	global string $listofselects[];
+
+
+	string $windowName = "MainSelectionSaverWindow";
+	string $windowTitle = "Selection Saver";
+	string $currentDefault = "";
+
+	if ( `window -exists $windowName` ) { deleteUI $windowName; }
+
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0
+		-sizeable 1 -widthHeight 250 100 $windowName;
+
+
+	ssMakeSelectLayout ("selectWinLayout", 1);	
+
+ 	
+	showWindow $windowName;	
+	
+
+	//csInitCharNames;
+   //	csRefreshCharNames;
+
+}
+
+
+// .................................
+//       Pose save tab
+// ................................
+global proc ssMakeSelectLayout (string $layoutName, int $settings) {
+	global string $listofselects[];
+	
+formLayout -numberOfDivisions 100 $layoutName;
+ 
+textScrollList
+        -h     50 
+        -nr    4
+        -ams   true
+       // -dkc   "upDeletePose"
+      //  -dcc   "upApplyPose"
+      //  -sc    "upUpdateSelection"
+        -ann   "A list of selections"                        
+        ssSelectListItem;
+	/*	popupMenu upPoseListPopup;
+			menuItem -l "Rename..." -c "upRenamePoseItem";
+			menuItem -l "Update Pose" -c "upUpdatePose";
+        		menuItem -divider true;
+        		menuItem -l "Move Up" -c "upMovePoseItem 1;";
+        		menuItem -l "Move Down" -c "upMovePoseItem 0;";
+        		menuItem -l "Move to Top" -c "upMovePoseItem 2;";
+        		menuItem -l "Move to Bottom" -c "upMovePoseItem 3;";
+        		menuItem -divider true;
+        		menuItem -l "Sort Ascending" -c "upSortPoseList 1;";
+        		menuItem -l "Sort Descending" -c "upSortPoseList 0;";
+        */
+       
+       readSelectIndexFile();
+ 
+        for ( $select in $listofselects ) {
+        	string $selectname = stringFirstWord($select, ".");
+		textScrollList -edit -append $selectname ssSelectListItem;
+	}
+        
+        
+        
+    //...function controls            
+rowLayout -numberOfColumns 3 -ct3 both both both -ad3 3 -cw3 80 80 50 ssColumn;        //pose section
+   button
+        -l         "Apply Selection"
+        -c         "ssApplySelect"
+        -ann     "Apply the selected Selection"     ssApplySelectBut;
+    button 
+        -l         "Save Selection..."
+        -c         ("ssSelectSave prompt; ")
+        -ann     "Save a new Selection"        ssNewSelectBut;
+    button 
+        -l         "Delete Selection"
+        -c         "ssDeleteSelect"
+        -ann     "Delete the selected selection"     ssDeleteSelectBut;
+
+             	
+setParent ..;
+
+
+
+if ($settings) {
+	csMakeCSSettingsLayout("csCharPreFixItem");
+	 //...form layout
+    formLayout -edit
+        -attachForm       ssSelectListItem        "top"    3
+        -attachForm       ssSelectListItem        "left"   0
+        -attachControl    ssSelectListItem        "bottom" 5 ssColumn
+        -attachForm   ssSelectListItem        "right"  0 
+
+        -attachNone      ssColumn            "top"   
+        -attachForm    ssColumn            "left"   0
+        -attachControl    ssColumn            "bottom" 5  csCharPreFixItem
+        -attachForm      ssColumn            "right"  0
+        
+       	-attachNone	csCharPreFixItem  	   "top" 
+       	-attachForm	csCharPreFixItem           "left"   0
+        -attachForm	csCharPreFixItem           "bottom" 5 
+        -attachForm	csCharPreFixItem           "right"  0
+    
+    $layoutName;	
+		
+} else {
+
+
+
+    //...form layout
+    formLayout -edit
+        -attachForm        ssSelectListItem        "top"    3
+        -attachForm        ssSelectListItem        "left"   0
+        -attachControl    ssSelectListItem        "bottom" 5 ssColumn
+        -attachForm   ssSelectListItem        "right"  0 
+
+        -attachNone      ssColumn            "top"   
+        -attachForm    ssColumn            "left"   0
+        -attachForm    ssColumn            "bottom" 5 
+        -attachForm      ssColumn            "right"  0
+    
+    $layoutName;
+}
+    
+ 	setParent ..;	
+	
+}
+
+
+
+
+/*
+poseSaver
+a.k.a. charSelect
+Eric's not so super simple pose saving tool
+Use at your own risk!!!
+
+version: 2.0
+date modified: 10/11/04
+author: Eric Carney
+info: www.sporksalot.com/mel/index.html
+to run: type "poseSaver;" into the MEL command line or script editor
+description:
+
+*/
+
+
+global proc poseSaver (){
+	// A global list of predefind characters, these would be the reference names,
+	// be sure to leave the first entry blank
+	// be sure to include seperator characters such as "_" or ":"
+	global string $charNames[] = { " ", "actionMan:", "flynt:", "redWolf:", "rebel:", "drX:", "noFace:", "tyranotox:", "isdCommando:", "isdCommando1:", "isdCommando2:" };
+	
+	int $alreadyrun = `optionVar -exists charNamesOption`;
+	if ($alreadyrun == 0){
+			optionVar -stringValue charNamesOption " ";
+	}
+	// go launch the main UI
+	csMainPoseControlWindow();
+}
+
+global proc csEditCharNameWindow(int $thisCharNum)
+{
+	global string $charNames[];
+	$thisCharNum--;
+	string $thisCharName = $charNames[$thisCharNum];
+ 	string $windowName = "EditCharNameWindow";
+ 	string $windowTitle = "Edit Character Name";
+ 	string $buttonCmd = "csEditCharNameWindowDoIt( `textField -q -tx _charName `," + $thisCharNum +" ); deleteUI EditCharNameWindow;";
+ 	
+ 	if(`window -ex $windowName`){ deleteUI $windowName; }
+ 	else if(`windowPref -ex $windowName`){ windowPref -r $windowName; }
+ 	window 
+ 		-w 170
+ 		-title $windowTitle 
+ 		-s 0 $windowName;
+ 	columnLayout; 
+ 
+ 	text "Character Name:";
+ 	textField 
+ 	-w 155
+ 	-text $thisCharName
+ 	"_charName";
+ 
+ 	button 
+ 	-h 35
+ 	-w 155
+ 	-ann "saves the editted Character name"
+ 	-label "save change"
+ 	//-c ("csEditCharNameWindowDoIt( `textField -q -tx _charName`, $thisCharNum ); deleteUI EditCharNameWindow;");
+ 	-c $buttonCmd;
+ 
+ 	showWindow;
+}	
+
+
+
+global proc csEditCharNameWindowDoIt ( string $newCharName, int $charNum ) {
+	global string $charNames[];
+	string $charBefore = $charNames[$charNum-1];
+
+	$charNames[$charNum] = $newCharName;
+	//menuItem -insertAfter "" -label $newCharName -p cscharNamesOption;
+	//optionMenu -edit -v $newCharName cscharNamesOption;
+	print ("// Character name edited to " + $newCharName + "\n");
+	optionVar -stringValue charNamesOption $newCharName;
+	print ("// Reloading joeSelect Window \n");
+	csMainPoseControlWindow;
+}
+	
+
+// changes the current character
+// called by the character select pulldown menu on the pose tab
+// or the text input box
+global proc csSetCharName ( string $newCharName ) {
+	if ( `optionVar -exists charNamesOption` ) {
+		optionVar -stringValue charNamesOption $newCharName;
+		print ("// Character changed to " + $newCharName + "\n");
+	} else {
+		}
+	csRefreshCharNames;
+}
+
+
+global proc csInitCharNames () {
+	global string $charNames[];
+	for ( $char in $charNames) {
+		menuItem -label $char -p cscharNamesOption;
+	}
+}
+
+
+// refreshes the displayed name of the current character
+global proc csRefreshCharNames () {
+	global string $charNames[];
+	string $currentDefault = "";
+	int $selection = 1;
+	int $n = 1;
+	
+	if ( `optionVar -exists charNamesOption` ) {
+		$currentDefault = `optionVar -q charNamesOption`;
+	}
+	//textScrollList -edit -removeAll cscharNamesOption;
+	for ( $char in $charNames) {
+		//menuItem -label $char -p cscharNamesOption;
+		if ( $char == $currentDefault ) 
+			{ $selection = $n; }
+		$n++;
+	}
+	optionMenu -edit -select $selection cscharNamesOption;
+	
+	textField -e -tx $currentDefault csCustomCharName;
+}
+
+	
+	
+global proc charSelPoseSave(string $poseName) {
+	string $windowCommand = ("savePoseToFile( `textField -q -tx _poseName`,`textField -q -tx psSaveCharPrefix` );");
+	string $userSelection[] = `textScrollList -q -si csPoseListItem`;
+	string $poseFileName = $userSelection[0];
+	string $prefixName = "";
+	if ( `optionVar -exists charNamesOption` ) {
+		$prefixName = `optionVar -q charNamesOption`;
+	}
+	
+	/*
+	string $selected[] = `ls -sl`;
+	if ( !`size($selected)` ){
+		warning "Nothing is currently selected. No shelf button created, or action taken.";	
+	}
+	*/
+	
+	if (($poseName == "") || ($poseName == "prompt" )){
+
+ 		string $windowName = "charSelPoseNameWin";
+ 	
+ 		if(`window -ex $windowName`){ deleteUI $windowName; }
+ 		else if(`windowPref -ex $windowName`){ windowPref -r $windowName; }
+ 		window 
+ 			-w 200
+ 			-title ("Pose Name:") 
+ 			-s 0 $windowName;
+ 		columnLayout; 
+ 
+ 		text "Pose Name:";
+ 		textField 
+ 		-w 190
+ 		-ann "the name of this pose"
+ 		- text $poseFileName
+ 		-enterCommand $windowCommand
+ 		"_poseName";
+ 		
+ 		text "Character Prefix to be removed";
+  		textField -w 190 
+  		-ann "leave blank to not remove a character name prefix"
+  		-text $prefixName
+  		-enterCommand $windowCommand
+  		psSaveCharPrefix ;
+ 
+ 		button 
+ 		-h 35
+ 		-w 190
+ 		-ann "Save Selected Node's \"setAttr\" Commands to a Shelf Button."
+ 		-label "save pose"
+ 		-c $windowCommand;
+ 
+ 		showWindow;
+	} else {
+		savePoseToFile($poseName, $prefixName);
+	}
+}	
+	
+			
+	
+global proc string savePoseToFile(string $label, string $charPrefix)
+{
+	global string $listofposes[];
+	
+	if ($label == ""){
+		warning "Please supply a pose name.";
+		return "things are good";	
+	}
+	deleteUI charSelPoseNameWin;	
+	print ("character Prefix to remove is: " + $charPrefix + "\n");		
+	string $selected[] = `ls -sl`;
+	if ( !`size($selected)` ){
+		warning "Nothing is currently selected. No pose was saved, or action taken.";
+		return "Nothing is currently selected. No pose was saved, or action taken.";	
+	}
+	string $safeShelfCommand;
+	for ($node in $selected)
+	{
+		string $keyableAttrs[] = `listAttr -r -w -k -u -v -m -s $node`;
+		if ( !`size($keyableAttrs)`){
+			continue;	
+		} 
+		for ($attr in $keyableAttrs)
+		{
+			string $value = string ( `getAttr ($node+"."+$attr)` );
+			string $newNodeName = `substitute $charPrefix $node ""`;
+			$safeShelfCommand = $safeShelfCommand+("catch (`charSelSetAttr \""+$newNodeName +"."+$attr+"\" "+$value+"`);\n");
+		}
+	}
+	
+	string $poseFileName = $label + ".pose.mel";
+	writePoseFile($safeShelfCommand, $poseFileName);
+	arrayPopEntry($listofposes, $poseFileName);
+	$listofposes[size($listofposes)] = $poseFileName;
+	writePoseIndexFile();
+	csRefreshPoseList();	
+	
+	return $safeShelfCommand;
+}
+
+
+
+global proc charSelSetAttr(string $attrname, float $attrvalue) {
+	string $newattrname = $attrname;
+	string $prefixName = "";
+	
+	if ( `optionVar -exists charNamesOption` ) {
+		$prefixName = `optionVar -q charNamesOption`;
+	}
+		
+	$newattrname = $prefixName + $attrname;
+	setAttr $newattrname $attrvalue;	
+}
+
+
+global proc csApplyPose	 (){
+	string    $userSelection[] = `textScrollList -q -si csPoseListItem`;
+	
+	//make sure the user selected a pose
+	if ($userSelection[0] == ""){
+		error "Please select a pose first";
+	}
+	
+	string $poseFileName = $userSelection[0] + ".pose.mel";
+	print ("//trying to source:" + $poseFileName + "\n");
+	readPoseFile($poseFileName) ;
+}
+		
+
+global proc csRefreshPoseList (){
+	global string $listofposes[];
+	readPoseIndexFile;
+	textScrollList -edit -removeAll csPoseListItem;
+	for ( $pose in $listofposes ) {
+		string $posename = stringFirstWord($pose, ".");
+		textScrollList -edit -append $posename csPoseListItem;
+	}
+}
+
+
+global proc csDeletePose (){
+	global string $listofposes[];
+	
+	string $userSelection[] = `textScrollList -q -si csPoseListItem`;
+	string $poseFileNamearray = $userSelection[0] + ".pose.mel";
+	print ("//removing pose:" + $poseFileNamearray + "\n");
+	arrayPopEntry($listofposes, $poseFileNamearray);
+	writePoseIndexFile();
+	csRefreshPoseList();	
+}
+
+
+global proc writePoseFile(string $filedata, string $poseFileName) {
+    // Print a string into a file
+    //
+	string $exampleFileName = `frameLayout -q -l Folder`;
+    $exampleFileName = $exampleFileName + $poseFileName;
+    //$exampleFileName = ( `internalVar -userScriptDir` + "animSaver/" + $poseFileName );
+    print $exampleFileName;
+    $fileId=`fopen $exampleFileName "w"`;
+    fprint $fileId $filedata;
+    fclose $fileId;
+
+}
+
+global proc int getFileSize(string $file)
+{
+	int $amount = 0;
+	$fileId=`fopen $file "r"`;
+    string $nextLine = `fgetline $fileId`;
+	while ( size( $nextLine ) > 0 ) {
+	
+    	$nextLine = `fgetline $fileId`;
+		$amount++;
+    }
+	return $amount;
+}
+	
+
+global proc readPoseFile(string $poseFileName) {
+	
+	int $amount = 0;
+       
+       progressWindow
+           -title "Loading Animation"
+          -progress $amount
+          -status "Loading: 0%"
+           -isInterruptable true;
+    // read and execute our pose/anim file
+    //
+	string $exampleFileName = `frameLayout -q -l Folder`;
+    $exampleFileName = $exampleFileName + $poseFileName;
+	print $exampleFileName;
+    //$exampleFileName = ( `internalVar -userScriptDir` + "animSaver/" + $poseFileName );
+	$fileId=`fopen $exampleFileName "r"`;
+    string $nextLine = `fgetline $fileId`;
+	int $numofLines = `getFileSize($exampleFileName)`;
+
+    while ( size( $nextLine ) > 0 ) {
+	
+		// Check if the dialog has been cancelled
+           if ( `progressWindow -query -isCancelled` ) break;
+ 
+           // Check if end condition has been reached
+           if ( `progressWindow -query -progress` >= $numofLines) break;
+		   
+		   progressWindow -edit 
+               -progress $amount 
+               -status ("Loading "+ $amount + " out of " + $numofLines);
+		 
+		eval $nextLine;
+    	$nextLine = `fgetline $fileId`;
+		$amount++;
+    }
+	progressWindow -endProgress;
+    fclose $fileId;
+	
+
+}
+
+
+
+global proc writePoseIndexFile() {
+    // Print our list of poses to the pose index file
+    //
+    global string $listofposes[];
+	string $exampleFileName = `frameLayout -q -l Folder`;
+    $exampleFileName = $exampleFileName + "poseindex.txt";
+    //$exampleFileName = ( `internalVar -userScriptDir` + "animSaver/poseindex.txt" );
+    
+    $fileId=`fopen $exampleFileName "w"`;
+    for ( $pose in $listofposes ) {
+    	$pose = $pose + "\n";
+    	fprint $fileId $pose;
+    }
+    fclose $fileId;
+
+}
+
+global proc readPoseIndexFile (){	
+    // read the pose index file one line at a time
+    // and put the pose names into the $listofposes array
+    //
+    global string $listofposes[];
+    clear($listofposes);
+    int $i = 0;
+	string $poseIndexFileName = `frameLayout -q -l Folder`;
+    $poseIndexFileName = $poseIndexFileName + "poseindex.txt";
+    //$poseIndexFileName = ( `internalVar -userScriptDir` + "animSaver/poseindex.txt" );
+    
+    $fileId=`fopen $poseIndexFileName "r"`;
+    string $nextLine = `fgetline $fileId`;
+    while ( size( $nextLine ) > 0 ) {
+    	print ("// Loaded pose: " + $nextLine);
+    	$listofposes[$i] = stringFirstWord($nextLine, "\n");
+    	$i++;
+    	$nextLine = `fgetline $fileId`;
+    }
+    fclose $fileId;
+}
+
+
+/*
+......................................................................
+
+Main Window UI
+
+.....................................................................
+*/
+
+global proc csMainPoseControlWindow () {
+	global string $listofposes[];
+
+
+	string $windowName = "MainPoseSaverWindow";
+	string $windowTitle = "Pose Saver";
+	string $currentDefault = "";
+
+	if ( `window -exists $windowName` ) { deleteUI $windowName; }
+
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0
+		-sizeable 1 -widthHeight 250 100 $windowName;
+
+
+	psMakePoseLayout ("poseWinLayout", 1);	
+
+ 	
+	showWindow $windowName;	
+	
+
+	csInitCharNames;
+   	csRefreshCharNames;
+
+}
+
+
+// .................................
+//       Pose save tab
+// ................................
+global proc psMakePoseLayout (string $layoutName, int $settings) {
+	global string $listofposes[];
+	
+formLayout -numberOfDivisions 100 $layoutName;
+ 
+textScrollList
+        -h     50 
+        -nr    4
+        -ams   true
+       // -dkc   "upDeletePose"
+      //  -dcc   "upApplyPose"
+      //  -sc    "upUpdateSelection"
+        -ann   "A list of poses"                        
+        csPoseListItem;
+	/*	popupMenu upPoseListPopup;
+			menuItem -l "Rename..." -c "upRenamePoseItem";
+			menuItem -l "Update Pose" -c "upUpdatePose";
+        		menuItem -divider true;
+        		menuItem -l "Move Up" -c "upMovePoseItem 1;";
+        		menuItem -l "Move Down" -c "upMovePoseItem 0;";
+        		menuItem -l "Move to Top" -c "upMovePoseItem 2;";
+        		menuItem -l "Move to Bottom" -c "upMovePoseItem 3;";
+        		menuItem -divider true;
+        		menuItem -l "Sort Ascending" -c "upSortPoseList 1;";
+        		menuItem -l "Sort Descending" -c "upSortPoseList 0;";
+        */
+       
+       readPoseIndexFile();
+ 
+        for ( $pose in $listofposes ) {
+        	string $posename = stringFirstWord($pose, ".");
+		textScrollList -edit -append $posename csPoseListItem;
+	}
+        
+        
+        
+    //...function controls            
+rowLayout -numberOfColumns 3 -ct3 both both both -ad3 3 -cw3 80 80 50 csColumn;        //pose section
+   button
+        -l         "Apply Pose"
+        -c         "csApplyPose"
+        -ann     "Apply the selected pose"     csApplyPoseBut;
+    button 
+        -l         "Save Pose..."
+        -c         ("charSelPoseSave prompt; ")
+        -ann     "Save a new pose"        csNewPoseBut;
+    button 
+        -l         "Delete Pose"
+        -c         "csDeletePose"
+        -ann     "Delete the selected pose"     csDeletePoseBut;
+
+             	
+setParent ..;
+
+
+
+if ($settings) {
+	csMakeCSSettingsLayout("csCharPreFixItem");
+	 //...form layout
+    formLayout -edit
+        -attachForm        csPoseListItem        "top"    3
+        -attachForm        csPoseListItem        "left"   0
+        -attachControl    csPoseListItem        "bottom" 5 csColumn
+        -attachForm   csPoseListItem        "right"  0 
+
+        -attachNone      csColumn            "top"   
+        -attachForm    csColumn            "left"   0
+        -attachControl    csColumn            "bottom" 5  csCharPreFixItem
+        -attachForm      csColumn            "right"  0
+        
+       	-attachNone	csCharPreFixItem  	   "top" 
+       	-attachForm	csCharPreFixItem           "left"   0
+        -attachForm	csCharPreFixItem           "bottom" 5 
+        -attachForm	csCharPreFixItem           "right"  0
+    
+    $layoutName;	
+		
+} else {
+
+
+
+    //...form layout
+    formLayout -edit
+        -attachForm        csPoseListItem        "top"    3
+        -attachForm        csPoseListItem        "left"   0
+        -attachControl    csPoseListItem        "bottom" 5 csColumn
+        -attachForm   csPoseListItem        "right"  0 
+
+        -attachNone      csColumn            "top"   
+        -attachForm    csColumn            "left"   0
+        -attachForm    csColumn            "bottom" 5 
+        -attachForm      csColumn            "right"  0
+    
+    $layoutName;
+}
+    
+ 	setParent ..;	
+	
+}
+
+
+
+// Array entry delete
+//
+global proc arrayPopEntry(string $theArray[], string $itemToRemove) {
+	string $returnArray[];
+	int $i = 0;
+	 
+        for ( $item in $theArray ) {
+		if ($item != $itemToRemove) {
+			$returnArray[$i] = $item;
+			$i++;
+		}
+	}
+	clear $theArray;
+	$i = 0;
+	for ( $newitem in $returnArray ) {
+		$theArray[$i] = $newitem;
+		$i++;
+	}	
+}
+
+
+/*
+......................................................................
+Borrowed text processing functions
+.....................................................................
+*/
+
+
+
+
+
+//stringPopNthWord, by Julian Love, julian@lightmail.com. Part of the StringTools set.
+//
+//description:	chops off the word at the position within the source string based
+//				on the word char. Index starts with at 1.
+//
+//usage:		stringPopNthWord string[source string] int[position] string[character that separates words];
+//
+//examples:		stringPopNthWord "hello world." 1 " ";
+//				// Result: hello //
+//
+//				stringPopNthWord "left_wrist_controller" 2 "_";
+//				// Result: left_controller //
+global proc string stringPopNthWord (string $item, int $position, string $wordChar){
+	string	$tokenList[];
+	string	$returnString;
+	int		$x, $y;
+	
+	tokenize $item $wordChar $tokenList;
+	$y = size($tokenList);
+	
+	for ($x=0; $x<$y; $x++){
+		if ($x != ($position -1)){
+			if ($position != $y){
+				if ($x != ($y-1))
+					{$returnString += ($tokenList[$x] + $wordChar);}
+				else
+					{$returnString += $tokenList[$x];}
+			}
+			else{
+				if ($x != ($y-2))
+					{$returnString += ($tokenList[$x] + $wordChar);}
+				else
+					{$returnString += $tokenList[$x];}
+			}		
+		}
+	}
+	
+	return $returnString;
+}
+
+
+//stringFirstWord, by Julian Love, julian@lightmail.com. Part of the StringTools set.
+//
+//description:	returns the first word in the supplied string based on the word character
+//
+//usage:		stringFirstChar string[source string] string[character that separates words];
+//
+//examples:		stringFirstChar "hello world." " ";
+//				// Result: hello //
+//
+//				stringFirstChar "left_wrist_controller" "_";
+//				// Result: left //
+
+
+global proc string stringFirstWord (string $item, string $wordChar){
+	string $wordList[];
+	
+	tokenize $item $wordChar $wordList;
+	
+	return $wordList[0];
+}
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,385 @@
+//////////////////////////////////////////////////////////////////////////////
+// FX TOOLS PARTICLE FUNCTIONS
+//////////////////////////////////////////////////////////////////////////////
+//
+//	Copyright ©2013 Iskander Cathal Mellakh Comet All Rights Reserved
+//
+//	website: http://www.icmstudios.co.uk/
+//
+//	LICENCE DETAILS:
+//	This tool is free to use on private and commercial projects. 
+//	If used on a commercial project please credit ICM Studios for the tool.
+//	
+//	Enjoy :) 
+//	Iskander Mellakh
+//
+//////////////////////////////////////////////////////////////////////////////
+
+global proc browseFiles( ) {
+		   textField -edit -text `fileDialog2 -fm 1` myTextField;
+ }
+
+global proc createDynamics(){
+			string $sel[] 		    = 	`ls -sl`;
+			string $list 		    = 	`optionMenu -q -sl OPTemitterType`;
+			//string $fileLoc 	    =	"";
+			string $fileLoc         =   `textField -q -text myTextField`;
+			string $getName		    =	`textFieldGrp -q -text TFGDynamicsName`;
+			string $name 		    =	($getName+"_");
+			string $particleType    = 	`optionMenu -q -sl OPTparticleType`;
+			int $start				=	`intFieldGrp -q -v1 IFGstTime`;
+
+			if ($list == "1"){
+				emitter -type curve -r 100 -sro 0 -nuv 0 -cye none -cyi 1 -spd 1 -srn 0 -nsp 1 -tsp 0 -mxd 0 -mnd 0 -dx 1 -dy 0 -dz 0 -sp 0 -n ($name+"atDynamicsEmitter");}
+			else if ($list == "2"){
+				emitter -pos 0 0 0 -r 100 -sro 0 -nuv 0 -cye none -cyi 1 -spd 1 -srn 0 -nsp 1 -tsp 0 -mxd 0 -mnd 0 -dx 1 -dy 0 -dz 0 -sp 0 -n ($name+"atDynamicsEmitter");}
+			else if ($list == "3"){
+				emitter -type surface -r 100 -sro 0 -nuv 0 -cye none -cyi 1 -spd 1 -srn 0 -nsp 1 -tsp 0 -mxd 0 -mnd 0 -dx 1 -dy 0 -dz 0 -sp 0 -n ($name+"atDynamicsEmitter");}
+
+			if ($particleType == "1"){
+			    particle -n ($name+"FXDynamicsParticles");
+			    connectDynamic -em ($name+"atDynamicsEmitter") ($name+"FXDynamicsParticles");
+			}
+			else if  ($particleType == "2"){
+                nParticle -n ($name+"FXDynamicsParticles");
+                connectDynamic -em ($name+"atDynamicsEmitter") ($name+"FXDynamicsParticles");
+            }
+
+			spaceLocator -p 0 0 0 -n ($name+"particleLocator");
+				setAttr ("|"+$name+"particleLocator.visibility") 0;
+			circle -ch on -o on -nr 0 1 0 -r 1 -n ($name+"Dynamics_ctrl");
+                print "\/\/ Making Circle";
+            circle -ch on -o on -nr 0 1 0 -r 1 -n ($name+"Dynamics_ctrl_0");
+			select -r ($name+"Dynamics_ctrl_0.cv[0:7]") ;
+                    rotate -r -p 0cm 0cm 0cm -os -90 0 0 ;
+                    print "\/\/ Making Circle 02";
+                    select -r ($name+"Dynamics_ctrl_0Shape") ($name+"Dynamics_ctrl");
+                    parent -r -s;
+                    delete ($name+"Dynamics_ctrl_0");
+					if ($list == "2"){
+						select -r ($name+"FXDynamicsParticles") ("|"+$name+"particleLocator") ;
+							print "\/\/ Grouping the dynamic elements";
+							group -n ($name+"DYNAMICS_GRP"); xform -os -piv 0 0 0;}
+					else {
+						select -r $sel[0] ($name+"FXDynamicsParticles") ("|"+$name+"particleLocator") ;
+							print "\/\/ Grouping the dynamic elements";
+						group -n ($name+"DYNAMICS_GRP"); xform -os -piv 0 0 0;
+						rename $sel[0] ($name+"DynamicEmitterOBJ");
+							print ("\/\/ renaming "+$sel[0]+"to > >> >> > DynamicEmitterOBJ");}
+					
+					
+			//----- SETTING UP THE CONTROL ATTRS
+			addAttr -ln "particleSizeMin" -at double  -min 0 -max 25 -dv 1 ("|"+$name+"Dynamics_ctrl");
+			setAttr -e-keyable true ("|"+$name+"Dynamics_ctrl.particleSizeMin");
+			addAttr -ln "particleSizeMax" -at double  -min -0 -max 25 -dv 1 ("|"+$name+"Dynamics_ctrl");
+			setAttr -e-keyable true ("|"+$name+"Dynamics_ctrl.particleSizeMax");
+			addAttr -ln "LifespanMin" -at double  -min -0 -max 25 -dv 1 ("|"+$name+"Dynamics_ctrl");
+			setAttr -e-keyable true ("|"+$name+"Dynamics_ctrl.LifespanMin");
+			addAttr -ln "LifespanMax" -at double  -min 0 -max 25 -dv 1 ("|"+$name+"Dynamics_ctrl");
+			setAttr -e-keyable true ("|"+$name+"Dynamics_ctrl.LifespanMax");
+			addAttr -ln "imgSeqMin" -at long  -min 0 -max 25 -dv 1 ("|"+$name+"Dynamics_ctrl");
+			setAttr -e-keyable true ("|"+$name+"Dynamics_ctrl.imgSeqMin");
+			addAttr -ln "imgSeqMax" -at long  -min 0 -max 25 -dv 1 ("|"+$name+"Dynamics_ctrl");
+			setAttr -e-keyable true ("|"+$name+"Dynamics_ctrl.imgSeqMax");
+			addAttr -ln "emittedParticles"  -at double ("|"+$name+"Dynamics_ctrl");
+			setAttr -e-keyable true ("|"+$name+"Dynamics_ctrl.emittedParticles");
+			addAttr -ln "size"  -at long ("|"+$name+"Dynamics_ctrl");
+			setAttr -e-keyable true ("|"+$name+"Dynamics_ctrl.size");
+			addAttr -ln "twist"  -at long ("|"+$name+"Dynamics_ctrl");
+			setAttr -e-keyable true ("|"+$name+"Dynamics_ctrl.twist");
+			addAttr -ln "volumeScale"  -at double ("|"+$name+"Dynamics_ctrl");
+			setAttr -e-keyable true ("|"+$name+"Dynamics_ctrl.volumeScale");
+			
+			//----- SETTING UP THE CONSTRAINTS
+			select -r ($name+"Dynamics_ctrl") ($name+"DYNAMICS_GRP|"+$name+"particleLocator") ; parentConstraint -weight 1;
+			
+			setAttr ($name+"FXDynamicsParticlesShape.particleRenderType") 5;
+			setAttr ($name+"FXDynamicsParticlesShape.depthSort") 1;
+			addAttr -ln "twistRatePP0" -dt doubleArray ($name+"FXDynamicsParticlesShape");
+			addAttr -ln "twistRatePP" -dt doubleArray ($name+"FXDynamicsParticlesShape");
+			addAttr -ln "spriteScaleXPP" -dt doubleArray ($name+"FXDynamicsParticlesShape");
+			addAttr -ln "spriteScaleXPP0" -dt doubleArray ($name+"FXDynamicsParticlesShape");
+			addAttr -ln "spriteScaleYPP" -dt doubleArray ($name+"FXDynamicsParticlesShape");
+			addAttr -ln "spriteScaleYPP0" -dt doubleArray ($name+"FXDynamicsParticlesShape");
+			addAttr -ln "spriteTwistPP" -dt doubleArray ($name+"FXDynamicsParticlesShape");
+			addAttr -ln "spriteTwistPP0" -dt doubleArray ($name+"FXDynamicsParticlesShape");
+			setAttr -e-keyable true ($name+"FXDynamicsParticlesShape.twistRatePP");
+			addAttr -ln "spriteNumPP"  -dt doubleArray  ($name+"FXDynamicsParticlesShape");
+			addAttr -ln "spriteNumPP0"  -dt doubleArray  ($name+"FXDynamicsParticlesShape");
+			setAttr -e-keyable true ($name+"FXDynamicsParticlesShape.spriteNumPP");
+			addAttr -ln radiusPP -dt doubleArray ($name+"FXDynamicsParticlesShape");
+			addAttr -ln radiusPP0 -dt doubleArray ($name+"FXDynamicsParticlesShape");
+			
+			addAttr -ln "opacityVPP0"  -dt doubleArray  ($name+"FXDynamicsParticlesShape");
+			addAttr -ln "opacityVPP"  -dt doubleArray  ($name+"FXDynamicsParticlesShape");
+			setAttr -e-keyable true ($name+"FXDynamicsParticlesShape.opacityVPP");
+			addAttr -ln "rgbVPP0"  -dt doubleArray  ($name+"FXDynamicsParticlesShape");
+			addAttr -ln "rgbVPP"  -dt doubleArray  ($name+"FXDynamicsParticlesShape");
+			setAttr -e-keyable true ($name+"FXDynamicsParticlesShape.rgbVPP");
+			addAttr -ln "opacityPP" -dt doubleArray ($name+"FXDynamicsParticlesShape");
+			addAttr -ln "opacityPP0" -dt doubleArray ($name+"FXDynamicsParticlesShape");
+			setAttr -e-keyable true ($name+"FXDynamicsParticlesShape.opacityPP");
+			addAttr -ln "rgbPP" -dt vectorArray ($name+"FXDynamicsParticlesShape");
+			addAttr -ln "rgbPP0" -dt vectorArray ($name+"FXDynamicsParticlesShape");
+			setAttr -e-keyable true ($name+"FXDynamicsParticlesShape.rgbPP");
+			setAttr ($name+"FXDynamicsParticlesShape.lifespanMode") 3;
+			
+			addAttr -ln "instancerScalePP0"  -dt vectorArray  ($name+"FXDynamicsParticlesShape");
+			addAttr -ln "instancerScalePP"  -dt vectorArray  ($name+"FXDynamicsParticlesShape");
+			//setAttr -e-keyable true ($name+"FXDynamicsParticlesShape.instancerScalePP");
+			
+			addAttr -ln "rotationPP"  -dt vectorArray  ($name+"FXDynamicsParticlesShape");
+			addAttr -ln "rotationPP0"  -dt vectorArray  ($name+"FXDynamicsParticlesShape");
+			//setAttr -e-keyable true ($name+"FXDynamicsParticlesShape.instancerRotatePP");
+						
+			//----- SETTING UP THE RAMPS FOR THE DYNAMICS
+			shadingNode -asTexture ramp -name ($name+"opacityRamp");
+			shadingNode -asTexture ramp -name ($name+"rgbRamp");
+			arrayMapper -target ($name+"FXDynamicsParticlesShape") -destAttr rgbPP -inputU ageNormalized -inputV ageNormalized  -mapTo ($name+"rgbRamp");
+			arrayMapper -target ($name+"FXDynamicsParticlesShape") -destAttr opacityPP -inputU ageNormalized -inputV ageNormalized -mapTo ($name+"opacityRamp");
+			
+			//----- SETTING UP THE SHADER
+			shadingNode -asShader lambert -name ($name+"dynamicsMaterial");
+			sets -renderable true -noSurfaceShader true -empty -name ($name+"dynamicsMaterial2SG");
+			connectAttr -f ($name+"dynamicsMaterial.outColor") ($name+"dynamicsMaterial2SG.surfaceShader");
+			shadingNode -asTexture file -name ($name+"dynamicsTextureSeq");
+			connectAttr -f ($name+"dynamicsTextureSeq.outColor") ($name+"dynamicsMaterial.color");
+			connectAttr -f ($name+"dynamicsTextureSeq.outTransparency") ($name+"dynamicsMaterial.transparency");
+			select -r ($name+"FXDynamicsParticles");
+			sets -e -forceElement ($name+"dynamicsMaterial2SG");
+			setAttr ($name+"dynamicsMaterial.diffuse") 1;
+			
+			setAttr ($name+"dynamicsTextureSeq.filterType") 0;
+
+			setAttr ($name+"dynamicsTextureSeq.useFrameExtension") 1;
+			setAttr -type "string" ($name+"dynamicsTextureSeq.fileTextureName")  $fileLoc;
+			setAttr ($name+"dynamicsTextureSeq.useHardwareTextureCycling") 1;
+			int $imageSeq = `intFieldGrp -q -v1 IFGseqAmt`;
+			setAttr ($name+"dynamicsTextureSeq.endCycleExtension") ($imageSeq - 1);
+
+			
+			for ($i = 1; $i < $imageSeq; $i++){
+			setAttr ($name+"dynamicsTextureSeq.frameExtension") $i;
+			setKeyframe ($name+"dynamicsTextureSeq.frameExtension");
+			keyTangent -index $i -outTangentType spline ($name+"dynamicsTextureSeq_frameExtension") ;
+			keyTangent -index $i -inTangentType spline ($name+"dynamicsTextureSeq_frameExtension") ;
+			currentTime $i;}
+			$shapeNm = ($name+"FXDynamicsParticlesShape");
+			$ctrlNm  = ($name+"Dynamics_ctrl");
+			$loc	 = ($name+"particleLocator");
+			string $particleExp = ("dynExpression -s \"$particleSizeMin = "+$ctrlNm+".particleSizeMin; \\n $particleSizeMax = "+$ctrlNm+".particleSizeMax;\\n $lifeMin = "+$ctrlNm+".LifespanMin;\\n $lifeMax = "+$ctrlNm+".LifespanMax;\\n $imgSeqMin = "+$ctrlNm+".imgSeqMin;\\n $imgSeqMax = "+$ctrlNm+".imgSeqMax; \\n "+$shapeNm+".lifespanPP = rand($lifeMin,$lifeMax); \\n "+$shapeNm+".radiusPP = rand(0.1,3.5);"+$shapeNm+".opacityVPP = 0; \\n "+$shapeNm+".spriteScaleXPP = "+$shapeNm+".spriteScaleYPP = rand($particleSizeMin,$particleSizeMax);\\n "+$shapeNm+".spriteTwistPP = rand(0,360); \\n "+$shapeNm+".rgbVPP = rand(0,1); \\n "+$shapeNm+".spriteNumPP = rand($imgSeqMin ,$imgSeqMax ); \\n "+$shapeNm+".twistRatePP = rand(-1,1); \\n "+$shapeNm+".rotationPP = rand(-360,360);\" -c "+$shapeNm+";");
+            eval($particleExp);
+			string $runTimeExpr = ("dynExpression -s \"vector $loc = <<"+$loc+".translateX,"+$loc+".translateY,"+$loc+".translateZ>>;float $dist = mag ($loc-"+$shapeNm+".position);$size = "+$ctrlNm+".size;$twist = "+$ctrlNm+".twist;"+$shapeNm+".opacityVPP = linstep(0,$size,$dist);"+$shapeNm+".rgbVPP = linstep(0,$size,$dist);"+$shapeNm+".spriteTwistPP += "+$shapeNm+".twistRatePP*$twist;\" -rad "+$shapeNm+";");
+			eval($runTimeExpr);
+			  
+
+			//----- SETTING UP THE PARTICLE INFO NODE
+			shadingNode -asUtility particleSamplerInfo -n ($name+"ParticleInfoNode");
+			connectAttr -f ($name+"ParticleInfoNode.outColor") particleCloud1.color;
+			setAttr  ($name+"FXDynamicsParticlesShape.startFrame") $start;
+			
+}
+
+global proc turbOn(){
+			$dynamicsExists 			= `objExists "FXDynamicsParticlesShape"`;
+			string $RnDynamics 			= ($dynamicsExists == false) ? "*:FXDynamicsParticlesShape" : "FXDynamicsParticlesShape";
+			connectDynamic -f ($RnDynamics+"pixieTurbulance") ($RnDynamics+"pixieParticles");
+	}
+
+global proc turbOff(){	
+			$dynamicsExists 			= `objExists "FXDynamicsParticlesShape"`;
+			string $RnDynamics 			= ($dynamicsExists == false) ? "*:FXDynamicsParticlesShape" : "FXDynamicsParticlesShape";						
+			connectDynamic -d -f ($RnDynamics+"pixieTurbulance") ($RnDynamics+"pixieParticles");
+	}
+
+global proc visOn(){
+			$dynamicsExists 			= `objExists "FXDynamicsParticlesShape"`;
+			string $RnDynamics 			= ($dynamicsExists == false) ? "*:FXDynamicsParticlesShape" : "FXDynamicsParticlesShape";										
+			setAttr ($RnDynamics+"Pixie_Dust.visibility") 1; 
+	}
+
+global proc visOff(){
+			$dynamicsExists 			= `objExists "FXDynamicsParticlesShape"`;
+			string $RnDynamics 			= ($dynamicsExists == false) ? "*:FXDynamicsParticlesShape" : "FXDynamicsParticlesShape";	
+			setAttr ($RnDynamics+"Pixie_Dust.visibility") 0; 
+}
+
+global proc overOn(){
+			$dynamicsExists 			= `objExists "FXDynamicsParticlesShape"`;
+			string $RnDynamics 			= ($dynamicsExists == false) ? "*:FXDynamicsParticles" : "FXDynamicsParticles";												
+			setAttr ($RnDynamics+".overrideEnabled") 1; 
+}
+
+global proc overOff(){
+			$dynamicsExists 			= `objExists "FXDynamicsParticlesShape"`;
+			string $RnDynamics 			= ($dynamicsExists == false) ? "*:FXDynamicsParticles" : "FXDynamicsParticles";
+			setAttr ($RnDynamics+".overrideEnabled") 0;
+}
+	
+global proc pdcOn(){
+			$dynamicsExists 			= `objExists "FXDynamicsParticlesShape"`;
+			string $RnDynamics 			= ($dynamicsExists == false) ? "*:FXDynamicsParticlesShape" : "FXDynamicsParticlesShape";	
+			$startTime 					= `intFieldGrp -q -v1 startTimeSlider`;
+			$endTime  					= `intFieldGrp -q -v1 endTimeSlider`;
+			dynExport 					-mnf $startTime 
+												-mxf $endTime 
+												-os 2 
+												-p "pixieCache" 
+												-f "pdc" ($RnDynamics+"pixieParticles");
+}
+
+global proc getCloud(){
+			$dynamicsExists 			= `objExists "FXDynamicsParticlesShape"`;
+			string $RnDynamics 			= ($dynamicsExists == false) ? "*:FXDynamicsParticlesShape" : "FXDynamicsParticlesShape";
+            string $path 				= `getAttr ($RnDynamics+"dynamicsTextureSeq.fileTextureName")`;
+            string $newpath 			= `substitute "cloudPuff" $path "leaves"`;
+            setAttr ($RnDynamics+"dynamicsTextureSeq.fileTextureName") -type "string" $newpath;
+}
+
+global proc getDust(){
+			$dynamicsExists 			= `objExists "FXDynamicsParticlesShape"`;
+			string $RnDynamics 			= ($dynamicsExists == false) ? "*:FXDynamicsParticlesShape" : "FXDynamicsParticlesShape";
+            string $path 				= `getAttr ($RnDynamics+"dynamicsTextureSeq.fileTextureName")`;
+            string $newpath 			= `substitute "cloudPuff" $path "pixieDust"`;
+            setAttr ($RnDynamics+"dynamicsTextureSeq.fileTextureName") -type "string" $newpath;
+}
+
+global proc pdcOff(){
+			setAttr "dynGlobals1.useParticleDiskCache" 0;}
+
+global proc hrb(){
+			hwRenderLoad;
+			HardwareRenderBuffer;}
+	
+global proc geoMaskOn(){
+			setAttr "defaultHardwareRenderGlobals.geometryMask" 1;}
+
+global proc geoMaskOff(){	
+			setAttr "defaultHardwareRenderGlobals.geometryMask" 0;}
+	
+global proc fullResOn(){
+			setAttr "defaultHardwareRenderGlobals.fullImageResolution" 1;}
+
+global proc fullResOff(){
+			setAttr "defaultHardwareRenderGlobals.fullImageResolution" 0;}
+
+global proc renderSeq(){	
+			glRender -renderSequence hardwareRenderView;
+}
+
+global proc pixieGoals(){
+string $getName[]           = `ls "*_DYNAMICS_GRP"`;
+    string $brokenNm[];
+    $numTokens                  = `tokenize $getName[0] "_" $brokenNm`; 
+    string $assetNm             = $brokenNm[0];
+    $dynamicsExists             = `objExists ($assetNm+"_DYNAMICS_GRP")`;
+    string $RnDynamics          = ($dynamicsExists == false) ? ("*:"+$assetNm+"_FXDynamicsParticlesShape") : ($assetNm+"_FXDynamicsParticlesShape");
+    $particlesExists            = `objExists ($assetNm+"_FXDynamicsParticles")`;
+    $goalExists                 = `objExists "goalObj"`;
+    string $RnName              = ($goalExists == true) ? "goalObjA" : "goalObj";
+    string $sel[]               = `ls -sl`;    
+    
+    if ($sel[0] == ""){
+		spaceLocator -p 0 0 0 -name $RnName;
+		select -r $RnDynamics $RnName ;
+		goal -w 0.5 -utr 0 -g $RnName $RnDynamics;
+	}
+    else {
+		select -r $RnDynamics $sel[0] ;
+		goal -w 0.5 -utr 0 -g $sel[0] $RnDynamics;
+    }
+	FXDynamics();
+}
+
+global proc mk_collide(){
+    string $brokenNm[];            
+    string $getName[]           = `ls "*_DYNAMICS_GRP"`;
+    $numTokens                  = `tokenize $getName[0] "_" $brokenNm`; 
+    string $assetNm             = $brokenNm[0];
+    $particlesExists            = `objExists ($assetNm+"_FXDynamicsParticles")`;
+    string $RnParticles         = ($assetNm+"_FXDynamicsParticles");
+    string $sel[]               = `ls -sl`; 
+    
+    for ($each in $sel){
+    select -r $RnParticles $each;
+    collision -r 0.1 -f 0 -o 0.01  $each;
+    connectDynamic -c $each $RnParticles;
+    }
+}
+
+global proc mkInstance(){
+    string $brokenNm[];            
+    string $getName[]           = `ls "*_DYNAMICS_GRP"`;
+    $numTokens                  = `tokenize $getName[0] "_" $brokenNm`; 
+    string $assetNm             = $brokenNm[0];
+    $particlesExists            = `objExists ($assetNm+"_FXDynamicsParticles")`;
+    string $RnParticles         = ($assetNm+"_FXDynamicsParticles");
+    string $sel[]               = `ls -sl`; 
+    
+    select $sel;
+	select -add $RnParticles ;
+    particleInstancer  -name ($assetNm+"_Instance")  -object $sel -cycle None -cycleStep 1 -cycleStepUnits Frames -levelOfDetail Geometry -rotationUnits Degrees -rotationOrder XYZ -position worldPosition -rotation rotationPP -age age $RnParticles;
+	setAttr ($RnParticles+".visibility") 0;
+	print "Turning off the visibility of the particles. ";
+}
+
+global proc mkPoly(){
+    string $brokenNm[];            
+    string $getName[]           = `ls "*_DYNAMICS_GRP"`;
+    $numTokens                  = `tokenize $getName[0] "_" $brokenNm`; 
+    string $assetNm             = $brokenNm[0];
+    $particlesExists            = `objExists ($assetNm+"_FXDynamicsParticles")`;
+    string $RnParticles         = ($assetNm+"_FXDynamicsParticles");
+
+	select $RnParticles;
+	particleToPoly;
+}
+
+global proc mkConnection(){
+    string $assetNm		    	= `textFieldGrp -q -text TFGDynamicsName`; 
+    string $RnParticles         = ($assetNm+"_FX_DynamicsParticles");
+    string $sel[]               = `ls -sl`; 
+    string $particleNm          = ($RnParticles+"Fluids");
+    string $fluids              = ($assetNm+"_FX_fluids");
+    string $fluidEmitter        = ($assetNm+"_FX_fluidsEmitter");
+	string $connection_01       = ("setDynamicConnection \""+$particleNm+" "+$fluids+"Shape\" 1");
+    string $connection_02       = ("setDynamicConnection \""+$particleNm+" "+$fluidEmitter+"\" 1");
+	//connectAttr ("|"+$fluids+"|"+$fluidEmitter+".output[1]") ("|"+$particleNm+"|"+$particleNm+"Shape.newParticles[1]");
+    //connectAttr ("|"+$particleNm+"|"+$particleNm+"Shape.seed[1]") ("|"+$fluids+"|"+$fluidEmitter+".seed[1]");
+    //connectAttr ("|"+$particleNm+"|"+$particleNm+"Shape.isFull") ("|"+$fluids+"|"+$fluidEmitter+".isFull");
+    //connectAttr ("|"+$particleNm+"|"+$particleNm+"Shape.startTime") ("|"+$fluids+"|"+$fluidEmitter+".startTime");
+    //connectAttr ("|"+$particleNm+"|"+$particleNm+"Shape.inheritFactor") ("|"+$fluids+"|"+$fluidEmitter+".inheritFactor");
+    //connectAttr ("|"+$particleNm+"|"+$particleNm+"Shape.timeStepSize") ("|"+$fluids+"|"+$fluidEmitter+".deltaTime");
+	DynamicRelationshipEditor;
+    //eval($connection_02);
+	//eval($connection_01);
+}
+
+global proc mkFluidbox(){
+    string $assetNm		    	= `textFieldGrp -q -text TFGDynamicsName`;            
+    string $RnNewParticles      = ($assetNm+"_FX_DynamicsParticles");
+    string $sel[]               = `ls -sl`; 
+    string $particleNm          = ($RnNewParticles+"Fluids");
+    string $fluids              = ($assetNm+"_FX_fluids");
+    string $fluidEmitter        = ($assetNm+"_FX_fluidsEmitter");
+    
+	string $brokenNm[];            
+    string $getName[]           = `ls "*_DYNAMICS_GRP"`;
+    $numTokens                  = `tokenize $getName[0] "_" $brokenNm`; 
+    string $assetNm             = $brokenNm[0];
+    $dynamicsExists             = `objExists ($assetNm+"_DYNAMICS_GRP")`;
+	string $RnDynamics          = ($dynamicsExists == false) ? ("*:"+$assetNm+"_DYNAMICS_GRP") : ($assetNm+"_DYNAMICS_GRP");
+    $particlesExists            = `objExists ($assetNm+"_FXDynamicsParticles")`;
+    string $RnParticles         = ($assetNm+"_FXDynamicsParticles");
+	
+    Create3DContainerEmitter;
+    particle -name $particleNm;
+	rename "fluid1" $fluids;
+	rename "fluidEmitter1" $fluidEmitter;
+	DynamicRelationshipEditor;
+	setAttr ($RnNewParticles+"Fluids.conserve") 0;
+	setAttr ($RnParticles+".conserve") 0;
+	setAttr ($fluids+".overrideEnabled") 1;
+    setAttr ($fluids+".overrideLevelOfDetail") 1;
+	setAttr ($fluids+"Shape.primaryVisibility") 0;
+}

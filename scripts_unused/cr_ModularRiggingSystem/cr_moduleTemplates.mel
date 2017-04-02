@@ -1,0 +1,117 @@
+//---------------------------------------------------------------------------
+// cr_buildModulesFromUI.mel - MEL Script
+//---------------------------------------------------------------------------
+//Copyright (c) 2010 Wasim Khan creaturerigs.com 
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy of
+//this software and associated documentation files (the "Software"), to deal in
+//the Software without restriction, including without limitation the rights to
+//use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+//the Software, and to permit persons to whom the Software is furnished to do so,
+//subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+//FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+//COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+//CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// DESCRIPTION:	
+//		build skeleton joint modules - UI
+//
+// REQUIRES:
+//		cr_buildModuleJointSkeletonLib.mel
+//		cr_charUtilsLib.mel
+//		libString.mel
+//		snaps.mel
+//
+// AUTHOR:
+//		Wasim Khan - wasim.cg@gmail.com
+//----------------------------------------------------------------------------
+
+global proc cr_moduleTemplates() {
+    return;
+    }
+
+
+global proc cr_bipedModuleTemplate(string $name, int $spineCount, int $neckCount, int $finger, int $numFinger, int $toe, int $numToe)
+    {
+    //spine
+    cr_buildSpineDummySkeletonModule($name, "", "spine", $spineCount, "y", $spineCount, 7);
+    move 0 0.07 0 ($name+"spineHips_loc");
+    move 0 17.0 0 ($name+"spineMain_ctrl");
+    //neck and head module
+    cr_buildHeadNeckDummySkeletonModule($name, "", "neck", $neckCount, "y", $neckCount, 7);
+    move 0 (23.0+$spineCount) 0 ($name+"neckMain_ctrl");
+    //arm modules
+    cr_buildArmDummySkeletonModule ($name, "lt_", 3, $finger, $numFinger, 4, 10);
+    cr_buildArmDummySkeletonModule ($name, "rt_", 3, $finger, $numFinger, 4, 15);
+    cr_buildArmModuleSymmetry(($name+"lt_armPlacer_loc"),($name+"rt_armPlacer_loc"));
+    move 3.0 (21.0+$spineCount) 0 ($name+"lt_armPlacer_loc");
+    move 1.0 (21.0+$spineCount) 0 ($name+"lt_clav_loc");
+    rotate 0 0 -45.0 ($name+"lt_armPlacer_loc");
+    scale 0.8 0.8 0.8 ($name+"lt_armPlacer_loc");
+    //leg modules
+    cr_buildBipedLegDummySkeletonModule($name, "lt_", 3, $toe, $numToe, 4, 10);
+    cr_buildBipedLegDummySkeletonModule($name, "rt_", 3, $toe, $numToe, 4, 15);
+    cr_buildLegModuleSymmetry(($name+"lt_legPlacer_loc"),($name+"rt_legPlacer_loc"));
+    // connecting modules
+    cr_connectModuleComponants(($name+"spine"+$spineCount+"_loc"), ($name+"neckMain_ctrl"));
+    cr_connectModuleComponants(($name+"spine"+$spineCount+"_loc"), ($name+"lt_armPlacer_loc"));
+    cr_connectModuleComponants(($name+"spine"+$spineCount+"_loc"), ($name+"rt_armPlacer_loc"));
+    cr_connectModuleComponants(($name+"spineHips_loc"), ($name+"lt_legPlacer_loc"));
+    cr_connectModuleComponants(($name+"spineHips_loc"), ($name+"rt_legPlacer_loc"));
+    select -cl;
+    }
+
+global proc cr_quadModuleTemplate(string $name, int $spineCount, int $neckCount, int $earCount, int $tailCount, int $toe, int $numToe)
+    {
+    //spine
+    cr_buildSpineDummySkeletonModule($name, "", "spine", $spineCount, "y", $spineCount+3, 7);
+    move 0 0.07 0 ($name+"spineHips_loc");
+    move 0 14.0 -3.0 ($name+"spineMain_ctrl");
+    rotate 90 0 0 ($name+"spineMain_ctrl");
+    //neck and head module
+    cr_buildHeadNeckDummySkeletonModule($name, "", "neck", $neckCount, "y", ($neckCount+1), 7);
+    move 0 16.0 (7.0+$spineCount) ($name+"neckMain_ctrl");
+    rotate 45 0 0 ($name+"neckMain_ctrl");
+    rotate -45 0 0 ($name+"headMain_ctrl");
+    select -cl;
+    //ears
+    cr_buildTentacleDummySkeletonModule($name, "lt_", "ear", $earCount, "y", $earCount, 10);
+    cr_buildTentacleDummySkeletonModule($name, "rt_", "ear", $earCount, "y", $earCount, 15);
+    cr_buildBodyModuleSymmetry(($name+"lt_earMain_ctrl"),($name+"rt_earMain_ctrl"));
+    move 2.0 (22.0+$neckCount) (9.0+$spineCount+$neckCount) ($name+"lt_earMain_ctrl");
+    rotate 0 0 -22.5 ($name+"lt_earMain_ctrl");
+    //legs
+    cr_buildQuadLegDummySkeletonModule($name, "ltFrt_", 4, $toe, $numToe, 4, 10);
+    cr_buildQuadLegDummySkeletonModule($name, "rtFrt_", 4, $toe, $numToe, 4, 15);
+    cr_buildLegModuleSymmetry(($name+"ltFrt_legPlacer_loc"),($name+"rtFrt_legPlacer_loc"));
+    move 2.0 15.0 (4.0+$spineCount) ($name+"ltFrt_legPlacer_loc");
+    setAttr ($name+"ltFrt_hip2_loc.ty") -4.0;
+    setAttr ($name+"ltFrt_knee1_loc.ty") -8.0;
+
+    cr_buildQuadLegDummySkeletonModule($name, "ltBck_", 4, $toe, $numToe, 4, 10);
+    cr_buildQuadLegDummySkeletonModule($name, "rtBck_", 4, $toe, $numToe, 4, 15);
+    cr_buildLegModuleSymmetry(($name+"ltBck_legPlacer_loc"),($name+"rtBck_legPlacer_loc"));
+    move 2.0 15.0 -5.0 ($name+"ltBck_legPlacer_loc");
+    //tail
+    select -cl;
+    cr_buildTentacleDummySkeletonModule($name, "", "tail", $tailCount, "z", (($tailCount+3)*-1), 7);
+    move 0.0 14.0 -7.0 ($name+"tailMain_ctrl");
+    rotate -45 0 0 ($name+"tailMain_ctrl");    
+    // connecting modules
+    cr_connectModuleComponants(($name+"head1_loc"), ($name+"lt_earMain_ctrl"));
+    cr_connectModuleComponants(($name+"head1_loc"), ($name+"rt_earMain_ctrl"));
+    cr_connectModuleComponants(($name+"spine"+$spineCount+"_loc"), ($name+"neckMain_ctrl"));
+    cr_connectModuleComponants(($name+"spine"+$spineCount+"_loc"), ($name+"ltFrt_legPlacer_loc"));
+    cr_connectModuleComponants(($name+"spine"+$spineCount+"_loc"), ($name+"rtFrt_legPlacer_loc"));
+    cr_connectModuleComponants(($name+"spineHips_loc"), ($name+"ltBck_legPlacer_loc"));
+    cr_connectModuleComponants(($name+"spineHips_loc"), ($name+"rtBck_legPlacer_loc"));
+    cr_connectModuleComponants(($name+"spineHips_loc"), ($name+"tailMain_ctrl"));
+    select -cl;
+    }

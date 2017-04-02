@@ -1,0 +1,88 @@
+/*
+===========================================================================
+
+<NAME> oaSmoothKeys.mel </NAME>
+<VERSION> v1.1 </VERSION>
+<AUTHORS> Oleg Alexander (olegalexander@gmail.com) </AUTHORS>
+<WEBSITE> www.image-metrics.com </WEBSITE>
+
+<DESCRIPTION>
+
+"Blurs" selected keys. Perfect for animation cleanup and
+for smoothing jittery mocap data. (Simplify Curve is not the same thing!)
+</DESCRIPTION>
+
+<TO_USE>
+
+	o Select at least 3 keys in the Graph Editor.
+	o Execute 'oaSmoothKeys'.
+	o Repeat as necessary. </TO_USE>
+
+<HISTORY>
+
+	v1.1 (Saturday, June 14, 2008)
+		o New blur algorithm, instead of moving average.
+
+	v1.0 (Sunday, December 30, 2007)
+		o Original Release 	</HISTORY>
+
+IF YOU ENJOY THIS MEL SCRIPT, PLEASE RATE IT. I WOULD APPRECIATE IT. THANK YOU!
+===========================================================================
+
+*/
+
+global proc oaSmoothKeys () {
+
+	//Get the selected curves
+	string $curves[] = `keyframe -q -name`;
+	if (`size $curves` == 0) error "Select at least 3 keys in the Graph Editor.";
+
+	//Go
+	float $prevVal[];
+	float $currVal[];
+	float $nextVal[];
+	float $average;
+	float $keys[]; //frame numbers
+	int $sizeOfKeys;
+	string $dupCurve[];
+	float $dupCurveVal[];
+
+	for ($curve in $curves) {
+
+	    //Get the selected keys
+		$keys = `keyframe -q -sl $curve`;
+		$sizeOfKeys = `size $keys`;
+
+		//The first and last key will not be touched.
+		//Therefore there must be at least 3 keys selected.
+		if ($sizeOfKeys < 3) continue;
+
+        //Duplicate the curve to store values in
+        $dupCurve = `duplicate $curve`;
+
+		//Start with frame 2, don't touch last frame
+		for ($i = 1; $i < $sizeOfKeys-1; $i++) {
+
+		    $prevVal = `keyframe -time $keys[$i-1] -q -vc $curve`;
+		    $currVal = `keyframe -time $keys[$i] -q -vc $curve`;
+		    $nextVal = `keyframe -time $keys[$i+1] -q -vc $curve`;
+
+		    //Calculate average
+			$average = ($prevVal[0] + $currVal[0] + $nextVal[0]) / 3;
+
+		    //Store the value in the dup curve
+            keyframe -time $keys[$i] -absolute -valueChange $average $dupCurve[0];
+		}
+
+		//Apply the new values
+		for ($i = 1; $i < $sizeOfKeys-1; $i++) {
+
+		    $dupCurveVal = `keyframe -time $keys[$i] -q -vc $dupCurve[0]`;
+            keyframe -time $keys[$i] -absolute -valueChange $dupCurveVal[0] $curve;
+		}
+
+		delete $dupCurve[0];
+
+	}
+}
+//oaSmoothKeys;

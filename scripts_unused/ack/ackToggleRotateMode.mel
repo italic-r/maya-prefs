@@ -1,0 +1,19 @@
+//////////////////////////////////////////////////////////
+//	ackToggleRotateMode 1.0			
+//	6/1/05					
+//	Aaron Koressel				
+//						
+//	Toggles the rotation tool between local rotation 
+//	and gimbal rotation.
+//////////////////////////////////////////////////////////
+global proc ackToggleRotateMode() {
+	int $rotX = `manipRotateContext -q -mode Rotate`;
+	
+	// 0 = Local, 1 = Global, 2 = Gimbal
+	if ($rotX == 0) {
+		manipRotateContext -e -mode 2 Rotate;
+	} else {
+		manipRotateContext -e -mode 0 Rotate;
+	};
+
+}

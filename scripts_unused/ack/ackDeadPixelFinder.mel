@@ -1,0 +1,285 @@
+//////////////////////////////////////////////////////////
+//	ackDeadPixelFinder BETA 1
+//	4/24/07					
+//	Aaron Koressel		
+
+//	Helps find sections of animation that need attention.
+//	Use 'Stepped' and/or 'Linear' search to make your way
+//	out of blocking.  Use 'Held Poses' to find poses that
+//	lock up with no movement.
+//						
+//	TODO
+//	- Implement sel keys.
+//	- Will only find one offending key per frame.
+//	- Cache curveSet for speed.
+//////////////////////////////////////////////////////////
+
+global proc ackDeadPixelFinder() {
+	string $windowTitle = "ackDeadPixelFinder BETA 1";
+	if ( `window -ex winDeadPixelFinder` ) deleteUI winDeadPixelFinder;
+	int $winWidth = 360;
+	int $winHeight = 145;
+	
+	string $helpMsg = "here";
+
+	window -maximizeButton off -sizeable 0 -title $windowTitle -width $winWidth -height $winHeight -resizeToFitChildren 1 winDeadPixelFinder;
+		columnLayout -rowSpacing 2;
+			rowColumnLayout -numberOfColumns 2 -columnWidth 1 80 -columnWidth 2 260 -columnSpacing 1 6;
+				rowColumnLayout -numberOfRows 1;
+					text -label "Search For:";
+					setParent ..;
+				rowColumnLayout -numberOfRows 1;
+					checkBox -label "Stepped" -v true ackDPF_chkStepped;			
+					checkBox -label "Linear" -v true ackDPF_chkLinear;
+					checkBox -label "Held Poses" -v true ackDPF_chkHeldPoses;	
+					setParent ..;
+					
+				rowColumnLayout -numberOfRows 1;
+					text -label "Using:";
+					setParent ..;
+				rowColumnLayout -numberOfRows 1;
+					radioCollection ackDPF_rdoSelCollection;
+					radioButton -label "Sel Curves" -select ackDPF_rdoSelCurves;
+					radioButton -label "Sel Objects" -select ackDPF_rdoSelObjects;
+					radioButton -label "All Objects" ackDPF_rdoAllObjects;				
+					setParent ..;
+				
+				rowColumnLayout -numberOfRows 1;
+					text -label "When Found:";
+					setParent ..;	
+				rowColumnLayout -numberOfRows 1;
+					checkBox -label "Change Time" -v true ackDPF_chkChangeTime;			
+					checkBox -label "Select Key" -v true ackDPF_chkSelectKey;
+					checkBox -label "Center View" ackDPF_chkCenterView;	
+					setParent ..;
+				setParent ..;
+		separator -height 10 -width $winWidth;
+		rowColumnLayout -numberOfColumns 4 
+				-columnSpacing 1 4
+				-columnWidth 1 20
+				
+				-columnSpacing 2 42
+				-columnWidth 2 100
+				
+				-columnSpacing 3 6
+				-columnWidth 3 100
+				
+				-columnSpacing 4 42
+				-columnWidth 4 35;
+			button -label "?" -c "ackDPF_Help();";	
+			button -label "<<  Find Previous" -c "ackDPF_Find(\"prev\");";
+			button -label "Find Next  >>" -c "ackDPF_Find(\"next\");";
+			button -label "Close" -c "deleteUI winDeadPixelFinder";	
+
+	showWindow;
+	window -e -width $winWidth -height $winHeight winDeadPixelFinder;
+	
+}//end proc
+
+
+global proc ackDPF_Help() {
+	string $windowTitle = "ackDeadPixelFinder Help";
+
+	string $helpMsg = "";
+	$helpMsg += "ackDeadPixelFinder helps find sections of animation that need attention.  Use 'Stepped' and/or 'Linear' search to make your way out of blocking.  Use 'Held Poses' to find poses that lock up with no movement.  'Find Previous' and 'Find Next' searches from the current frame.\n\n";
+	$helpMsg += "SEARCH FOR\n";
+	$helpMsg += "-----------------\n";
+	$helpMsg += ">'Stepped' finds remaining stepped tangents.\n\n";
+	$helpMsg += ">'Linear' finds remaining linear tangents.\n\n";
+	$helpMsg += ">'Held Poses' finds plateaus of consecutive flat-tangent keys of the same value.\n\n";
+	$helpMsg += "\n";
+	$helpMsg += "USING\n";
+	$helpMsg += "-----------------\n";
+	$helpMsg += ">'Sel Curves' searches among the currently selected curves (one or more keys selected in a curve will select the entire curve).\n\n";
+	$helpMsg += ">'Sel Objects' searches among the currently selected objects.\n\n";
+	$helpMsg += ">'All Objects' searches among all animated objects in the scene.\n\n";
+	$helpMsg += "\n";
+	$helpMsg += "WHEN FOUND\n";
+	$helpMsg += "-----------------\n";
+	$helpMsg += ">'Change Time' puts the current time cursor at the found key.\n\n";
+	$helpMsg += ">'Select Key' selects the key that was found.\n\n";
+	$helpMsg += ">'Center View' centers the graph editor on the found key.\n\n";
+	$helpMsg += "\n\n";
+	$helpMsg += "Created by Aaron Koressel\n";
+	$helpMsg += "www.aaronkoressel.com\n";
+	
+	
+	if ( `window -exists winDPF_Help` ) { deleteUI winDPF_Help; }
+
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0 -sizeable 1 -widthHeight 330 300 winDPF_Help;
+		string $form = `formLayout`;
+		$txt = `scrollField -ed 0 -wordWrap 1 -font fixedWidthFont -w 300 -h 200 -numberOfLines 15 -text $helpMsg`;
+		scrollField -e -ip 1 -it "\n" $txt;
+		
+		formLayout -edit
+			-attachForm $txt "top" 0
+			-attachForm $txt "left" 0
+			-attachForm $txt "right" 0
+			-attachForm $txt "bottom" 0
+			$form;
+
+	showWindow winDPF_Help;
+}
+
+global proc ackDPF_Find(string $direction){
+	$start = `timerX`;
+	
+	
+
+	//get checkbox states
+	int $chkStepped = 0;
+	int $chkLinear = 0;
+	int $chkHeldPoses = 0;
+	if (`checkBox -q -v ackDPF_chkStepped` == 1){
+		$chkStepped = 1;
+	}
+	if (`checkBox -q -v ackDPF_chkLinear` == 1){
+		$chkLinear = 1;
+	}
+	if (`checkBox -q -v ackDPF_chkHeldPoses` == 1){
+		$chkHeldPoses = 1;
+	}
+	
+	//start searching from current frame
+	float $startFrame = `currentTime -q`;
+	
+	//get selected curves or all object curves
+	string $curveSet[];
+	if (`radioCollection -q -select ackDPF_rdoSelCollection` == "ackDPF_rdoAllObjects"){
+		$curveSet = `ls -type animCurve`;
+	} else if (`radioCollection -q -select ackDPF_rdoSelCollection` == "ackDPF_rdoSelObjects"){
+		string $selection[] = `ls -sl`;
+		$curveSet = `listConnections -type animCurve $selection`;
+	}else {
+		$curveSet = `keyframe -selected -q -name`;
+	}
+	
+	//found flags
+	int $found = 0;
+	int $foundKey = -999999999;
+	if ($direction == "next"){
+		$foundKey = 999999999;
+	}
+	string $foundChannel = "";
+	
+	//loop over curves and process independently
+	for ($c = 0; $c < size($curveSet); $c++){
+		int $foundThisChannel = 0;
+		
+		//channel to use for this pass
+		string $channel = $curveSet[$c];
+		
+		//print ("" + $channel + "\n");
+		
+		//skip this curve if there's only one key
+		if (`keyframe -q -keyframeCount $channel` <= 1){
+			continue;
+		}
+		
+		//start searching from current frame
+		//returns index of the closest key to the current frame
+		int $nearestKeyIndex = 0;
+		float $nearestKey = 0;
+		if ($direction == "prev"){
+			$nearestKey = `findKeyframe -time $startFrame -which previous $channel`;
+		} else {
+			$nearestKey = `findKeyframe -time $startFrame -which next $channel`;
+		}
+		//convert time to index
+		float $keyTimeArray[] = `keyframe -q -timeChange $channel`;
+		for ($i = 0; $i < size($keyTimeArray); $i++){
+			if ($keyTimeArray[$i] == $nearestKey){
+				$nearestKeyIndex = $i;
+				break;
+			}
+		}
+		
+		//should nearest key even be considered (is it next or prev from startFrame)?
+		int $chkIndex = $nearestKeyIndex + 1;
+
+		//print ("//" + $nearestKey + "\n");
+		//print ("//" + $startFrame + "\n");
+		if (($direction == "prev") && ($nearestKey >= $startFrame)){
+			continue;
+		} else if (($direction == "next") && ($nearestKey <= $startFrame)){
+			continue;
+		}
+		
+		//get values for current channel as array
+		float $valueArray[] = `keyframe -q -valueChange $channel`;
+		
+		//search direction to be used in loop
+		int $indexDir = 1;
+		if ($direction == "prev"){
+			$indexDir = -1;
+		}
+		
+		$i = $nearestKeyIndex;
+		while($i < size($valueArray) && $i >= 0){
+			//print ($i + "\n");
+			
+			//get value of the current key
+			float $curKeyValue = $valueArray[$i];
+			//get value of the next key
+			float $nextKeyValue = $valueArray[$i+1];
+			//get current tangent type
+			string $tangentType[] = `keyTangent -index $i -q -ott $channel`;
+			
+			//check for an offending key
+			if (($chkHeldPoses == 1) && ($i != (size($valueArray)-1))){
+				if ($curKeyValue == $nextKeyValue){						
+					$found = $foundThisChannel = 1;
+					//print ("Held Pose: "+$curKeyValue+", "+$nextKeyValue+"\n");
+				}
+			}
+			if ($chkStepped == 1){
+				if ($tangentType[0] == "step"){
+					$found = $foundThisChannel = 1;
+					//print ("Stepped\n");
+				}
+			}
+			if ($chkLinear == 1){
+				if ($tangentType[0] == "linear"){
+					$found = $foundThisChannel = 1;
+					//print ("Linear\n");
+				}
+			}
+			
+			//if any of these turned up found
+			if ($foundThisChannel == 1){
+				//get time of this key
+				float $curKeyTime[] = `keyframe -index $i -q -timeChange $channel`;
+				//print ("**" + $curKeyTime[0] + "\n");
+				if (($direction == "prev") && ($curKeyTime[0] > $foundKey)){
+					$foundKey = $curKeyTime[0];
+					$foundChannel = $channel;
+					//print ("--"+$foundKey+"\n");
+				} else if (($direction == "next") && ($curKeyTime[0] < $foundKey)){
+					$foundKey = $curKeyTime[0];
+					$foundChannel = $channel;
+					//print ("++"+$foundKey+"\n");
+				}
+				break;
+			}
+			
+			//advance index
+			$i += $indexDir;
+			
+		}//end whilw valueArray
+	}//end for curveSet
+	//print ("------------------------\n");
+		
+	if ($found == 1){
+		if (`checkBox -q -v ackDPF_chkChangeTime` == 1){
+			currentTime -e $foundKey;			
+		}
+		if (`checkBox -q -v ackDPF_chkSelectKey` == 1){
+			selectKey -time $foundKey $foundChannel;
+		}
+		if (`checkBox -q -v ackDPF_chkCenterView` == 1){
+			animCurveEditor -edit -lookAt currentTime graphEditor1GraphEd;
+		}
+	}
+	
+	//print (`timerX -startTime $start` + "\n");
+}

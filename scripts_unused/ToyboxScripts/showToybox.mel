@@ -1,0 +1,4 @@
+global proc showToybox(){
+	eval("source \""+`internalVar -uad`+"Toybox Scripts/Default/abxToybox.mel\"");
+	abxToybox;
+}

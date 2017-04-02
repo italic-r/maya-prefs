@@ -1,0 +1,23 @@
+Installation
+============
+
+To install Helios, first start by downloading the needed files via Gumroad:
+|gumroadLink|
+
+.. |gumroadLink| raw:: html
+
+   <a href="https://gumroad.com/l/helios" target="_blank">https://gumroad.com/l/helios</a>
+
+.. toctree::
+   :maxdepth: 2
+
+   installing_the_files
+   creating_hotkey_in_maya
+
+
+
+
+
+	
+
+

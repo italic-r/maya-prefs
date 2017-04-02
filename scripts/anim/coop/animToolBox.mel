@@ -1,0 +1,307 @@
+// animation toolbox
+// May 29, 2002
+// report problems to Jeremy Cantor
+
+
+global float $transNudgeIncrValue = 0.1;
+global float $rotNudgeIncrementValue = 1.0;
+global string $transAxisSpace;
+global string $rotAxisSpace;
+string $whatPicked[] = `selectedNodes`;
+
+
+global proc updateInTangents() {
+  string $newIn = `optionMenu -q -v inTangentMenu`;
+  keyTangent -global -itt $newIn;
+
+}
+
+global proc updateOutTangents() {
+  string $newOut = `optionMenu -q -v outTangentMenu`;
+  keyTangent -global -ott $newOut;
+}
+
+global proc wireShaded_toggle() {
+  if (`modelEditor -q -wos modelPanel4` == 0)
+   {modelEditor -e -wos 1 modelPanel1;
+    modelEditor -e -wos 1 modelPanel2;
+    modelEditor -e -wos 1 modelPanel3;
+    modelEditor -e -wos 1 modelPanel4;}
+  else
+   {modelEditor -e -wos 0 modelPanel1;
+    modelEditor -e -wos 0 modelPanel2;
+    modelEditor -e -wos 0 modelPanel3;
+    modelEditor -e -wos 0 modelPanel4;}
+}
+
+global proc xray_toggle() {
+ if (`modelEditor -q -xray modelPanel4` == 0)
+   {modelEditor -e -xray 1 modelPanel1;
+    modelEditor -e -xray 1 modelPanel2;
+    modelEditor -e -xray 1 modelPanel3;
+    modelEditor -e -xray 1 modelPanel4; }
+ else 
+   {modelEditor -e -xray 0 modelPanel1;
+    modelEditor -e -xray 0 modelPanel2;
+    modelEditor -e -xray 0 modelPanel3;
+    modelEditor -e -xray 0 modelPanel4; }
+}
+
+
+global proc allCurves() {
+  string $selectedObj[] = `selectionConnection -q -object graphEditorList`;
+for ($obj in $selectedObj)
+  selectionConnection -e -select $obj graphEditor1FromOutliner;
+}
+
+
+global proc whichCurve(string $whatCurve) {
+   string $whatObject[] = `ls -sl`;
+   for ($x=0; $x<(size($whatObject)); $x++)
+     {
+      string $curve = $whatObject[$x] + "." + $whatCurve;
+      selectionConnection -e -select $curve graphEditor1FromOutliner;
+     } 
+}
+
+global proc flipCam() {
+  string $currCam = `lookThru -q`;
+  float $currCamTransX = `getAttr ($currCam + ".tx")`;
+  float $currCamTransY = `getAttr ($currCam + ".ty")`;
+  float $currCamTransZ = `getAttr ($currCam + ".tz")`;
+  float $currCamRotY = `getAttr ($currCam + ".ry")`;
+  float $currCamRotX = `getAttr ($currCam + ".rx")`;
+  if (`gmatch $currCam "side*"`)
+   {
+    setAttr ($currCam + ".tx") (-1 * $currCamTransX);
+    float $temp = `getAttr ($currCam + ".ry")`;
+    if ($temp > 0)
+      setAttr ($currCam + ".ry") ($currCamRotY - 180);
+    else
+      setAttr ($currCam + ".ry") ($currCamRotY + 180);
+   }
+  else
+   if (`gmatch $currCam "front*"`)
+    {
+     setAttr ($currCam + ".tz") (-1 * $currCamTransZ);
+     float $temp = `getAttr ($currCam + ".ry")`;
+     if ($temp > 0)
+       setAttr ($currCam + ".ry") ($currCamRotY - 180);
+     else
+       setAttr ($currCam + ".ry") ($currCamRotY + 180);
+     }
+   else
+    if (`gmatch $currCam "top*"`)
+     {
+      setAttr ($currCam + ".ty") (-1 * $currCamTransY);
+      float $temp = `getAttr ($currCam + ".rx")`;
+      if ($temp > 0)
+        setAttr ($currCam + ".rx") ($currCamRotX - 180);
+      else
+        setAttr ($currCam + ".rx") ($currCamRotX + 180);     }
+  }
+
+
+
+global proc closeAllWindows(){
+  string $allWindows[]=`lsUI -windows`;
+  for ($closeMe in $allWindows)
+   if ((!`window -q -mw $closeMe`)&&($closeMe != "CommandWindow")&&($closeMe != "ColorEditor")&&($closeMe != "animToolBox"))
+    deleteUI -window $closeMe;
+}
+
+
+global proc updateJointSize(){
+  jointDisplayScale `floatSliderGrp -q -v jointSizeSlider` ;
+}
+
+
+
+global proc animToolBox()  {
+
+string $pressW = "buildXYZTransMM; if( `popupMenu -exists tempMM` ) { deleteUI tempMM; };";
+string $pressE = "buildXYZRotMM; if( `popupMenu -exists tempMM` ) { deleteUI tempMM; };";
+
+string $incomingIn[] = `keyTangent -q -global -itt`;
+global int $whatzIn = 1;
+switch($incomingIn[0])
+  {case "spline": $whatzIn = 1; break;
+   case "linear": $whatzIn = 2; break;
+   case "clamped": $whatzIn = 3; break;
+   case "flat": $whatzIn = 4;}
+
+string $incomingOut[] = `keyTangent -q -global -ott`;
+global int $whatzOut = 1;
+switch($incomingOut[0])
+  {case "spline": $whatzOut = 1; break;
+   case "linear": $whatzOut = 2; break;
+   case "clamped": $whatzOut = 3; break;
+   case "flat": $whatzOut = 4; break;
+   case "stepped": $whatzOut = 5;}
+
+if ((`window -ex animToolBox`) == true) deleteUI animToolBox;
+if (`windowPref -q -ex animToolBox`)
+{	if ((`windowPref -q -w animToolBox`) != 248)
+ 		windowPref -e -w 248 animToolBox;
+	if ((`windowPref -q -h animToolBox`) != 397)
+ 		windowPref -e -h 397 animToolBox;}
+
+window  -title "Anim Tool Box 05.29.02" -mxb true -mnb true -s true animToolBox;
+
+rowColumnLayout -nr 15  
+                -rh 1 10
+                -rh 2 30 -rh 3 35 -rh 4 22 -rh 5 35
+                -rh 6 22 -rh 7 22 -rh 8 22 -rh 9 22
+                -rh 10 22 -rh 11 22 -rh 12 22 -rh 13 22
+                -rh 14 30 -rh 15 22
+                -co 2 "left" 8 -co 3 "left" 8 -co 4 "left" 8
+                -co 5 "left" 8 -co 6 "left" 8 -co 7 "left" 8
+                -co 8 "left" 8 -co 9 "left" 8 -co 10 "left" 8
+                -co 11 "left" 8 -co 12 "left" 8 -co 13 "left" 8
+                -co 14 "left" 8 -co 15 "left" 8;
+
+
+ 
+// row 1 - blank button for spacing  
+button -vis false;
+
+
+// row 2
+rowColumnLayout -nc 2 -cw 1 50 -cw 2 155 -co 2 "left" 8;
+  button -l "TRANS" -c ($pressW) ;
+  radioButtonGrp -nrb 3 -cw 1 50 -cw 2 50 -cw 3 50 -sl 1
+                 -labelArray3 "world" "object" "local"
+                 -on1 ($pressW + " manipMoveContext -e -mode 2 Move")
+                 -on2 ($pressW + " manipMoveContext -e -mode 0 Move")
+                 -on3 ($pressW + " manipMoveContext -e -mode 1 Move") 
+                 trans_space_radio_button;
+setParent ..;
+
+
+// row 3
+rowColumnLayout -nc 2 -cw 1 40 -cw 2 165 -co 2 "left" 8;
+  button -l "ROTN" -c ($pressE) ;
+  radioButtonGrp -nrb 3 -cw 1 50 -cw 2 50 -cw 3 50 -sl 1
+         -labelArray3 "local" "global" "gimbal"
+         -on1 ($pressE + " manipRotateContext -e -mode 0 Rotate")
+         -on2 ($pressE + " manipRotateContext -e -mode 1 Rotate")
+         -on3 ($pressE + " manipRotateContext -e -mode 2 Rotate") 
+         rot_space_radio_button;
+setParent ..;
+
+
+// row 4
+rowColumnLayout -nc 1 -cw 1 205;
+   text -label "--- DEFAULT F-CURVE TANGENTS ---" -al "center" -h 22; 
+setParent ..;
+
+
+// row 5
+rowColumnLayout -nc 4 -cw 1 20 -cw 2 80 -cw 3 25 -cw 4 80
+                -co 3 "left" 4 -co 4 "left" 6;
+  text -l "In";
+  optionMenu -cc "updateInTangents" inTangentMenu;
+    menuItem -label "Spline";
+    menuItem -label "Linear";
+    menuItem -label "Clamped";
+    menuItem -label "Flat";
+    menuItem -label "Plateau";
+  optionMenu -e -sl ($whatzIn) inTangentMenu;
+
+  text -l "Out";
+  optionMenu -cc "updateOutTangents" outTangentMenu;
+    menuItem -label "Spline";
+    menuItem -label "Linear";
+    menuItem -label "Clamped";
+    menuItem -label "Flat";
+    menuItem -label "Stepped";
+    menuItem -label "Plateau";
+  optionMenu -e -sl ($whatzOut) outTangentMenu;
+setParent ..;
+
+
+// row 6
+rowColumnLayout -nc 3 -cw 1 85 -cw 2 70 -cw 3 70;
+  button -l "Graph Editor" -c "GraphEditor";
+  button -l "All" -c "allCurves";
+  button -l "Clear"
+         -c "selectionConnection -e -clear graphEditor1FromOutliner";
+setParent ..;
+
+
+// row 7
+rowColumnLayout -nc 9
+                -cw 1 25 -cw 2 25 -cw 3 25
+                -cw 4 25 -cw 5 25 -cw 6 25
+                -cw 7 25 -cw 8 25 -cw 9 25;
+  button -l "TX" -c ("whichCurve \"translateX\"");
+  button -l "TY" -c ("whichCurve \"translateY\"");
+  button -l "TZ" -c ("whichCurve \"translateZ\"");
+  button -l "RX" -c ("whichCurve \"rotateX\"");
+  button -l "RY" -c ("whichCurve \"rotateY\"");
+  button -l "RZ" -c ("whichCurve \"rotateZ\"");
+  button -l "SX" -c ("whichCurve \"scaleX\"");
+  button -l "SY" -c ("whichCurve \"scaleY\"");
+  button -l "SZ" -c ("whichCurve \"scaleZ\"");
+setParent ..;
+
+
+// row 8
+rowColumnLayout -nc 3 -cw 1 65 -cw 2 80 -cw 3 80;
+  button -l "Outliner" -c "OutlinerWindow";
+  button -l "HyperGraph" -c "HypergraphWindow";
+  button -l "Multilister" -c "Multilister";
+setParent ..; 
+
+
+// row 9
+rowColumnLayout -nc 2 -cw 1 110 -cw 2 115;
+  button -l "Component Editor" -c "ComponentEditor";
+  button -l "Expression Editor" -c "ExpressionEditor"; 
+setParent ..;
+  
+//row 10
+rowColumnLayout -nc 2 -cw 1 115 -cw 2 110;
+  button -l "Wire on Shaded" -c "wireShaded_toggle";  
+  button -l "X-ray Mode" -c "xray_toggle";   
+setParent ..;
+
+//row 11
+rowColumnLayout -nc 3 -cw 1 110 -cw 2 115;
+  button -l "Hide Selected" -c ("string $wutzHidden[] = `hide -rh`");
+  button -l "Show Last Hidden" -c "showHidden $wutzHidden";
+setParent ..;
+
+//row 12
+rowColumnLayout -nc 3 -cw 1 115 -cw 2 110;
+  button -l "Show Selected" -c "showHidden";
+  button -l "Show All" -c "showHidden -all";
+setParent ..;
+  
+//row 13
+rowColumnLayout -nc 3 -cw 1 125 -cw 2 100;
+  button -l "Template Selected" -c "toggle -state on -template;";
+  button -l "Untemplate" -c "toggle -state off -template;";
+setParent ..;
+
+//row 14
+rowColumnLayout -nc 2 -cw 1 125 -cw 2 100;
+  button -l "Flip Active Ortho View" -c "flipCam";
+  button -l "Close All Windows" -c "closeAllWindows";
+setParent ..;
+
+//row 15
+columnLayout;
+  floatSliderGrp -field true -l "Jointz" -cw 1 38 -cw 2 32 -cw 3 30
+                 -pre 2 -min 0.01 -max 10
+                 -dc "updateJointSize" -cc "updateJointSize"
+                 jointSizeSlider;
+  floatSliderGrp -e -v `jointDisplayScale -q` jointSizeSlider ;
+setParent ..;
+
+
+showWindow animToolBox;
+
+}
+
+

@@ -1,0 +1,19 @@
+proc connectTrans () {
+
+string $selObjs[] = `ls -sl`;
+
+connectAttr ($selObjs[0] + ".translateX") ($selObjs[1] + ".translateX");
+connectAttr ($selObjs[0] + ".translateY") ($selObjs[1] + ".translateY");
+connectAttr ($selObjs[0] + ".translateZ") ($selObjs[1] + ".translateZ");
+
+connectAttr ($selObjs[0] + ".rotateX") ($selObjs[1] + ".rotateX");
+connectAttr ($selObjs[0] + ".rotateY") ($selObjs[1] + ".rotateY");
+connectAttr ($selObjs[0] + ".rotateZ") ($selObjs[1] + ".rotateZ");
+
+connectAttr ($selObjs[0] + ".scaleX") ($selObjs[1] + ".scaleX");
+connectAttr ($selObjs[0] + ".scaleY") ($selObjs[1] + ".scaleY");
+connectAttr ($selObjs[0] + ".scaleZ") ($selObjs[1] + ".scaleZ");
+
+}
+
+connectTrans () ;

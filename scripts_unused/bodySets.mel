@@ -1,0 +1,42 @@
+global proc makeQss() { 
+string $baseObjectSets[] = {"rig_ankle_l_skin_SW_anim rig_wrist_r_skin_FK_anim rig_elbow_r_skin_FK_anim rig_shoulder_r_skin_FK_anim rig_wrist_r_skin_SW_anim rig_wrist_l_skin_FK_anim rig_elbow_l_skin_FK_anim rig_shoulder_l_skin_FK_anim m_leg_IKleg_Cntrl_l_anim m_leg_GimbleCntrl_l_anim m_leg_PV_Cntrl_l_anim m_leg_IKleg_Cntrl_r_anim m_leg_GimbleCntrl_r_anim m_leg_PV_Cntrl_r_anim r_fingers_anim r_pinky_anim r_ring_anim r_mid_anim r_index_anim r_thumb_anim l_fingers_anim l_pinky_anim l_ring_anim l_mid_anim l_index_anim l_thumb_anim m_arm_prop_IK_Cntrl_l_anim m_arm_prop_IK_Cntrl_r_anim m_leg_prop_IKleg_Cntrl_r_anim m_leg_prop_IKleg_Cntrl_l_anim rig_clavicle_l_skin_FK_anim rig_elbow_r_skin_Bendy_anim rig_shoulder_r_skin_Bendy_anim rig_shoulder_r_skin_twist_anim rig_clavicle_r_skin_FK_anim m_neck_IK_anim m_arm_IK_Cntrl_l_anim rig_wrist_l_skin_GimbleCntrl_l_anim m_arm_PV_Cntrl_l_anim m_arm_IK_Cntrl_r_anim rig_wrist_r_skin_GimbleCntrl_r_anim m_arm_PV_Cntrl_r_anim rig_hip_l_skin_FK_anim rig_ball_l_skin_FK_anim rig_ankle_r_skin_SW_anim rig_ankle_l_skin_FK_anim rig_knee_l_skin_FK_anim rig_clavicle_l_skin_IK_anim rig_clavicle_r_skin_IK_anim rig_wrist_l_skin_SW_anim rig_spine_0_skinFK3_anim rig_spine_0_skinFK2_anim rig_spine_0_skinFK1_anim rig_ball_r_skin_FK_anim rig_ankle_r_skin_FK_anim rig_knee_r_skin_FK_anim rig_hip_r_skin_FK_anim rig_knee_r_skin_Bendy_anim rig_hip_r_skin_Bendy_anim rig_hip_r_skin_twist_anim rig_spine_0_skin_Mid_anim rig_spine_0_skin_Shoulders_anim m_neck_FK_anim rig_elbow_l_skin_Bendy_anim rig_shoulder_l_skin_Bendy_anim rig_shoulder_l_skin_twist_anim m_spine_Root_anim rig_spine_0_skin_Hips_anim rig_knee_l_skin_Bendy_anim rig_hip_l_skin_Bendy_anim rig_hip_l_skin_twist_anim", "rig_wrist_l_skin_FK_anim rig_elbow_l_skin_FK_anim rig_shoulder_l_skin_FK_anim l_fingers_anim l_pinky_anim l_ring_anim l_mid_anim l_index_anim l_thumb_anim m_arm_prop_IK_Cntrl_l_anim rig_clavicle_l_skin_FK_anim m_arm_IK_Cntrl_l_anim rig_wrist_l_skin_GimbleCntrl_l_anim m_arm_PV_Cntrl_l_anim rig_clavicle_l_skin_IK_anim rig_wrist_l_skin_SW_anim rig_elbow_l_skin_Bendy_anim rig_shoulder_l_skin_Bendy_anim rig_shoulder_l_skin_twist_anim", "rig_wrist_r_skin_FK_anim rig_elbow_r_skin_FK_anim rig_shoulder_r_skin_FK_anim rig_wrist_r_skin_SW_anim r_fingers_anim r_pinky_anim r_ring_anim r_mid_anim r_index_anim r_thumb_anim m_arm_prop_IK_Cntrl_r_anim rig_elbow_r_skin_Bendy_anim rig_shoulder_r_skin_Bendy_anim rig_shoulder_r_skin_twist_anim rig_clavicle_r_skin_FK_anim m_arm_IK_Cntrl_r_anim rig_wrist_r_skin_GimbleCntrl_r_anim m_arm_PV_Cntrl_r_anim rig_clavicle_r_skin_IK_anim", "rig_ankle_l_skin_SW_anim m_leg_IKleg_Cntrl_l_anim m_leg_GimbleCntrl_l_anim m_leg_PV_Cntrl_l_anim m_leg_prop_IKleg_Cntrl_l_anim rig_hip_l_skin_FK_anim rig_ball_l_skin_FK_anim rig_ankle_l_skin_FK_anim rig_knee_l_skin_FK_anim rig_knee_l_skin_Bendy_anim rig_hip_l_skin_Bendy_anim rig_hip_l_skin_twist_anim", "m_leg_IKleg_Cntrl_r_anim m_leg_GimbleCntrl_r_anim m_leg_PV_Cntrl_r_anim m_leg_prop_IKleg_Cntrl_r_anim rig_ankle_r_skin_SW_anim rig_ball_r_skin_FK_anim rig_ankle_r_skin_FK_anim rig_knee_r_skin_FK_anim rig_hip_r_skin_FK_anim rig_knee_r_skin_Bendy_anim rig_hip_r_skin_Bendy_anim rig_hip_r_skin_twist_anim", "m_neck_IK_anim rig_spine_0_skinFK3_anim rig_spine_0_skinFK2_anim rig_spine_0_skinFK1_anim rig_spine_0_skin_Mid_anim rig_spine_0_skin_Shoulders_anim m_neck_FK_anim m_spine_Root_anim rig_spine_0_skin_Hips_anim"}; 
+string $qssNames[] = {"qssAll", "qssArmLeft", "qssArmRight", "qssLegLeft", "qssLegRight", "qssTorso"}; 
+string $qssObjects[]; 
+string $qssMissingObjects[]; 
+string $prefix; 
+int $i = 0; 
+int $n = 0; 
+int $m = 0; 
+string $result = `promptDialog -title "Prefix Object Names?" 
+                       -message "Insert any prefix you would like to add" 
+                         -button "Confirm" -button "Cancel" 
+                        -defaultButton "Confirm" -cancelButton "Cancel" 
+                        -dismissString "Cancel"`; 
+    if ($result == "Confirm") { 
+       $prefix = `promptDialog -query -text`; 
+     } 
+ for ($set in $baseObjectSets) { 
+	$i = 0;	 
+    string $currentSet[]; 
+    int $numTokens = tokenize($baseObjectSets[$n], $currentSet); 
+       	for($object in $currentSet) { 
+       		string $prefixedObject = $prefix + $object; 
+      		$qssObjects[$i] = $prefixedObject; 
+      			if(! `objExists $prefixedObject`) { 
+                 print ($prefixedObject + " not found from " + $qssNames[$n] + "\n");   
+					$qssMissingObjects[$m] = $prefixedObject ;  
+					$m++; 
+        		}  
+			$i++; 
+        }  
+	string $qssFoundObjects[]= stringArrayRemove($qssMissingObjects, $qssObjects); 
+	string $nameBuffer = $prefix + $qssNames[$n]; 
+	sets -text "gCharacterSet" -name $nameBuffer $qssFoundObjects; 
+	int $size = size($qssObjects); 
+		for($z=0;$z<$size;$z++){ 
+			stringArrayRemoveAtIndex(0, $qssObjects); 
+		} 
+	$n++; 
+    } 
+ } 
+ makeQss; 

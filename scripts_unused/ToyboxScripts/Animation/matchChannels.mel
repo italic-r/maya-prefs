@@ -1,0 +1,38 @@
+// matchChannels
+// J. Adam Burke
+// copies channel attributes from object 1 to object 2
+// mask attributes by selecting the channels you want to copy.
+
+int $j=0;
+int $i=0;
+string $firsttwo[] = `selectedNodes`;
+if (size($firsttwo) < 2){
+	error "Must Select Two Objects";
+}
+else {
+	string $object1 = $firsttwo[0];
+	string $object2 = $firsttwo[1];
+	
+	string $object1Keyable[] = `listAttr -keyable $object1`;
+	string $object2Keyable[] = `listAttr -keyable $object2`;
+	
+	string $selectedChannels[] = `channelBox -q -sma mainChannelBox`;
+	
+	if (size($selectedChannels) > 0){
+		for ($j=0;$j<size($selectedChannels);$j++){
+			if (`attributeExists $selectedChannels[$j] $object2`)
+				setAttr ($object1+"."+$selectedChannels[$j]) `getAttr ($object2+"."+$selectedChannels[$j])` ;
+		}			
+	}
+	else {
+		for ($j=0;$j<size($object1Keyable);$j++){
+			for ($i=0;$i<size($object2Keyable);$i++){
+				if (`gmatch $object2Keyable[$i] $object1Keyable[$j]`){
+					
+					setAttr ($object1+"."+$object1Keyable[$j]) `getAttr ($object2+"."+$object2Keyable[$i])` ;
+					$i=size($object2Keyable);
+				}
+			}
+		}
+	}
+}
