@@ -1,3 +1,10 @@
+# Custom site-packages
+import os, inspect, site
+# USER_SETUP_PATH = os.path.dirname(inspect.currentframe().f_code.co_filename)
+site.addsitedir(os.path.expanduser('~/.virtualenvs/python-2.7.6/lib/python2.7/site-packages'))
+# End custom site-packages
+
+
 import maya.api.OpenMaya as om
 from maya import cmds
 from maya import mel
@@ -48,15 +55,8 @@ cmds.commandPort(name=":7005", sourceType="python")
 # Open port for communication with Eclipse maya package
 cmds.commandPort(name=":7720", sourceType="python", eo=False, nr=True)
 
-"""
-import os, inspect
-USER_SETUP_PATH = os.path.dirname(inspect.currentframe().f_code.co_filename)
-"""
 # start aTools
-
 if not cmds.about(batch=True):
-
     # launch aTools_Animation_Bar
     cmds.evalDeferred("from aTools.animTools.animBar import animBarUI; animBarUI.show('launch')", lowestPriority=True)
-
 # end aTools
