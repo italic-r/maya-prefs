@@ -2,196 +2,199 @@
 S'Move Pivot To Vertices'
 p2
 I7
-sS'NURBS Sphere'
+sS'Add Blinn Shader to Selected Object'
 p3
+I1
+sS'NURBS Sphere'
+p4
 I14
 sS'Mirror +X'
-p4
-I7
-sS'Mirror X'
 p5
-I1
-sS'Mirror Z'
+I7
+sS'Command Shell'
 p6
-I8
-sS'Mirror -Y'
+I1
+sS'Mirror X'
 p7
 I1
-sS'ThibH - Create Basic Scene'
+sS'Mirror Z'
 p8
-I17
-sS'Mirror -Z'
+I8
+sS'Mirror -Y'
 p9
 I1
-sS'ThibH - Snap to Center of World'
+sS'Create Lightning Effect'
 p10
+I1
+sS'Mirror -Z'
+p11
+I1
+sS'ThibH - Snap to Center of World'
+p12
 I10
 sS'Lattice'
-p11
+p13
 I6
 sS'NURBS Cube'
-p12
+p14
 I19
 sS'Combine'
-p13
+p15
 I12
 sS'Add Lambert Shader to Selected Object'
-p14
+p16
 I2
 sS'Add Layered Shader to Selected Object'
-p15
-I2
-sS'Toggle Grid'
-p16
-I3
-sS'Add Anisotropic Shader to Selected Object'
 p17
 I2
-sS'Hide Lattices'
+sS'Toggle Grid'
 p18
-I2
-sS'Area Light'
+I3
+sS'Add Anisotropic Shader to Selected Object'
 p19
-I1
-sS'Reset Transformations'
+I2
+sS'Hide Lattices'
 p20
 I2
-sS'Mirror +Z'
+sS'Area Light'
 p21
 I1
-sS'Cube'
+sS'Reset Transformations'
 p22
-I140
-sS'Aim Constraint'
+I2
+sS'Mirror +Z'
 p23
+I1
+sS'Cube'
+p24
+I141
+sS'Aim Constraint'
+p25
 I2
 sS'Separate'
-p24
+p26
 I6
 sS'CV Curve Tool'
-p25
+p27
 I3
 sS'NURBS Torus'
-p26
-I1
-sS'Delete History'
-p27
-I10
-sS'Create Polygon Tool'
 p28
 I1
-sS'Attribute SpreadSheet'
+sS'Locator'
 p29
+I9
+sS'Delete History'
+p30
+I10
+sS'Attribute SpreadSheet'
+p31
+I1
+sS'Create Polygon Tool'
+p32
 I1
 sS'Center Pivot'
-p30
+p33
 I14
 sS'Freeze Transformations'
-p31
+p34
 I16
 sS'Add Phong Shader to Selected Object'
-p32
+p35
 I2
 sS'ThibH - Renamer'
-p33
+p36
 I12
 sS'Render Settings'
-p34
+p37
 I5
 sS'Bevel'
-p35
+p38
 I8
-sS'Create Lightning Effect'
-p36
-I1
+sS'ThibH - Create Basic Scene'
+p39
+I17
 sS'Add Divisions'
-p37
+p40
 I1
 sS'Add Lambert Shader to Selected Objects'
-p38
+p41
 I6
 sS'Plugin Manager'
-p39
+p42
 I2
 sS'Add Surface Shader to Selected Object'
-p40
+p43
 I2
 sS'Hotkey Editor'
-p41
-I2
-sS'Point Light'
-p42
-I1
-sS'Snap Together Tool'
-p43
-I1
-sS'Render View'
 p44
 I2
-sS'Sphere'
+sS'Point Light'
 p45
-I45
-sS'ThibH - Create Locator on Selected Vertices'
+I1
+sS'Snap Together Tool'
 p46
-I2
-sS'Show Lattices'
+I1
+sS'Render View'
 p47
 I2
-sS'Graph Editor'
+sS'ThibH - Create Locator on Selected Vertices'
 p48
+I2
+sS'Show Lattices'
+p49
+I2
+sS'Graph Editor'
+p50
 I7
 sS'Set Framerate to 24'
-p49
-I1
-sS'ThibH - Fill Selection and Close Holes'
-p50
-I5
-sS'Particles Goal'
 p51
 I1
-sS'Soften Edge'
+sS'Particles Goal'
 p52
+I1
+sS'Soften Edge'
+p53
 I4
 sS'Insert Edge Loop Tools'
-p53
-I1
-sS'Paint Hair Follicles'
 p54
 I1
-sS'Create Hair'
+sS'Paint Hair Follicles'
 p55
+I1
+sS'Create Hair'
+p56
 I2
 sS'Outliner'
-p56
+p57
 I16
 sS'Align Objects'
-p57
+p58
 I1
 sS'Add Blinn Shader to Selected Objects'
-p58
+p59
 I6
 sS'Hypergraph Hierarchy'
-p59
+p60
 I1
 sS'Smooth Polygons'
-p60
-I10
-sS'Locator'
 p61
-I9
-sS'Add Blinn Shader to Selected Object'
+I10
+sS'Sphere'
 p62
-I1
-sS'Node Editor'
+I46
+sS'ThibH - Fill Selection and Close Holes'
 p63
-I1
-sS'Add Lambert Material to Selected Object'
+I5
+sS'Node Editor'
 p64
 I1
-sS'Add Surface Shader to Selected Objects'
+sS'Add Lambert Material to Selected Object'
 p65
 I1
-sS'Add Phong Shader to Selected Objects'
+sS'Add Surface Shader to Selected Objects'
 p66
+I1
+sS'Add Phong Shader to Selected Objects'
+p67
 I1
 s.

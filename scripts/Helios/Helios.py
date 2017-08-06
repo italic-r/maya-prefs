@@ -33,14 +33,14 @@ class HeliosGUI(QWidget):
         start_time = time.time()
 
         self.cur_path = os.path.dirname(os.path.realpath(__file__)).replace("\\", "/")
-
+        
         if not os.path.isfile(self.cur_path + "/commands/_commands_use_frequency.pkl"):
             open(self.cur_path + "/commands/_commands_use_frequency.pkl", "a")
 
         if not os.path.isfile(self.cur_path + "/commands/_last_used_command.ini"):
             open(self.cur_path + "/commands/_last_used_command.ini", "a")
 
-        # Get list of commands frequency
+        # Get list of commands frequency       
         self.commands_use_frequency = {}
         commands_frequency_file = open(self.cur_path + "/commands/_commands_use_frequency.pkl", 'rb')
         try:
@@ -229,7 +229,7 @@ class HeliosGUI(QWidget):
         sorted_matches_with_frequency = [i[0] for i in sorted_matches_with_frequency]
 
         # Remove all frames from searchLayout
-        for i in range(self.gridLayout.count()):
+        for i in range(self.gridLayout.count()): 
             self.gridLayout.itemAt(i).widget().close()
 
         # If there's no match, hide search result frame.
@@ -244,11 +244,11 @@ class HeliosGUI(QWidget):
             self.frame = customFrame(self, command) # Create custom frame and pass command name as arg
             self.frameLayout = QVBoxLayout(self.frame)
             self.label = QLabel("{0}. {1}".format(i + 1, command))
-
+            
             self.frameLayout.addWidget(self.label)
             self.gridLayout.addWidget(self.frame)
             self.frames_list.append(self.frame)
-
+        
         if len(query) > 0:
             first_result = self.frames_list[0]
             first_result.enterEvent(self)
@@ -422,13 +422,13 @@ class customFrame(QFrame):
                     subprocess.call(['notepad.exe', '{0}/commands/{1}-advanced.py'.format(self.gui.cur_path, self.frame_name)])
                 else:
                     mc.inViewMessage(message="Script {0}-advanced.py doesn't exist".format(self.frame_name), pos='topCenter', fade=True, fadeStayTime=1500, fadeInTime=250, fadeOutTime=250)
-
+        
             else:
                 if os.path.isfile('{0}/commands/{1}.py'.format(self.gui.cur_path, self.frame_name)):
                     subprocess.call(['notepad.exe', '{0}/commands/{1}.py'.format(self.gui.cur_path, self.frame_name)])
                 else:
                     mc.inViewMessage(message="Script {0}.py doesn't exist".format(self.frame_name), pos='topCenter', fade=True, fadeStayTime=1500, fadeInTime=250, fadeOutTime=250)
-
+        
 
         else:
 
@@ -454,7 +454,7 @@ class customFrame(QFrame):
                         pass
                     print(str(e))
                     mc.inViewMessage(message="Errors occured while executing '{0}'".format(self.frame_name), pos='topCenter', fade=True, fadeStayTime=750, fadeInTime=250, fadeOutTime=250)
-
+            
             last_command_file = open(self.gui.cur_path + "/commands/_last_used_command.ini", "w")
             last_command_file.write(self.frame_name)
             last_command_file.close()
